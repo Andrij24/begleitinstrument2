@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-    <title>Begleitinstrument — Stabile Version</title>
+    <title>Begleitinstrument — Audio Pro & Deep Zoom</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -12,7 +12,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
     <style>
-        html, body, #map { height: 100%; margin: 0; background: #f0f0f0; overflow: hidden; }
+        html, body, #map { height: 100%; margin: 0; background: #eee; overflow: hidden; }
         #map { width: 100%; height: 100vh; z-index: 1; }
         .top-ui { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1000; display: flex; gap: 5px; width: 95%; justify-content: center; }
         .side-ui { position: fixed; top: 60px; right: 10px; z-index: 1000; width: 165px; display: flex; flex-direction: column; gap: 8px; }
@@ -27,14 +27,13 @@
         
         .is-recording { background-color: #ef4444 !important; animation: pulse 1.5s infinite; color: white; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        
         #audioTimer { position: absolute; top: -20px; font-size: 10px; color: red; font-weight: bold; display: none; background: white; padding: 2px 4px; border-radius: 4px; border: 1px solid red; }
     </style>
 </head>
 <body>
 
-<div id="exportLoader" class="hidden fixed inset-0 bg-black/80 z-[9999] flex flex-col items-center justify-center text-white text-center">
-    <b>ZIP EXPORT...</b><br><small>Bitte warten, Bilder werden verarbeitet</small>
-</div>
+<div id="exportLoader" class="loading-overlay hidden fixed inset-0 bg-black/80 z-[9999] flex flex-col items-center justify-center text-white"><b>ZIP EXPORT...</b></div>
 <div id="map"></div>
 
 <div class="top-ui">
@@ -44,15 +43,12 @@
 </div>
 
 <div class="side-ui">
-    <div class="panel max-h-[300px] overflow-y-auto">
+    <div class="panel max-h-[250px] overflow-y-auto">
         <p class="font-bold text-[8px] uppercase text-gray-500 mb-1">Ebenen & Archiv</p>
         <div class="text-[10px] space-y-1 mb-2">
             <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('tempo')"> Route</label>
             <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('audio')"> Audio</label>
             <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('photo')"> Fotos</label>
-            <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('mood')"> Befinden</label>
-            <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('sense')"> Wahrn.</label>
-            <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('thought')"> Gedanke</label>
         </div>
         <div id="walkList" class="border-t pt-2"></div>
     </div>
@@ -70,7 +66,6 @@
 </div>
 
 <script>
-// --- STATE & INITIALISIERUNG ---
 const state = {
     walks: JSON.parse(localStorage.getItem('savedWalks') || '[]'),
     current: JSON.parse(localStorage.getItem('currentWalk') || 'null'),
@@ -79,38 +74,32 @@ const state = {
     layers: { tempo: L.layerGroup(), mood: L.layerGroup(), thought: L.layerGroup(), sense: L.layerGroup(), photo: L.layerGroup(), audio: L.layerGroup() }
 };
 
-function getMoodColor(val) {
-    const colors = { '1': '#b91c1c', '2': '#f97316', '3': '#facc15', '4': '#4ade80', '5': '#15803d' };
-    return colors[val] || '#94a3b8';
-}
-
 function init() {
     state.map = L.map('map', { zoomControl: false, maxZoom: 22 }).setView([47.23, 9.61], 15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
-        maxNativeZoom: 19, 
-        maxZoom: 22,
-        crossOrigin: true 
-    }).addTo(state.map);
-
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxNativeZoom: 19, maxZoom: 22 }).addTo(state.map);
     Object.values(state.layers).forEach(l => l.addTo(state.map));
-    
-    if (state.current) { 
-        drawRoute(state.current); 
-        state.current.entries.forEach(drawM); 
-    }
+    if (state.current) { drawRoute(state.current); state.current.entries.forEach(drawM); }
     updateList();
 
-    // Geolocation Start
     navigator.geolocation.watchPosition(p => {
         const newLoc = [p.coords.latitude, p.coords.longitude];
-        state.lastStableLoc = newLoc;
-        if (!state.viewing) state.map.panTo(newLoc);
-        if (state.current && !state.viewing) {
-            state.current.route.push(newLoc);
-            drawRoute(state.current);
-            save();
+        if (!state.lastStableLoc || getDist(state.lastStableLoc[0], state.lastStableLoc[1], newLoc[0], newLoc[1]) > 1.5) {
+            state.lastStableLoc = newLoc;
+            if (state.current && !state.viewing) {
+                state.current.route.push(newLoc);
+                drawRoute(state.current);
+                save();
+            }
         }
-    }, err => console.log("Geo Error"), { enableHighAccuracy: true });
+    }, null, { enableHighAccuracy: true });
+}
+
+function getDist(lat1, lon1, lat2, lon2) {
+    const R = 6371000;
+    const dLat = (lat2-lat1) * Math.PI/180;
+    const dLon = (lon2-lon1) * Math.PI/180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
 function save() {
@@ -118,106 +107,108 @@ function save() {
     localStorage.setItem('savedWalks', JSON.stringify(state.walks));
 }
 
-// --- ZEICHNEN ---
 function drawRoute(w) {
     state.layers.tempo.clearLayers();
-    if (w && w.route && w.route.length > 1) {
-        L.polyline(w.route, {color:'black', weight:3, opacity: 0.7}).addTo(state.layers.tempo);
-    }
+    if (w?.route?.length > 1) L.polyline(w.route, {color:'black', weight:3}).addTo(state.layers.tempo);
 }
 
 function drawM(e) {
     const l = state.layers[e.type]; if(!l) return;
+    const colors = { mood: '#ff4500', thought: '#12345f', sense: '#3d633d' };
     
-    if (e.type === 'mood') {
-        // Der reine Farbkreis für Befinden
-        L.circleMarker([e.lat, e.lng], { 
-            radius: 15, fillColor: getMoodColor(e.text), color: '#fff', weight: 3, fillOpacity: 1 
-        }).addTo(l).bindPopup(`Befinden: Stufe ${e.text}`);
-    } 
-    else if (e.type === 'photo' || e.type === 'audio') {
-        const icon = L.divIcon({ 
-            html: `<div style="font-size:24px;">${e.type==='photo'?'📸':'🎙️'}</div>`, 
-            className: 'bg-transparent border-0', iconSize: [30, 30] 
-        });
-        L.marker([e.lat, e.lng], {icon}).addTo(l).bindPopup(
-            e.type === 'photo' ? `<img src="${e.data}" class="w-full" style="max-width:200px; border-radius:8px;">` : `<audio controls src="${e.data}"></audio>`
-        );
-    } 
-    else {
-        // Gedanken (blau) und Wahrnehmung (grün) als Text-Marker
-        const col = e.type === 'thought' ? '#12345f' : '#3d633d';
-        L.circleMarker([e.lat, e.lng], { 
-            radius: 12, fillColor: col, color: '#fff', weight: 2, fillOpacity: 0.9 
-        }).addTo(l).bindPopup(`<b>${e.type === 'thought' ? 'Gedanke' : 'Wahrnehmung'}:</b><br>${e.text}`);
+    if (e.type === 'photo' || e.type === 'audio') {
+        const icon = L.divIcon({ html: `<div style="font-size:24px;">${e.type==='photo'?'📸':'🎙️'}</div>`, className: 'bg-transparent border-0', iconSize: [30, 30] });
+        L.marker([e.lat, e.lng], {icon}).addTo(l).bindPopup(e.type === 'photo' ? `<img src="${e.data}" class="w-full">` : `<audio controls src="${e.data}"></audio>`);
+    } else {
+        L.circleMarker([e.lat, e.lng], { radius: 12, fillColor: colors[e.type], color: '#fff', weight: 2, fillOpacity: 0.9 }).addTo(l).bindPopup(e.text);
     }
 }
 
-// --- ARCHIV ---
 function updateList() {
     const c = document.getElementById('walkList'); c.innerHTML = "";
     [...state.walks].reverse().forEach((w, i) => {
         const idx = state.walks.indexOf(w);
         const d = document.createElement('div');
         d.className = `walk-item ${state.selected === idx ? 'active-walk' : ''}`;
-        d.innerHTML = `<span style="flex:1" onclick="loadW(${idx})">Tour ${idx+1}</span>
-                       <span class="delete-btn" onclick="delW(event, ${idx})">&times;</span>`;
+        d.innerHTML = `<span onclick="loadW(${idx})">Tour ${idx+1}</span><span onclick="delW(event, ${idx})">&times;</span>`;
         c.appendChild(d);
     });
 }
 
-function delW(ev, i) { 
-    ev.stopPropagation(); 
-    if(confirm(`Tour ${i+1} wirklich löschen?`)) { 
-        state.walks.splice(i,1); 
-        if(state.selected === i) {
-            state.viewing = false;
-            Object.values(state.layers).forEach(l => l.clearLayers());
-        }
-        save(); updateList(); 
-    } 
-}
+function delW(ev, i) { ev.stopPropagation(); if(confirm("Löschen?")) { state.walks.splice(i,1); save(); updateList(); } }
 
 function loadW(i) {
     state.viewing = true; state.selected = i; const w = state.walks[i];
     Object.values(state.layers).forEach(l => l.clearLayers());
-    drawRoute(w); 
-    if(w.entries) w.entries.forEach(drawM);
-    if (w.route && w.route.length) state.map.fitBounds(L.polyline(w.route).getBounds(), {padding: [30,30]});
+    drawRoute(w); w.entries.forEach(drawM);
+    if (w.route.length) state.map.fitBounds(L.polyline(w.route).getBounds());
     updateList();
 }
 
-// --- STEUERUNG ---
 document.getElementById('startWalk').onclick = () => {
     state.viewing = false; state.selected = null;
     state.current = { id: new Date().toLocaleString(), route: [], entries: [] };
     Object.values(state.layers).forEach(l => l.clearLayers());
     save(); updateList();
-    alert("Live-Aufnahme gestartet!");
 };
 
-document.getElementById('stopWalk').onclick = () => { 
-    if(state.current){ 
-        state.walks.push(state.current); state.current = null; 
-        save(); updateList(); 
-        alert("Tour erfolgreich im Archiv gespeichert.");
-    } 
-};
+document.getElementById('stopWalk').onclick = () => { if(state.current){ state.walks.push(state.current); state.current = null; save(); updateList(); } };
 
 function addE(type, data = null, text = null) {
-    if (!state.current || state.viewing) return alert("Bitte zuerst 'NEUER WALK' starten!");
+    if (!state.current || state.viewing) return alert("Walk starten!");
     const loc = state.lastStableLoc || [state.map.getCenter().lat, state.map.getCenter().lng];
     const entry = { type, lat: loc[0], lng: loc[1], data, text, time: new Date().toLocaleTimeString() };
     state.current.entries.push(entry); drawM(entry); save();
 }
 
-// Buttons
-document.getElementById('moodBtn').onclick = () => {
-    const val = prompt("Befinden (Zahl 1-5 eingeben):");
-    if (['1','2','3','4','5'].includes(val)) addE('mood', null, val);
+// AUDIO ENGINE FIX
+document.getElementById('audioToggle').onclick = async () => {
+    const btn = document.getElementById('audioToggle');
+    const timerDisp = document.getElementById('audioTimer');
+    const iconDisp = document.getElementById('audioIcon');
+
+    if (state.isRec) {
+        state.rec.stop();
+        state.isRec = false;
+        clearInterval(state.timerInt);
+        btn.classList.remove('is-recording');
+        timerDisp.style.display = 'none';
+        iconDisp.innerText = "▶️";
+    } else {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            
+            // Format-Check für iOS/Android
+            const mime = MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : 'audio/webm';
+            state.rec = new MediaRecorder(stream, { mimeType: mime });
+            state.chunks = [];
+            
+            state.rec.ondataavailable = e => { if(e.data.size > 0) state.chunks.push(e.data); };
+            state.rec.onstop = () => {
+                const blob = new Blob(state.chunks, { type: mime });
+                const r = new FileReader();
+                r.onload = () => addE('audio', r.result);
+                r.readAsDataURL(blob);
+                stream.getTracks().forEach(t => t.stop());
+            };
+
+            state.rec.start();
+            state.isRec = true;
+            btn.classList.add('is-recording');
+            timerDisp.style.display = 'block';
+            iconDisp.innerText = "⏹️";
+
+            let sec = 0;
+            state.timerInt = setInterval(() => {
+                sec++;
+                const m = Math.floor(sec/60).toString().padStart(2,'0');
+                const s = (sec%60).toString().padStart(2,'0');
+                timerDisp.innerText = `${m}:${s}`;
+            }, 1000);
+
+        } catch(err) { alert("Mikrofon-Fehler: " + err.message); }
+    }
 };
-document.getElementById('senseBtn').onclick = () => { const t = prompt("Was nimmst du wahr?"); if(t) addE('sense',null,t); };
-document.getElementById('thoughtBtn').onclick = () => { const t = prompt("Was geht dir durch den Kopf?"); if(t) addE('thought',null,t); };
 
 document.getElementById('photoBtn').onclick = () => {
     const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*';
@@ -225,5 +216,39 @@ document.getElementById('photoBtn').onclick = () => {
     i.click();
 };
 
-document.getElementById('audioToggle').onclick = async () => {
-    const btn = document.getElementById('
+document.getElementById('senseBtn').onclick = () => { const t = prompt("Sinn:"); if(t) addE('sense',null,t); };
+document.getElementById('thoughtBtn').onclick = () => { const t = prompt("Gedanke:"); if(t) addE('thought',null,t); };
+document.getElementById('moodBtn').onclick = () => { const t = prompt("Mood:"); if(t) addE('mood',null,t); };
+
+function toggleL(n) {
+    if (state.map.hasLayer(state.layers[n])) state.map.removeLayer(state.layers[n]);
+    else state.map.addLayer(state.layers[n]);
+}
+
+document.getElementById('exportFull').onclick = async () => {
+    const w = state.viewing ? state.walks[state.selected] : state.current;
+    if (!w) return alert("Kein Walk.");
+    document.getElementById('exportLoader').classList.remove('hidden');
+    const zip = new JSZip();
+    try {
+        const can = await html2canvas(document.getElementById('map'), {useCORS: true});
+        zip.file("karte.jpg", can.toDataURL("image/jpeg", 0.7).split(',')[1], {base64:true});
+        let notes = `Tour-Export: ${w.id}\n\n`;
+        w.entries.forEach((e, i) => {
+            if(e.text) notes += `[${e.type}] ${e.text}\n`;
+            if(e.data) {
+                const ext = e.type === 'photo' ? 'jpg' : (e.data.includes('mp4') ? 'mp4' : 'webm');
+                zip.file(`media/${e.type}_${i}.${ext}`, e.data.split(',')[1], {base64:true});
+            }
+        });
+        zip.file("notizen.txt", notes);
+        const b = await zip.generateAsync({type:"blob"});
+        const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `Walk_${state.walks.indexOf(w)+1}.zip`; a.click();
+    } catch(e) { alert("Fehler"); }
+    document.getElementById('exportLoader').classList.add('hidden');
+};
+
+init();
+</script>
+</body>
+</html>
