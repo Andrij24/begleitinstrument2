@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-    <title>Begleitinstrument — Nummeriertes Archiv</title>
+    <title>Begleitinstrument — Alles-in-Einem Fix 📍</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -14,9 +14,12 @@
     <style>
         html, body, #map { height: 100%; margin: 0; background: #eee; overflow: hidden; }
         #map { width: 100%; height: 100vh; z-index: 1; }
+        
+        /* UI Ebenen sicherstellen */
         .top-ui { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1000; display: flex; gap: 5px; width: 95%; justify-content: center; }
         .side-ui { position: fixed; top: 60px; right: 10px; z-index: 1000; width: 165px; display: flex; flex-direction: column; gap: 8px; }
         .bottom-left { position: fixed; bottom: 20px; left: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
+        
         .panel { background: white; padding: 10px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 1px solid #ccc; }
         .btn { padding: 8px 10px; border-radius: 8px; font-weight: bold; font-size: 10px; cursor: pointer; text-transform: uppercase; border: none; }
         .fab { width: 55px; height: 55px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; border: none; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
@@ -53,7 +56,7 @@
         </div>
     </div>
     <div class="panel max-h-[200px] overflow-y-auto">
-        <p class="font-bold text-[8px] uppercase text-gray-500 mb-1">Archiv (Nr. 1 = Älteste)</p>
+        <p class="font-bold text-[8px] uppercase text-gray-500 mb-1">Archiv</p>
         <div id="walkList"></div>
     </div>
 </div>
@@ -106,9 +109,7 @@ function init() {
             state.lastStableLoc = newLoc;
             if (!liveM) {
                 liveM = L.circleMarker(newLoc, {radius:7, fillColor:"#2563eb", color:"#fff", weight:2, fillOpacity:1}).addTo(state.map);
-            } else {
-                liveM.setLatLng(newLoc);
-            }
+            } else { liveM.setLatLng(newLoc); }
             if (!state.viewing) state.map.panTo(newLoc);
             if (state.current && !state.viewing) {
                 state.current.route.push(newLoc);
@@ -131,12 +132,18 @@ function drawRoute(w) {
     }
 }
 
+// --- HIER IST DIE AUDIO-WIEDERGABE LOGIK ---
 function drawM(e) {
     const l = state.layers[e.type]; if(!l) return;
     if (e.type === 'photo' || e.type === 'audio') {
         const icon = L.divIcon({ html: `<div style="font-size:20px;">${e.type==='photo'?'📸':'🎙️'}</div>`, className: 'custom-div-icon' });
         const m = L.marker([e.lat, e.lng], {icon}).addTo(l);
-        if (e.data) m.bindPopup(e.type==='photo'?`<img src="${e.data}" width="120">`:`<audio controls src="${e.data}"></audio>`);
+        if (e.data) {
+            const content = e.type === 'photo' 
+                ? `<img src="${e.data}" width="180" style="border-radius:8px;">` 
+                : `<div style="padding:5px; min-width:180px;"><b>Audio:</b><br><audio controls src="${e.data}" style="width:100%; margin-top:5px;"></audio></div>`;
+            m.bindPopup(content);
+        }
     } else {
         const colors = { mood: '#ff4500', thought: '#12345f', sense: '#3d633d' };
         const m = L.circleMarker([e.lat, e.lng], { radius: 10, fillColor: colors[e.type], color: '#000', weight: 1, fillOpacity: 0.8 }).addTo(l);
@@ -147,86 +154,57 @@ function drawM(e) {
 function updateList() {
     const container = document.getElementById('walkList');
     container.innerHTML = "";
-    
-    // Wir zeigen die Liste umgekehrt an (neueste oben),
-    // aber die Nummern vergeben wir nach der ursprünglichen Reihenfolge.
     const reversedWalks = [...state.walks].reverse();
-
-    reversedWalks.forEach((w, i) => {
-        // Berechne die ursprüngliche Nummer (Index + 1)
+    reversedWalks.forEach((w) => {
         const originalIndex = state.walks.indexOf(w);
-        const tourNr = originalIndex + 1;
-
         const item = document.createElement('div');
         item.className = `walk-item ${state.selected === originalIndex ? 'active-walk' : ''}`;
-        
         const title = document.createElement('span');
-        title.innerText = `Tour ${tourNr} (${w.id.split(',')[0]})`;
+        title.innerText = `Tour ${originalIndex + 1}`;
         title.style.flex = "1";
         title.onclick = () => loadW(originalIndex);
-
         const del = document.createElement('span');
         del.innerHTML = "&times;";
         del.className = "delete-btn";
         del.onclick = (ev) => {
             ev.stopPropagation();
-            if(confirm(`Tour ${tourNr} wirklich löschen?`)) {
+            if(confirm(`Tour ${originalIndex+1} löschen?`)) {
                 state.walks.splice(originalIndex, 1);
-                if(state.selected === originalIndex) {
-                    state.selected = null;
-                    state.viewing = false;
-                    Object.values(state.layers).forEach(layer => layer.clearLayers());
-                }
-                save();
-                updateList();
+                save(); updateList();
             }
         };
-
         item.appendChild(title);
         item.appendChild(del);
         container.appendChild(item);
     });
 }
 
-function loadW(originalIndex) {
-    state.viewing = true;
-    state.selected = originalIndex;
-    const w = state.walks[originalIndex];
-    
+function loadW(idx) {
+    state.viewing = true; state.selected = idx;
+    const w = state.walks[idx];
     Object.values(state.layers).forEach(l => l.clearLayers());
     drawRoute(w);
     if(w.entries) w.entries.forEach(drawM);
-    
-    if (w.route && w.route.length > 0) {
-        state.map.fitBounds(L.polyline(w.route).getBounds());
-    }
+    if (w.route && w.route.length > 0) state.map.fitBounds(L.polyline(w.route).getBounds());
     updateList();
 }
 
 document.getElementById('startWalk').onclick = () => {
-    state.viewing = false;
-    state.selected = null;
+    state.viewing = false; state.selected = null;
     state.current = { id: new Date().toLocaleString(), route: [], entries: [] };
     Object.values(state.layers).forEach(l => l.clearLayers());
-    save();
-    updateList();
-    alert("Live-Tracking gestartet.");
+    save(); updateList(); alert("Tracking gestartet.");
 };
 
 document.getElementById('stopWalk').onclick = () => {
     if (state.current) {
-        state.walks.push(state.current);
-        state.current = null;
-        save();
-        updateList();
-        alert("Tour gespeichert.");
-    } else {
-        alert("Kein aktiver Walk.");
+        state.walks.push(state.current); state.current = null;
+        save(); updateList(); alert("Gespeichert.");
     }
 };
 
 function addE(type, data = null, text = null) {
-    if (!state.current || state.viewing) return alert("Starte erst einen NEUEN WALK!");
+    if (!state.current || state.viewing) return alert("Starte erst einen Walk!");
     const loc = state.lastStableLoc || [state.map.getCenter().lat, state.map.getCenter().lng];
     const entry = { type, lat: loc[0], lng: loc[1], data, text, time: new Date().toLocaleTimeString() };
     state.current.entries.push(entry);
@@ -234,23 +212,13 @@ function addE(type, data = null, text = null) {
     save();
 }
 
-document.getElementById('senseBtn').onclick = () => {
-    const txt = prompt("Wahrnehmung:");
-    if (txt) addE('sense', null, txt);
-};
-document.getElementById('thoughtBtn').onclick = () => {
-    const txt = prompt("Gedanke:");
-    if (txt) addE('thought', null, txt);
-};
-document.getElementById('moodBtn').onclick = () => {
-    const txt = prompt("Befinden/Batterie:");
-    if (txt) addE('mood', null, txt);
-};
+document.getElementById('senseBtn').onclick = () => { const t = prompt("Wahrnehmung:"); if(t) addE('sense',null,t); };
+document.getElementById('thoughtBtn').onclick = () => { const t = prompt("Gedanke:"); if(t) addE('thought',null,t); };
+document.getElementById('moodBtn').onclick = () => { const t = prompt("Stimmung:"); if(t) addE('mood',null,t); };
 
 document.getElementById('photoBtn').onclick = () => {
     const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
+    input.type = 'file'; input.accept = 'image/*';
     input.onchange = e => {
         const reader = new FileReader();
         reader.onload = v => addE('photo', v.target.result);
@@ -261,8 +229,7 @@ document.getElementById('photoBtn').onclick = () => {
 
 document.getElementById('audioToggle').onclick = async () => {
     if (state.isRec) {
-        state.rec.stop();
-        state.isRec = false;
+        state.rec.stop(); state.isRec = false;
         document.getElementById('audioToggle').innerText = "▶️";
     } else {
         try {
@@ -271,46 +238,35 @@ document.getElementById('audioToggle').onclick = async () => {
             let chunks = [];
             state.rec.ondataavailable = ev => chunks.push(ev.data);
             state.rec.onstop = () => {
+                const blob = new Blob(chunks, { type: 'audio/webm' });
                 const reader = new FileReader();
                 reader.onload = () => addE('audio', reader.result);
-                reader.readAsDataURL(new Blob(chunks));
+                reader.readAsDataURL(blob);
+                stream.getTracks().forEach(t => t.stop());
             };
-            state.rec.start();
-            state.isRec = true;
+            state.rec.start(); state.isRec = true;
             document.getElementById('audioToggle').innerText = "⏹️";
-        } catch(err) { alert("Mikrofon-Zugriff fehlt."); }
+        } catch(err) { alert("Mikrofon?"); }
     }
 };
 
 document.getElementById('exportFull').onclick = async () => {
     const w = state.viewing ? state.walks[state.selected] : state.current;
-    if (!w) return alert("Kein Walk ausgewählt.");
-    
+    if (!w) return alert("Kein Walk.");
     document.getElementById('exportLoader').style.display='flex';
     const zip = new JSZip();
-    
     try {
         const can = await html2canvas(document.getElementById('map'), {useCORS: true});
         zip.file("karte.jpg", can.toDataURL("image/jpeg", 0.7).split(',')[1], {base64:true});
-        
-        let notes = `Walk: ${w.id}\n\n`;
+        let n = `Walk: ${w.id}\n`;
         w.entries.forEach((e, i) => {
-            if(e.text) notes += `[${e.time}] ${e.type.toUpperCase()}: ${e.text}\n`;
-            if(e.data) {
-                const ext = e.type === 'photo' ? 'jpg' : 'webm';
-                zip.file(`media/${e.type}_${i}.${ext}`, e.data.split(',')[1], {base64:true});
-            }
+            if(e.text) n += `${e.type}: ${e.text}\n`;
+            if(e.data) zip.file(`media/${e.type}_${i}.${e.type==='photo'?'jpg':'webm'}`, e.data.split(',')[1], {base64:true});
         });
-        zip.file("notizen.txt", notes);
-        
-        const blob = await zip.generateAsync({type:"blob"});
-        const a = document.createElement("a");
-        const originalIndex = state.walks.indexOf(w);
-        a.href = URL.createObjectURL(blob);
-        a.download = `Walk_${originalIndex + 1}.zip`;
-        a.click();
-    } catch(e) { alert("Export-Fehler."); }
-    
+        zip.file("notizen.txt", n);
+        const b = await zip.generateAsync({type:"blob"});
+        const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `Export.zip`; a.click();
+    } catch(e) { alert("Fehler"); }
     document.getElementById('exportLoader').style.display='none';
 };
 
