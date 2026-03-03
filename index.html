@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-    <title>Begleitinstrument — Farbcode Edition</title>
+    <title>Begleitinstrument — Vollversion</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -23,6 +23,8 @@
         
         .walk-item { padding: 8px; border-bottom: 1px solid #eee; font-size: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-radius: 6px; margin-bottom: 4px; background: #f9f9f9; }
         .active-walk { background: #2563eb !important; color: white; font-weight: bold; }
+        .delete-btn { color: #ff4d4d; padding: 5px; font-weight: bold; font-size: 16px; margin-left: 5px; }
+        
         .is-recording { background-color: #ef4444 !important; animation: pulse 1.5s infinite; color: white; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
         #audioTimer { position: absolute; top: -20px; font-size: 10px; color: red; font-weight: bold; display: none; background: white; padding: 2px 4px; border-radius: 4px; border: 1px solid red; }
@@ -40,13 +42,15 @@
 </div>
 
 <div class="side-ui">
-    <div class="panel max-h-[250px] overflow-y-auto">
+    <div class="panel max-h-[300px] overflow-y-auto">
         <p class="font-bold text-[8px] uppercase text-gray-500 mb-1">Ebenen & Archiv</p>
         <div class="text-[10px] space-y-1 mb-2">
             <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('tempo')"> Route</label>
             <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('audio')"> Audio</label>
             <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('photo')"> Fotos</label>
-            <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('mood')"> Befinden</label>
+            <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('mood')"> Befinden (Farbe)</label>
+            <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('sense')"> Wahrn. (Text)</label>
+            <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('thought')"> Gedanken (Text)</label>
         </div>
         <div id="walkList" class="border-t pt-2"></div>
     </div>
@@ -71,6 +75,11 @@ const state = {
     lastStableLoc: null, chunks: [], rec: null, timerInt: null,
     layers: { tempo: L.layerGroup(), mood: L.layerGroup(), thought: L.layerGroup(), sense: L.layerGroup(), photo: L.layerGroup(), audio: L.layerGroup() }
 };
+
+function getMoodColor(val) {
+    const colors = { '1': '#b91c1c', '2': '#f97316', '3': '#facc15', '4': '#4ade80', '5': '#15803d' };
+    return colors[val] || '#94a3b8';
+}
 
 function init() {
     state.map = L.map('map', { zoomControl: false, maxZoom: 22 }).setView([47.23, 9.61], 15);
@@ -101,36 +110,17 @@ function drawRoute(w) {
     if (w?.route?.length > 1) L.polyline(w.route, {color:'black', weight:3}).addTo(state.layers.tempo);
 }
 
-// FARBCODE LOGIK
-function getMoodColor(val) {
-    const colors = {
-        '1': '#b91c1c', // Dunkelrot
-        '2': '#f97316', // Orange
-        '3': '#facc15', // Gelb
-        '4': '#4ade80', // Hellgrün
-        '5': '#15803d'  // Dunkelgrün
-    };
-    return colors[val] || '#94a3b8'; // Grau als Fallback
-}
-
 function drawM(e) {
     const l = state.layers[e.type]; if(!l) return;
     
     if (e.type === 'mood') {
-        // Rein farbiger Punkt ohne Text
-        L.circleMarker([e.lat, e.lng], { 
-            radius: 15, 
-            fillColor: getMoodColor(e.text), 
-            color: '#fff', 
-            weight: 3, 
-            fillOpacity: 1 
-        }).addTo(l).bindPopup(`Status: ${e.text}/5`);
+        L.circleMarker([e.lat, e.lng], { radius: 15, fillColor: getMoodColor(e.text), color: '#fff', weight: 3, fillOpacity: 1 }).addTo(l).bindPopup(`Status: ${e.text}/5`);
     } else if (e.type === 'photo' || e.type === 'audio') {
         const icon = L.divIcon({ html: `<div style="font-size:24px;">${e.type==='photo'?'📸':'🎙️'}</div>`, className: 'bg-transparent border-0', iconSize: [30, 30] });
         L.marker([e.lat, e.lng], {icon}).addTo(l).bindPopup(e.type === 'photo' ? `<img src="${e.data}" class="w-full">` : `<audio controls src="${e.data}"></audio>`);
     } else {
         const col = e.type === 'thought' ? '#12345f' : '#3d633d';
-        L.circleMarker([e.lat, e.lng], { radius: 12, fillColor: col, color: '#fff', weight: 2, fillOpacity: 0.9 }).addTo(l).bindPopup(e.text);
+        L.circleMarker([e.lat, e.lng], { radius: 12, fillColor: col, color: '#fff', weight: 2, fillOpacity: 0.9 }).addTo(l).bindPopup(`<b>${e.type.toUpperCase()}:</b><br>${e.text}`);
     }
 }
 
@@ -140,7 +130,7 @@ function updateList() {
         const idx = state.walks.indexOf(w);
         const d = document.createElement('div');
         d.className = `walk-item ${state.selected === idx ? 'active-walk' : ''}`;
-        d.innerHTML = `<span style="flex:1" onclick="loadW(${idx})">Tour ${idx+1}</span><span onclick="delW(event, ${idx})">&times;</span>`;
+        d.innerHTML = `<span style="flex:1" onclick="loadW(${idx})">Tour ${idx+1}</span><span class="delete-btn" onclick="delW(event, ${idx})">&times;</span>`;
         c.appendChild(d);
     });
 }
@@ -172,17 +162,21 @@ function addE(type, data = null, text = null) {
 }
 
 document.getElementById('moodBtn').onclick = () => {
-    const val = prompt("Wie geht es dir? (1=schlecht bis 5=super)");
-    if (['1','2','3','4','5'].includes(val)) {
-        addE('mood', null, val);
-    } else {
-        alert("Bitte nur eine Zahl von 1 bis 5 eingeben.");
-    }
+    const val = prompt("Befinden (1=schlecht bis 5=super):");
+    if (['1','2','3','4','5'].includes(val)) addE('mood', null, val);
+};
+
+document.getElementById('senseBtn').onclick = () => { const t = prompt("Sinnliche Wahrnehmung:"); if(t) addE('sense',null,t); };
+document.getElementById('thoughtBtn').onclick = () => { const t = prompt("Gedanke:"); if(t) addE('thought',null,t); };
+
+document.getElementById('photoBtn').onclick = () => {
+    const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*';
+    i.onchange = e => { const r = new FileReader(); r.onload = v => addE('photo', v.target.result); r.readAsDataURL(e.target.files[0]); };
+    i.click();
 };
 
 document.getElementById('audioToggle').onclick = async () => {
-    const btn = document.getElementById('audioToggle');
-    const timerDisp = document.getElementById('audioTimer');
+    const btn = document.getElementById('audioToggle'); const timerDisp = document.getElementById('audioTimer');
     if (state.isRec) {
         state.rec.stop(); state.isRec = false; clearInterval(state.timerInt);
         btn.classList.remove('is-recording'); timerDisp.style.display = 'none';
@@ -191,30 +185,17 @@ document.getElementById('audioToggle').onclick = async () => {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             const mime = MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : 'audio/webm';
             state.rec = new MediaRecorder(stream, { mimeType: mime });
-            state.chunks = [];
-            state.rec.ondataavailable = e => { if(e.data.size > 0) state.chunks.push(e.data); };
+            state.chunks = []; state.rec.ondataavailable = e => { if(e.data.size > 0) state.chunks.push(e.data); };
             state.rec.onstop = () => {
                 const blob = new Blob(state.chunks, { type: mime });
-                const r = new FileReader();
-                r.onload = () => addE('audio', r.result);
-                r.readAsDataURL(blob);
+                const r = new FileReader(); r.onload = () => addE('audio', r.result); r.readAsDataURL(blob);
                 stream.getTracks().forEach(t => t.stop());
             };
-            state.rec.start(); state.isRec = true;
-            btn.classList.add('is-recording'); timerDisp.style.display = 'block';
+            state.rec.start(); state.isRec = true; btn.classList.add('is-recording'); timerDisp.style.display = 'block';
             let sec = 0; state.timerInt = setInterval(() => { sec++; timerDisp.innerText = Math.floor(sec/60).toString().padStart(2,'0') + ":" + (sec%60).toString().padStart(2,'0'); }, 1000);
-        } catch(err) { alert("Mikro-Fehler. Nur über HTTPS möglich!"); }
+        } catch(err) { alert("Mikrofon-Fehler!"); }
     }
 };
-
-document.getElementById('photoBtn').onclick = () => {
-    const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*';
-    i.onchange = e => { const r = new FileReader(); r.onload = v => addE('photo', v.target.result); r.readAsDataURL(e.target.files[0]); };
-    i.click();
-};
-
-document.getElementById('senseBtn').onclick = () => { const t = prompt("Sinnliche Wahrnehmung:"); if(t) addE('sense',null,t); };
-document.getElementById('thoughtBtn').onclick = () => { const t = prompt("Gedanke:"); if(t) addE('thought',null,t); };
 
 function toggleL(n) {
     if (state.map.hasLayer(state.layers[n])) state.map.removeLayer(state.layers[n]);
@@ -231,14 +212,25 @@ document.getElementById('exportFull').onclick = async () => {
         zip.file("karte.jpg", can.toDataURL("image/jpeg", 0.7).split(',')[1], {base64:true});
         let notes = `Tour: ${w.id}\n\n`;
         w.entries.forEach((e, i) => {
-            if(e.type === 'mood') notes += `[Mood] Stufe: ${e.text}\n`;
-            else if(e.text) notes += `[${e.type.toUpperCase()}] ${e.text}\n`;
-            if(e.data) zip.file(`media/${e.type}_${i}.${e.type==='photo'?'jpg':'webm'}`, e.data<!doctype html>
+            notes += `[${e.type.toUpperCase()}] ${e.text || ''} (${e.time})\n`;
+            if(e.data) zip.file(`media/${e.type}_${i}.${e.type==='photo'?'jpg':'webm'}`, e.data.split(',')[1], {base64:true});
+        });
+        zip.file("notizen.txt", notes);
+        const b = await zip.generateAsync({type:"blob"});
+        const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `Walk_${state.walks.indexOf(w)+1}.zip`; a.click();
+    } catch(e) { alert("Export Fehler"); }
+    document.getElementById('exportLoader').classList.add('hidden');
+};
+
+init();
+</script>
+</body>
+</html><!doctype html>
 <html lang="de">
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-    <title>Begleitinstrument — Farbcode Edition</title>
+    <title>Begleitinstrument — Vollversion</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -258,6 +250,8 @@ document.getElementById('exportFull').onclick = async () => {
         
         .walk-item { padding: 8px; border-bottom: 1px solid #eee; font-size: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-radius: 6px; margin-bottom: 4px; background: #f9f9f9; }
         .active-walk { background: #2563eb !important; color: white; font-weight: bold; }
+        .delete-btn { color: #ff4d4d; padding: 5px; font-weight: bold; font-size: 16px; margin-left: 5px; }
+        
         .is-recording { background-color: #ef4444 !important; animation: pulse 1.5s infinite; color: white; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
         #audioTimer { position: absolute; top: -20px; font-size: 10px; color: red; font-weight: bold; display: none; background: white; padding: 2px 4px; border-radius: 4px; border: 1px solid red; }
@@ -275,13 +269,15 @@ document.getElementById('exportFull').onclick = async () => {
 </div>
 
 <div class="side-ui">
-    <div class="panel max-h-[250px] overflow-y-auto">
+    <div class="panel max-h-[300px] overflow-y-auto">
         <p class="font-bold text-[8px] uppercase text-gray-500 mb-1">Ebenen & Archiv</p>
         <div class="text-[10px] space-y-1 mb-2">
             <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('tempo')"> Route</label>
             <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('audio')"> Audio</label>
             <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('photo')"> Fotos</label>
-            <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('mood')"> Befinden</label>
+            <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('mood')"> Befinden (Farbe)</label>
+            <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('sense')"> Wahrn. (Text)</label>
+            <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('thought')"> Gedanken (Text)</label>
         </div>
         <div id="walkList" class="border-t pt-2"></div>
     </div>
@@ -306,6 +302,11 @@ const state = {
     lastStableLoc: null, chunks: [], rec: null, timerInt: null,
     layers: { tempo: L.layerGroup(), mood: L.layerGroup(), thought: L.layerGroup(), sense: L.layerGroup(), photo: L.layerGroup(), audio: L.layerGroup() }
 };
+
+function getMoodColor(val) {
+    const colors = { '1': '#b91c1c', '2': '#f97316', '3': '#facc15', '4': '#4ade80', '5': '#15803d' };
+    return colors[val] || '#94a3b8';
+}
 
 function init() {
     state.map = L.map('map', { zoomControl: false, maxZoom: 22 }).setView([47.23, 9.61], 15);
@@ -336,36 +337,17 @@ function drawRoute(w) {
     if (w?.route?.length > 1) L.polyline(w.route, {color:'black', weight:3}).addTo(state.layers.tempo);
 }
 
-// FARBCODE LOGIK
-function getMoodColor(val) {
-    const colors = {
-        '1': '#b91c1c', // Dunkelrot
-        '2': '#f97316', // Orange
-        '3': '#facc15', // Gelb
-        '4': '#4ade80', // Hellgrün
-        '5': '#15803d'  // Dunkelgrün
-    };
-    return colors[val] || '#94a3b8'; // Grau als Fallback
-}
-
 function drawM(e) {
     const l = state.layers[e.type]; if(!l) return;
     
     if (e.type === 'mood') {
-        // Rein farbiger Punkt ohne Text
-        L.circleMarker([e.lat, e.lng], { 
-            radius: 15, 
-            fillColor: getMoodColor(e.text), 
-            color: '#fff', 
-            weight: 3, 
-            fillOpacity: 1 
-        }).addTo(l).bindPopup(`Status: ${e.text}/5`);
+        L.circleMarker([e.lat, e.lng], { radius: 15, fillColor: getMoodColor(e.text), color: '#fff', weight: 3, fillOpacity: 1 }).addTo(l).bindPopup(`Status: ${e.text}/5`);
     } else if (e.type === 'photo' || e.type === 'audio') {
         const icon = L.divIcon({ html: `<div style="font-size:24px;">${e.type==='photo'?'📸':'🎙️'}</div>`, className: 'bg-transparent border-0', iconSize: [30, 30] });
         L.marker([e.lat, e.lng], {icon}).addTo(l).bindPopup(e.type === 'photo' ? `<img src="${e.data}" class="w-full">` : `<audio controls src="${e.data}"></audio>`);
     } else {
         const col = e.type === 'thought' ? '#12345f' : '#3d633d';
-        L.circleMarker([e.lat, e.lng], { radius: 12, fillColor: col, color: '#fff', weight: 2, fillOpacity: 0.9 }).addTo(l).bindPopup(e.text);
+        L.circleMarker([e.lat, e.lng], { radius: 12, fillColor: col, color: '#fff', weight: 2, fillOpacity: 0.9 }).addTo(l).bindPopup(`<b>${e.type.toUpperCase()}:</b><br>${e.text}`);
     }
 }
 
@@ -375,7 +357,7 @@ function updateList() {
         const idx = state.walks.indexOf(w);
         const d = document.createElement('div');
         d.className = `walk-item ${state.selected === idx ? 'active-walk' : ''}`;
-        d.innerHTML = `<span style="flex:1" onclick="loadW(${idx})">Tour ${idx+1}</span><span onclick="delW(event, ${idx})">&times;</span>`;
+        d.innerHTML = `<span style="flex:1" onclick="loadW(${idx})">Tour ${idx+1}</span><span class="delete-btn" onclick="delW(event, ${idx})">&times;</span>`;
         c.appendChild(d);
     });
 }
@@ -407,17 +389,21 @@ function addE(type, data = null, text = null) {
 }
 
 document.getElementById('moodBtn').onclick = () => {
-    const val = prompt("Wie geht es dir? (1=schlecht bis 5=super)");
-    if (['1','2','3','4','5'].includes(val)) {
-        addE('mood', null, val);
-    } else {
-        alert("Bitte nur eine Zahl von 1 bis 5 eingeben.");
-    }
+    const val = prompt("Befinden (1=schlecht bis 5=super):");
+    if (['1','2','3','4','5'].includes(val)) addE('mood', null, val);
+};
+
+document.getElementById('senseBtn').onclick = () => { const t = prompt("Sinnliche Wahrnehmung:"); if(t) addE('sense',null,t); };
+document.getElementById('thoughtBtn').onclick = () => { const t = prompt("Gedanke:"); if(t) addE('thought',null,t); };
+
+document.getElementById('photoBtn').onclick = () => {
+    const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*';
+    i.onchange = e => { const r = new FileReader(); r.onload = v => addE('photo', v.target.result); r.readAsDataURL(e.target.files[0]); };
+    i.click();
 };
 
 document.getElementById('audioToggle').onclick = async () => {
-    const btn = document.getElementById('audioToggle');
-    const timerDisp = document.getElementById('audioTimer');
+    const btn = document.getElementById('audioToggle'); const timerDisp = document.getElementById('audioTimer');
     if (state.isRec) {
         state.rec.stop(); state.isRec = false; clearInterval(state.timerInt);
         btn.classList.remove('is-recording'); timerDisp.style.display = 'none';
@@ -426,30 +412,17 @@ document.getElementById('audioToggle').onclick = async () => {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             const mime = MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : 'audio/webm';
             state.rec = new MediaRecorder(stream, { mimeType: mime });
-            state.chunks = [];
-            state.rec.ondataavailable = e => { if(e.data.size > 0) state.chunks.push(e.data); };
+            state.chunks = []; state.rec.ondataavailable = e => { if(e.data.size > 0) state.chunks.push(e.data); };
             state.rec.onstop = () => {
                 const blob = new Blob(state.chunks, { type: mime });
-                const r = new FileReader();
-                r.onload = () => addE('audio', r.result);
-                r.readAsDataURL(blob);
+                const r = new FileReader(); r.onload = () => addE('audio', r.result); r.readAsDataURL(blob);
                 stream.getTracks().forEach(t => t.stop());
             };
-            state.rec.start(); state.isRec = true;
-            btn.classList.add('is-recording'); timerDisp.style.display = 'block';
+            state.rec.start(); state.isRec = true; btn.classList.add('is-recording'); timerDisp.style.display = 'block';
             let sec = 0; state.timerInt = setInterval(() => { sec++; timerDisp.innerText = Math.floor(sec/60).toString().padStart(2,'0') + ":" + (sec%60).toString().padStart(2,'0'); }, 1000);
-        } catch(err) { alert("Mikro-Fehler. Nur über HTTPS möglich!"); }
+        } catch(err) { alert("Mikrofon-Fehler!"); }
     }
 };
-
-document.getElementById('photoBtn').onclick = () => {
-    const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*';
-    i.onchange = e => { const r = new FileReader(); r.onload = v => addE('photo', v.target.result); r.readAsDataURL(e.target.files[0]); };
-    i.click();
-};
-
-document.getElementById('senseBtn').onclick = () => { const t = prompt("Sinnliche Wahrnehmung:"); if(t) addE('sense',null,t); };
-document.getElementById('thoughtBtn').onclick = () => { const t = prompt("Gedanke:"); if(t) addE('thought',null,t); };
 
 function toggleL(n) {
     if (state.map.hasLayer(state.layers[n])) state.map.removeLayer(state.layers[n]);
@@ -466,6 +439,17 @@ document.getElementById('exportFull').onclick = async () => {
         zip.file("karte.jpg", can.toDataURL("image/jpeg", 0.7).split(',')[1], {base64:true});
         let notes = `Tour: ${w.id}\n\n`;
         w.entries.forEach((e, i) => {
-            if(e.type === 'mood') notes += `[Mood] Stufe: ${e.text}\n`;
-            else if(e.text) notes += `[${e.type.toUpperCase()}] ${e.text}\n`;
-            if(e.data) zip.file(`media/${e.type}_${i}.${e.type==='photo'?'jpg':'webm'}`, e.data
+            notes += `[${e.type.toUpperCase()}] ${e.text || ''} (${e.time})\n`;
+            if(e.data) zip.file(`media/${e.type}_${i}.${e.type==='photo'?'jpg':'webm'}`, e.data.split(',')[1], {base64:true});
+        });
+        zip.file("notizen.txt", notes);
+        const b = await zip.generateAsync({type:"blob"});
+        const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `Walk_${state.walks.indexOf(w)+1}.zip`; a.click();
+    } catch(e) { alert("Export Fehler"); }
+    document.getElementById('exportLoader').classList.add('hidden');
+};
+
+init();
+</script>
+</body>
+</html>
