@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-    <title>Begleitinstrument — Aktives Archiv</title>
+    <title>Begleitinstrument — Alle Ebenen & Autosave</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -15,27 +15,25 @@
         html, body, #map { height: 100%; margin: 0; background: #fff; overflow: hidden; }
         #map { width: 100%; height: 100vh; }
         .top-ui { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 1000; display: flex; gap: 8px; }
-        .side-ui { position: fixed; top: 70px; right: 12px; z-index: 1000; width: 180px; display: flex; flex-direction: column; gap: 10px; }
+        .side-ui { position: fixed; top: 70px; right: 12px; z-index: 1000; width: 190px; display: flex; flex-direction: column; gap: 10px; }
         .bottom-left { position: fixed; bottom: 20px; left: 12px; z-index: 1000; display: flex; flex-direction: column; gap: 12px; }
         .panel { background: white; padding: 12px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); border: 1px solid #ddd; }
         .btn { padding: 10px 14px; border-radius: 10px; font-weight: bold; font-size: 11px; cursor: pointer; text-transform: uppercase; border: none; }
         .fab { width: 60px; height: 60px; border-radius: 30px; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; border: none; box-shadow: 0 6px 12px rgba(0,0,0,0.2); }
         
-        /* Archiv Styling */
-        .walk-item { padding: 8px; border-bottom: 1px solid #eee; font-size: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-radius: 6px; margin-bottom: 4px; transition: 0.2s; }
-        .walk-item:hover { background: #f0f4ff; }
-        .active-walk { background: #2563eb !important; color: white; font-weight: bold; box-shadow: 0 2px 5px rgba(37, 99, 235, 0.3); }
+        .walk-item { padding: 8px; border-bottom: 1px solid #eee; font-size: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-radius: 6px; margin-bottom: 4px; transition: 0.2s; background: #f9f9f9; }
+        .active-walk { background: #2563eb !important; color: white; font-weight: bold; }
         .delete-btn { color: #ff4d4d; padding: 2px 6px; font-weight: bold; font-size: 14px; }
         
         .custom-div-icon { background: none; border: none; }
-        .loading-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; color: white; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-family: sans-serif; }
+        .loading-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; color: white; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
     </style>
 </head>
 <body>
 
 <div id="exportLoader" class="loading-overlay">
     <div class="text-xl font-bold mb-2">Export läuft...</div>
-    <div id="exportProgress" class="text-sm opacity-80 px-10 text-center">Bitte nicht das Fenster schließen. <br>Wir sichern Karte, GPS-Route und Medien.</div>
+    <div id="exportProgress" class="text-sm opacity-80 px-10">ZIP wird erstellt...</div>
 </div>
 
 <div id="map"></div>
@@ -48,12 +46,17 @@
 
 <div class="side-ui">
     <div class="panel">
-        <p class="font-bold text-[9px] uppercase text-gray-400 mb-2 border-b">Ebenen</p>
-        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleTempo" type="checkbox" checked> <label>Route</label></div>
-        <div class="flex items-center gap-2 mb-1 text-xs"><input id="togglePhoto" type="checkbox" checked> <label>Fotos</label></div>
-        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleAudio" type="checkbox" checked> <label>Audio</label></div>
+        <p class="font-bold text-[9px] uppercase text-gray-400 mb-2 border-b">Ebenen Steuerung</p>
+        <div class="space-y-1">
+            <div class="flex items-center gap-2 text-xs"><input type="checkbox" id="check-tempo" checked onchange="toggleLayer('tempo')"> <label>Route</label></div>
+            <div class="flex items-center gap-2 text-xs"><input type="checkbox" id="check-mood" checked onchange="toggleLayer('mood')"> <label>Stimmung</label></div>
+            <div class="flex items-center gap-2 text-xs"><input type="checkbox" id="check-thought" checked onchange="toggleLayer('thought')"> <label>Gedanken</label></div>
+            <div class="flex items-center gap-2 text-xs"><input type="checkbox" id="check-sense" checked onchange="toggleLayer('sense')"> <label>Wahrnehmung</label></div>
+            <div class="flex items-center gap-2 text-xs"><input type="checkbox" id="check-photo" checked onchange="toggleLayer('photo')"> <label>Fotos</label></div>
+            <div class="flex items-center gap-2 text-xs"><input type="checkbox" id="check-audio" checked onchange="toggleLayer('audio')"> <label>Audio</label></div>
+        </div>
     </div>
-    <div class="panel max-h-[250px] overflow-y-auto">
+    <div class="panel max-h-[220px] overflow-y-auto">
         <p class="font-bold text-[9px] uppercase text-gray-400 border-b mb-2">Archiv</p>
         <div id="walkStatus" class="text-[8px] text-blue-600 font-bold mb-2 uppercase">Modus: Live-Tracking</div>
         <div id="walkList"></div>
@@ -76,7 +79,10 @@ const state = {
     map: null,
     isRecording: false,
     viewingArchive: false,
-    layers: { tempo: L.layerGroup(), photo: L.layerGroup(), audio: L.layerGroup(), mood: L.layerGroup(), sense: L.layerGroup(), thought: L.layerGroup() }
+    layers: { 
+        tempo: L.layerGroup(), mood: L.layerGroup(), thought: L.layerGroup(), 
+        sense: L.layerGroup(), photo: L.layerGroup(), audio: L.layerGroup() 
+    }
 };
 
 let liveMarker = null;
@@ -100,4 +106,164 @@ function initMap() {
     navigator.geolocation.watchPosition(pos => {
         const { latitude, longitude } = pos.coords;
         if (!liveMarker) {
-            liveMarker = L.circleMarker([latitude, longitude], { radius: 8, fillColor: "#2563eb", color: "#fff", weight: 2, fillOpacity: 1
+            liveMarker = L.circleMarker([latitude, longitude], { radius: 8, fillColor: "#2563eb", color: "#fff", weight: 2, fillOpacity: 1 }).addTo(state.map);
+            if (!state.viewingArchive) state.map.panTo([latitude, longitude]);
+        } else {
+            liveMarker.setLatLng([latitude, longitude]);
+        }
+        if (state.current && !state.viewingArchive) {
+            state.current.route.push([latitude, longitude]);
+            renderRoute(state.current);
+            saveToDisk();
+        }
+    }, null, { enableHighAccuracy: true });
+}
+
+function toggleLayer(name) {
+    if (document.getElementById(`check-${name}`).checked) state.map.addLayer(state.layers[name]);
+    else state.map.removeLayer(state.layers[name]);
+}
+
+function renderRoute(walkData) {
+    state.layers.tempo.clearLayers();
+    if (walkData && walkData.route.length >= 2) {
+        L.polyline(walkData.route, { color: 'black', weight: 4, opacity: 1, lineJoin: 'round' }).addTo(state.layers.tempo);
+    }
+}
+
+function drawMarker(e) {
+    const loc = [e.location.lat, e.location.lng];
+    const layer = state.layers[e.type];
+    if(!layer) return;
+
+    if (e.type === 'mood') L.circleMarker(loc, { radius: 22, fillColor: '#ff4500', color: '#8b0000', weight: 2, fillOpacity: 0.7 }).addTo(layer);
+    else if (e.type === 'thought') L.circleMarker(loc, { radius: 7, fillColor: '#12345f', color: '#fff', weight: 1, fillOpacity: 0.9 }).addTo(layer);
+    else if (e.type === 'sense') L.circleMarker(loc, { radius: 9, fillColor: '#3d633d', color: '#1a2e1a', weight: 1.5, fillOpacity: 0.9 }).addTo(layer);
+    else if (e.type === 'photo' || e.type === 'audio') {
+        const iconHtml = e.type === 'photo' ? '📸' : '🎙️';
+        const icon = L.divIcon({ html: `<div style="font-size:24px;">${iconHtml}</div>`, className: 'custom-div-icon', iconSize:[30,30] });
+        const m = L.marker(loc, {icon}).addTo(layer);
+        if (e.photo) m.bindPopup(`<img src="${e.photo}" width="150">`);
+        if (e.audioUrl) m.bindPopup(`<audio controls src="${e.audioUrl}"></audio>`);
+    }
+}
+
+function updateArchiveUI() {
+    const list = document.getElementById('walkList');
+    list.innerHTML = "";
+    state.walks.forEach((w, index) => {
+        const div = document.createElement('div');
+        div.className = "walk-item " + (state.selectedIndex === index ? "active-walk" : "");
+        const textSpan = document.createElement('span');
+        textSpan.innerText = "Tour " + w.id;
+        textSpan.style.flex = "1";
+        textSpan.onclick = () => loadArchivedWalk(index);
+        const delBtn = document.createElement('span');
+        delBtn.innerHTML = "&times;";
+        delBtn.className = "delete-btn";
+        delBtn.onclick = (ev) => {
+            ev.stopPropagation();
+            if(confirm("Löschen?")) { state.walks.splice(index,1); saveToDisk(); updateArchiveUI(); }
+        };
+        div.appendChild(textSpan); div.appendChild(delBtn); list.appendChild(div);
+    });
+}
+
+function loadArchivedWalk(index) {
+    state.viewingArchive = true;
+    state.selectedIndex = index;
+    const walk = state.walks[index];
+    document.getElementById('walkStatus').innerText = "Modus: Archiv-Ansicht";
+    document.getElementById('walkStatus').style.color = "#ef4444";
+    Object.values(state.layers).forEach(l => l.clearLayers());
+    renderRoute(walk);
+    walk.entries.forEach(e => drawMarker(e));
+    if (walk.route.length > 0) state.map.fitBounds(L.polyline(walk.route).getBounds());
+    updateArchiveUI();
+}
+
+document.getElementById('startWalk').onclick = () => {
+    state.viewingArchive = false;
+    state.selectedIndex = null;
+    state.current = { id: new Date().toLocaleString(), route: [], entries: [] };
+    document.getElementById('walkStatus').innerText = "Modus: Live-Tracking";
+    document.getElementById('walkStatus').style.color = "#2563eb";
+    Object.values(state.layers).forEach(l => l.clearLayers());
+    saveToDisk(); updateArchiveUI();
+};
+
+document.getElementById('stopWalk').onclick = () => {
+    if (!state.current) return;
+    state.walks.push(state.current); state.current = null;
+    saveToDisk(); updateArchiveUI();
+};
+
+document.getElementById('exportFull').onclick = async () => {
+    const walk = (state.viewingArchive && state.selectedIndex !== null) ? state.walks[state.selectedIndex] : state.current;
+    if (!walk) return alert("Keine Tour gewählt.");
+    const loader = document.getElementById('exportLoader'); loader.style.display = 'flex';
+    try {
+        const zip = new JSZip();
+        const canvas = await html2canvas(document.getElementById('map'), { useCORS: true });
+        zip.file("karte.jpg", canvas.toDataURL("image/jpeg", 0.8).split(',')[1], {base64: true});
+        const mediaFolder = zip.folder("media");
+        walk.entries.forEach((e, i) => {
+            if (e.photo) mediaFolder.file(`foto_${i}.jpg`, e.photo.split(',')[1], {base64: true});
+            if (e.audioUrl) mediaFolder.file(`audio_${i}.webm`, e.audioUrl.split(',')[1], {base64: true});
+        });
+        const content = await zip.generateAsync({type:"blob"});
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(content);
+        link.download = `Walk_Export.zip`;
+        link.click();
+    } catch (e) { alert("Fehler"); }
+    loader.style.display = 'none';
+};
+
+function addEntry(type, data = {}) {
+    if (state.viewingArchive) return alert("Im Archiv-Modus keine neuen Einträge möglich.");
+    if (!state.current) return alert("Walk starten!");
+    const pos = liveMarker.getLatLng();
+    const entry = { type, location: { lat: pos.lat, lng: pos.lng }, timestamp: new Date().toLocaleString(), ...data };
+    state.current.entries.push(entry);
+    drawMarker(entry);
+    saveToDisk();
+}
+
+document.getElementById('photoBtn').onclick = () => {
+    const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*';
+    input.onchange = e => {
+        const reader = new FileReader();
+        reader.onload = ev => addEntry('photo', { photo: ev.target.result });
+        reader.readAsDataURL(e.target.files[0]);
+    };
+    input.click();
+};
+
+document.getElementById('audioToggle').onclick = async () => {
+    if (state.isRecording) {
+        state.recorder.stop(); state.isRecording = false;
+        document.getElementById('audioToggle').innerText = "▶️";
+    } else {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        state.recorder = new MediaRecorder(stream);
+        let chunks = [];
+        state.recorder.ondataavailable = e => chunks.push(e.data);
+        state.recorder.onstop = () => {
+            const reader = new FileReader();
+            reader.onload = () => addEntry('audio', { audioUrl: reader.result });
+            reader.readAsDataURL(new Blob(chunks));
+        };
+        state.recorder.start(); state.isRecording = true;
+        document.getElementById('audioToggle').innerText = "⏹️";
+    }
+};
+
+document.getElementById('senseBtn').onclick = () => addEntry('sense');
+document.getElementById('thoughtBtn').onclick = () => addEntry('thought');
+document.getElementById('moodBtn').onclick = () => addEntry('mood');
+
+initMap();
+</script>
+</body>
+</html>
