@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-    <title>Begleitinstrument — JSON & ZIP Export</title>
+    <title>Begleitinstrument — Stabiler Route-Export</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -19,26 +19,30 @@
         .bottom-left { position: fixed; bottom: 20px; left: 12px; z-index: 1000; display: flex; flex-direction: column; gap: 12px; }
         .panel { background: white; padding: 12px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); border: 1px solid #ddd; }
         .btn { padding: 10px 14px; border-radius: 10px; font-weight: bold; font-size: 11px; cursor: pointer; text-transform: uppercase; border: none; }
-        .fab { width: 60px; height: 60px; border-radius: 30px; display: flex; align-items: center; justify-content: center; font-size: 24px; border: none; box-shadow: 0 6px 12px rgba(0,0,0,0.2); cursor: pointer; }
-        .walk-item { padding: 6px; border-bottom: 1px solid #eee; font-size: 10px; cursor: pointer; }
+        .fab { width: 60px; height: 60px; border-radius: 30px; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; border: none; box-shadow: 0 6px 12px rgba(0,0,0,0.2); }
         .custom-div-icon { background: none; border: none; }
+        .loading-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; color: white; flex-direction: column; align-items: center; justify-content: center; font-family: sans-serif; }
     </style>
 </head>
 <body>
+
+<div id="exportLoader" class="loading-overlay">
+    <div class="text-xl font-bold mb-2">Export läuft...</div>
+    <div id="exportProgress" class="text-sm opacity-80">Route & Karte werden gesichert</div>
+</div>
 
 <div id="map"></div>
 
 <div class="top-ui">
     <button id="startWalk" class="btn bg-blue-600 text-white">NEUER WALK</button>
     <button id="stopWalk" class="btn bg-red-600 text-white">BEENDEN</button>
-    <button id="exportJSON" class="btn bg-green-600 text-white">JSON</button>
-    <button id="exportFull" class="btn bg-black text-white">ZIP</button>
+    <button id="exportFull" class="btn bg-black text-white">ZIP EXPORT</button>
 </div>
 
 <div class="side-ui">
     <div class="panel">
         <p class="font-bold text-[9px] uppercase text-gray-400 mb-2 border-b">Ebenen</p>
-        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleTempo" type="checkbox" checked> <label>Route</label></div>
+        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleTempo" type="checkbox" checked> <label>Route (Schwarz)</label></div>
         <div class="flex items-center gap-2 mb-1 text-xs"><input id="togglePhoto" type="checkbox" checked> <label>Fotos</label></div>
         <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleAudio" type="checkbox" checked> <label>Audio</label></div>
     </div>
@@ -62,7 +66,7 @@ const state = {
     current: JSON.parse(localStorage.getItem('currentWalk') || 'null'),
     map: null,
     isRecording: false,
-    layers: { tempo: L.layerGroup(), photo: L.layerGroup(), audio: L.layerGroup(), mood: L.layerGroup() }
+    layers: { tempo: L.layerGroup(), photo: L.layerGroup(), audio: L.layerGroup(), mood: L.layerGroup(), sense: L.layerGroup(), thought: L.layerGroup() }
 };
 
 let liveMarker = null;
@@ -73,8 +77,12 @@ function saveToDisk() {
 }
 
 function initMap() {
-    state.map = L.map('map', { zoomControl: false }).setView([47.23, 9.61], 15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.map);
+    state.map = L.map('map', { zoomControl: false, preferCanvas: true }).setView([47.23, 9.61], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
+        crossOrigin: true,
+        attribution: '© OpenStreetMap'
+    }).addTo(state.map);
+    
     Object.values(state.layers).forEach(l => l.addTo(state.map));
     
     if (state.current) { renderRoute(); state.current.entries.forEach(drawMarker); }
@@ -99,7 +107,7 @@ function initMap() {
 function renderRoute() {
     state.layers.tempo.clearLayers();
     if (state.current && state.current.route.length >= 2) {
-        L.polyline(state.current.route, { color: 'black', weight: 4 }).addTo(state.layers.tempo);
+        L.polyline(state.current.route, { color: 'black', weight: 4, opacity: 1, lineJoin: 'round' }).addTo(state.layers.tempo);
     }
 }
 
@@ -119,61 +127,74 @@ document.getElementById('stopWalk').onclick = () => {
     alert("Walk archiviert.");
 };
 
-function addEntry(type, data = {}) {
-    if (!state.current) return alert("Starte erst einen Walk!");
-    const pos = liveMarker.getLatLng();
-    const entry = { type, location: { lat: pos.lat, lng: pos.lng }, timestamp: new Date().toLocaleString(), ...data };
-    state.current.entries.push(entry);
-    drawMarker(entry);
-    saveToDisk();
-}
-
 function drawMarker(e) {
     const loc = [e.location.lat, e.location.lng];
-    if (e.type === 'photo') {
-        const icon = L.divIcon({ html: '<div style="font-size:24px;">📸</div>', className: 'custom-div-icon', iconSize:[30,30] });
-        L.marker(loc, {icon}).addTo(state.layers.photo).bindPopup(`<img src="${e.photo}" width="150">`);
-    } else if (e.type === 'audio') {
-        const icon = L.divIcon({ html: '<div style="font-size:24px;">🎙️</div>', className: 'custom-div-icon', iconSize:[30,30] });
-        L.marker(loc, {icon}).addTo(state.layers.audio).bindPopup(`<audio controls src="${e.audioUrl}"></audio>`);
+    const iconHtml = e.type === 'photo' ? '📸' : '🎙️';
+    const layer = e.type === 'photo' ? state.layers.photo : state.layers.audio;
+    
+    if (e.type === 'photo' || e.type === 'audio') {
+        const icon = L.divIcon({ html: `<div style="font-size:24px;">${iconHtml}</div>`, className: 'custom-div-icon', iconSize:[30,30] });
+        const m = L.marker(loc, {icon}).addTo(layer);
+        if (e.photo) m.bindPopup(`<img src="${e.photo}" width="150">`);
+        if (e.audioUrl) m.bindPopup(`<audio controls src="${e.audioUrl}"></audio>`);
     }
 }
 
-// NEU: JSON EXPORT
-document.getElementById('exportJSON').onclick = () => {
-    const walk = state.current || state.walks[state.walks.length - 1];
-    if (!walk) return alert("Keine Daten zum Exportieren!");
-    
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(walk, null, 2));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", `walk_${walk.id.replace(/[/, :]/g, '_')}.json`);
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
-};
-
 document.getElementById('exportFull').onclick = async () => {
-    const walk = state.current || state.walks[state.walks.length - 1];
-    if (!walk) return alert("Kein Walk gefunden!");
-    alert("Bereite ZIP vor... Bitte warten.");
-    await new Promise(r => setTimeout(r, 1000)); 
+    const walk = state.current || (state.walks.length > 0 ? state.walks[state.walks.length - 1] : null);
+    if (!walk) return alert("Kein Walk vorhanden.");
 
-    const zip = new JSZip();
-    const canvas = await html2canvas(document.getElementById('map'), { useCORS: true });
-    zip.file("karte.jpg", canvas.toDataURL("image/jpeg").split(',')[1], {base64: true});
-    
-    const mediaFolder = zip.folder("media");
-    walk.entries.forEach((e, i) => {
-        if (e.photo) mediaFolder.file(`foto_${i}.jpg`, e.photo.split(',')[1], {base64: true});
-        if (e.audioUrl && e.audioUrl.startsWith('data:')) mediaFolder.file(`audio_${i}.webm`, e.audioUrl.split(',')[1], {base64: true});
-    });
+    const loader = document.getElementById('exportLoader');
+    const progress = document.getElementById('exportProgress');
+    loader.style.display = 'flex';
 
-    const content = await zip.generateAsync({type:"blob"});
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(content);
-    link.download = `Walk_Komplett.zip`;
-    link.click();
+    try {
+        const zip = new JSZip();
+        
+        // 1. Karte & Route erfassen
+        progress.innerText = "Erfasse Route und Karte...";
+        await new Promise(r => setTimeout(r, 1200)); // Längerer Delay für GPS-Linie
+        const canvas = await html2canvas(document.getElementById('map'), { 
+            useCORS: true, 
+            logging: false, 
+            allowTaint: false,
+            backgroundColor: '#ffffff'
+        });
+        zip.file("karte.jpg", canvas.toDataURL("image/jpeg", 0.8).split(',')[1], {base64: true});
+
+        // 2. Medien sequentiell packen
+        const mediaFolder = zip.folder("media");
+        for (let i = 0; i < walk.entries.length; i++) {
+            const e = walk.entries[i];
+            progress.innerText = `Packe Medien ${i+1}/${walk.entries.length}...`;
+            
+            if (e.photo && e.photo.includes('base64')) {
+                zip.file(`media/foto_${i}.jpg`, e.photo.split(',')[1], {base64: true});
+            }
+            if (e.audioUrl && e.audioUrl.includes('base64')) {
+                zip.file(`media/audio_${i}.webm`, e.audioUrl.split(',')[1], {base64: true});
+            }
+            await new Promise(r => setTimeout(r, 40)); 
+        }
+
+        // 3. Routendaten als Text (Sicherheit)
+        const routeData = walk.route.map(p => p.join(',')).join('\n');
+        zip.file("route_koordinaten.txt", `Zeitstempel: ${walk.id}\n\nGPS-Punkte (Lat,Lng):\n${routeData}`);
+
+        // 4. ZIP Download
+        progress.innerText = "ZIP wird erstellt...";
+        const content = await zip.generateAsync({type:"blob"});
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(content);
+        link.download = `Walk_Route_${walk.id.replace(/[^a-z0-9]/gi, '_')}.zip`;
+        link.click();
+
+    } catch (err) {
+        console.error(err);
+        alert("Export fehlgeschlagen. Versuche es mit weniger Fotos oder schließe andere Apps.");
+    } finally {
+        loader.style.display = 'none';
+    }
 };
 
 function updateArchiveUI() {
@@ -189,6 +210,15 @@ function updateArchiveUI() {
         };
         list.appendChild(div);
     });
+}
+
+function addEntry(type, data = {}) {
+    if (!state.current) return alert("Starte erst einen Walk!");
+    const pos = liveMarker.getLatLng();
+    const entry = { type, location: { lat: pos.lat, lng: pos.lng }, timestamp: new Date().toLocaleString(), ...data };
+    state.current.entries.push(entry);
+    drawMarker(entry);
+    saveToDisk();
 }
 
 document.getElementById('photoBtn').onclick = () => {
