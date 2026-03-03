@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-    <title>Begleitinstrument — Audio Fix 🎙️</title>
+    <title>Begleitinstrument — Audio Fix 🎧</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -89,7 +89,7 @@ function drawRoute(w) {
 
 function drawM(e) {
     const l = state.layers[e.type]; if(!l) return;
-    const icon = L.divIcon({ html: `<div style="font-size:24px;">${e.type==='audio'?'🎙️':'📸'}</div>`, className: 'custom-div-icon' });
+    const icon = L.divIcon({ html: `<div style="font-size:24px;">${e.type==='audio'?'🎧':'📸'}</div>`, className: 'custom-div-icon' });
     const m = L.marker([e.lat, e.lng], {icon}).addTo(l);
     
     if (e.type === 'audio') {
