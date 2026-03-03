@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-    <title>Begleitinstrument — Stabiler Route-Export</title>
+    <title>Begleitinstrument — Archiv Fix</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -20,15 +20,17 @@
         .panel { background: white; padding: 12px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); border: 1px solid #ddd; }
         .btn { padding: 10px 14px; border-radius: 10px; font-weight: bold; font-size: 11px; cursor: pointer; text-transform: uppercase; border: none; }
         .fab { width: 60px; height: 60px; border-radius: 30px; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; border: none; box-shadow: 0 6px 12px rgba(0,0,0,0.2); }
+        .walk-item { padding: 8px; border-bottom: 1px solid #eee; font-size: 11px; cursor: pointer; background: #f9f9f9; margin-bottom: 4px; border-radius: 4px; }
+        .walk-item:hover { background: #e0e7ff; }
         .custom-div-icon { background: none; border: none; }
-        .loading-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; color: white; flex-direction: column; align-items: center; justify-content: center; font-family: sans-serif; }
+        .loading-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; color: white; flex-direction: column; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
 
 <div id="exportLoader" class="loading-overlay">
     <div class="text-xl font-bold mb-2">Export läuft...</div>
-    <div id="exportProgress" class="text-sm opacity-80">Route & Karte werden gesichert</div>
+    <div id="exportProgress" class="text-sm">Daten werden gesichert</div>
 </div>
 
 <div id="map"></div>
@@ -42,12 +44,11 @@
 <div class="side-ui">
     <div class="panel">
         <p class="font-bold text-[9px] uppercase text-gray-400 mb-2 border-b">Ebenen</p>
-        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleTempo" type="checkbox" checked> <label>Route (Schwarz)</label></div>
+        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleTempo" type="checkbox" checked> <label>Route</label></div>
         <div class="flex items-center gap-2 mb-1 text-xs"><input id="togglePhoto" type="checkbox" checked> <label>Fotos</label></div>
-        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleAudio" type="checkbox" checked> <label>Audio</label></div>
     </div>
-    <div class="panel max-h-[150px] overflow-y-auto">
-        <p class="font-bold text-[9px] uppercase text-gray-400 border-b mb-1">Archiv</p>
+    <div class="panel max-h-[200px] overflow-y-auto">
+        <p class="font-bold text-[9px] uppercase text-gray-400 border-b mb-2">Archiv (Klick zum Laden)</p>
         <div id="walkList"></div>
     </div>
 </div>
@@ -66,6 +67,7 @@ const state = {
     current: JSON.parse(localStorage.getItem('currentWalk') || 'null'),
     map: null,
     isRecording: false,
+    viewingArchive: false,
     layers: { tempo: L.layerGroup(), photo: L.layerGroup(), audio: L.layerGroup(), mood: L.layerGroup(), sense: L.layerGroup(), thought: L.layerGroup() }
 };
 
@@ -78,44 +80,75 @@ function saveToDisk() {
 
 function initMap() {
     state.map = L.map('map', { zoomControl: false, preferCanvas: true }).setView([47.23, 9.61], 15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
-        crossOrigin: true,
-        attribution: '© OpenStreetMap'
-    }).addTo(state.map);
-    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { crossOrigin: true }).addTo(state.map);
     Object.values(state.layers).forEach(l => l.addTo(state.map));
     
-    if (state.current) { renderRoute(); state.current.entries.forEach(drawMarker); }
+    if (state.current) { 
+        renderRoute(state.current); 
+        state.current.entries.forEach(e => drawMarker(e)); 
+    }
     updateArchiveUI();
 
     navigator.geolocation.watchPosition(pos => {
         const { latitude, longitude } = pos.coords;
         if (!liveMarker) {
             liveMarker = L.circleMarker([latitude, longitude], { radius: 8, fillColor: "#2563eb", color: "#fff", weight: 2, fillOpacity: 1 }).addTo(state.map);
-            state.map.panTo([latitude, longitude]);
+            if (!state.viewingArchive) state.map.panTo([latitude, longitude]);
         } else {
             liveMarker.setLatLng([latitude, longitude]);
         }
-        if (state.current) {
+        if (state.current && !state.viewingArchive) {
             state.current.route.push([latitude, longitude]);
-            renderRoute();
+            renderRoute(state.current);
             saveToDisk();
         }
     }, null, { enableHighAccuracy: true });
 }
 
-function renderRoute() {
+function renderRoute(walkData) {
     state.layers.tempo.clearLayers();
-    if (state.current && state.current.route.length >= 2) {
-        L.polyline(state.current.route, { color: 'black', weight: 4, opacity: 1, lineJoin: 'round' }).addTo(state.layers.tempo);
+    if (walkData && walkData.route.length >= 2) {
+        L.polyline(walkData.route, { color: 'black', weight: 4, opacity: 1 }).addTo(state.layers.tempo);
     }
 }
 
+function drawMarker(e) {
+    const loc = [e.location.lat, e.location.lng];
+    const iconHtml = e.type === 'photo' ? '📸' : (e.type === 'audio' ? '🎙️' : '📍');
+    const layer = state.layers[e.type] || state.layers.mood;
+    
+    const icon = L.divIcon({ html: `<div style="font-size:24px;">${iconHtml}</div>`, className: 'custom-div-icon', iconSize:[30,30] });
+    const m = L.marker(loc, {icon}).addTo(layer);
+    if (e.photo) m.bindPopup(`<img src="${e.photo}" width="150">`);
+    if (e.audioUrl) m.bindPopup(`<audio controls src="${e.audioUrl}"></audio>`);
+}
+
+function updateArchiveUI() {
+    const list = document.getElementById('walkList');
+    list.innerHTML = "";
+    state.walks.forEach((w, index) => {
+        const div = document.createElement('div');
+        div.className = "walk-item";
+        div.innerText = "Tour " + (w.id || index);
+        div.onclick = () => {
+            state.viewingArchive = true;
+            // Karte leeren und Archiv-Daten zeigen
+            Object.values(state.layers).forEach(l => l.clearLayers());
+            renderRoute(w);
+            w.entries.forEach(e => drawMarker(e));
+            if (w.route.length > 0) state.map.fitBounds(L.polyline(w.route).getBounds());
+            alert("Zeige Archiv-Tour. Klicke auf 'NEUER WALK', um zum Live-Modus zurückzukehren.");
+        };
+        list.appendChild(div);
+    });
+}
+
 document.getElementById('startWalk').onclick = () => {
+    state.viewingArchive = false;
     state.current = { id: new Date().toLocaleString(), route: [], entries: [] };
     Object.values(state.layers).forEach(l => l.clearLayers());
     saveToDisk();
-    alert("Walk gestartet.");
+    alert("Live-Modus: Neuer Walk gestartet.");
 };
 
 document.getElementById('stopWalk').onclick = () => {
@@ -124,96 +157,36 @@ document.getElementById('stopWalk').onclick = () => {
     state.current = null;
     saveToDisk();
     updateArchiveUI();
-    alert("Walk archiviert.");
+    alert("Walk erfolgreich ins Archiv verschoben.");
 };
 
-function drawMarker(e) {
-    const loc = [e.location.lat, e.location.lng];
-    const iconHtml = e.type === 'photo' ? '📸' : '🎙️';
-    const layer = e.type === 'photo' ? state.layers.photo : state.layers.audio;
-    
-    if (e.type === 'photo' || e.type === 'audio') {
-        const icon = L.divIcon({ html: `<div style="font-size:24px;">${iconHtml}</div>`, className: 'custom-div-icon', iconSize:[30,30] });
-        const m = L.marker(loc, {icon}).addTo(layer);
-        if (e.photo) m.bindPopup(`<img src="${e.photo}" width="150">`);
-        if (e.audioUrl) m.bindPopup(`<audio controls src="${e.audioUrl}"></audio>`);
-    }
-}
-
+// ZIP EXPORT (Stabile Version)
 document.getElementById('exportFull').onclick = async () => {
     const walk = state.current || (state.walks.length > 0 ? state.walks[state.walks.length - 1] : null);
-    if (!walk) return alert("Kein Walk vorhanden.");
-
+    if (!walk) return alert("Keine Tour zum Exportieren ausgewählt.");
     const loader = document.getElementById('exportLoader');
-    const progress = document.getElementById('exportProgress');
     loader.style.display = 'flex';
-
     try {
         const zip = new JSZip();
-        
-        // 1. Karte & Route erfassen
-        progress.innerText = "Erfasse Route und Karte...";
-        await new Promise(r => setTimeout(r, 1200)); // Längerer Delay für GPS-Linie
-        const canvas = await html2canvas(document.getElementById('map'), { 
-            useCORS: true, 
-            logging: false, 
-            allowTaint: false,
-            backgroundColor: '#ffffff'
-        });
+        const canvas = await html2canvas(document.getElementById('map'), { useCORS: true });
         zip.file("karte.jpg", canvas.toDataURL("image/jpeg", 0.8).split(',')[1], {base64: true});
-
-        // 2. Medien sequentiell packen
         const mediaFolder = zip.folder("media");
-        for (let i = 0; i < walk.entries.length; i++) {
-            const e = walk.entries[i];
-            progress.innerText = `Packe Medien ${i+1}/${walk.entries.length}...`;
-            
-            if (e.photo && e.photo.includes('base64')) {
-                zip.file(`media/foto_${i}.jpg`, e.photo.split(',')[1], {base64: true});
-            }
-            if (e.audioUrl && e.audioUrl.includes('base64')) {
-                zip.file(`media/audio_${i}.webm`, e.audioUrl.split(',')[1], {base64: true});
-            }
-            await new Promise(r => setTimeout(r, 40)); 
-        }
-
-        // 3. Routendaten als Text (Sicherheit)
-        const routeData = walk.route.map(p => p.join(',')).join('\n');
-        zip.file("route_koordinaten.txt", `Zeitstempel: ${walk.id}\n\nGPS-Punkte (Lat,Lng):\n${routeData}`);
-
-        // 4. ZIP Download
-        progress.innerText = "ZIP wird erstellt...";
+        walk.entries.forEach((e, i) => {
+            if (e.photo) mediaFolder.file(`foto_${i}.jpg`, e.photo.split(',')[1], {base64: true});
+            if (e.audioUrl) mediaFolder.file(`audio_${i}.webm`, e.audioUrl.split(',')[1], {base64: true});
+        });
         const content = await zip.generateAsync({type:"blob"});
         const link = document.createElement("a");
         link.href = URL.createObjectURL(content);
-        link.download = `Walk_Route_${walk.id.replace(/[^a-z0-9]/gi, '_')}.zip`;
+        link.download = `Export_${walk.id.replace(/[^a-z0-9]/gi, '_')}.zip`;
         link.click();
-
-    } catch (err) {
-        console.error(err);
-        alert("Export fehlgeschlagen. Versuche es mit weniger Fotos oder schließe andere Apps.");
-    } finally {
-        loader.style.display = 'none';
-    }
+    } catch (e) { alert("Export-Fehler."); }
+    loader.style.display = 'none';
 };
 
-function updateArchiveUI() {
-    const list = document.getElementById('walkList');
-    list.innerHTML = "";
-    state.walks.forEach(w => {
-        const div = document.createElement('div');
-        div.className = "walk-item";
-        div.innerText = "Tour " + w.id;
-        div.onclick = () => {
-            Object.values(state.layers).forEach(l => l.clearLayers());
-            state.current = w; renderRoute(); w.entries.forEach(drawMarker); state.current = null;
-        };
-        list.appendChild(div);
-    });
-}
-
+// Hilfsfunktionen für Einträge
 function addEntry(type, data = {}) {
-    if (!state.current) return alert("Starte erst einen Walk!");
+    if (!state.current || state.viewingArchive) return alert("Bitte starte erst einen NEUEN WALK!");
     const pos = liveMarker.getLatLng();
     const entry = { type, location: { lat: pos.lat, lng: pos.lng }, timestamp: new Date().toLocaleString(), ...data };
     state.current.entries.push(entry);
