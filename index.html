@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-    <title>Begleitinstrument — Deep Zoom & Easy Click</title>
+    <title>Begleitinstrument — Audio Fix & Deep Zoom</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -19,16 +19,19 @@
         .bottom-left { position: fixed; bottom: 20px; left: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
         .panel { background: white; padding: 10px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 1px solid #ccc; }
         .btn { padding: 8px 10px; border-radius: 8px; font-weight: bold; font-size: 10px; cursor: pointer; text-transform: uppercase; border: none; }
-        .fab { width: 55px; height: 55px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; border: none; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+        .fab { width: 55px; height: 55px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; border: none; box-shadow: 0 4px 8px rgba(0,0,0,0.3); transition: all 0.2s; }
         
         .walk-item { padding: 8px; border-bottom: 1px solid #eee; font-size: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-radius: 6px; margin-bottom: 4px; background: #f9f9f9; }
         .active-walk { background: #2563eb !important; color: white; font-weight: bold; }
         .delete-btn { color: #ff4d4d; padding: 5px; font-weight: bold; font-size: 16px; margin-left: 5px; }
         
-        /* Popup Styling für bessere Lesbarkeit */
         .leaflet-popup-content { font-size: 12px; line-height: 1.4; min-width: 150px; }
         .custom-div-icon { background: none; border: none; }
         .loading-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 9999; color: white; flex-direction: column; align-items: center; justify-content: center; }
+        
+        /* Recording Animation */
+        .is-recording { background-color: #ef4444 !important; animation: pulse 1.5s infinite; color: white; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
     </style>
 </head>
 <body>
@@ -55,7 +58,7 @@
         </div>
     </div>
     <div class="panel max-h-[200px] overflow-y-auto">
-        <p class="font-bold text-[8px] uppercase text-gray-500 mb-1">Archiv (Nr. 1 = Älteste)</p>
+        <p class="font-bold text-[8px] uppercase text-gray-500 mb-1">Archiv</p>
         <div id="walkList"></div>
     </div>
 </div>
@@ -73,7 +76,7 @@ const state = {
     walks: JSON.parse(localStorage.getItem('savedWalks') || '[]'),
     current: JSON.parse(localStorage.getItem('currentWalk') || 'null'),
     map: null, isRec: false, viewing: false, selected: null,
-    lastStableLoc: null,
+    lastStableLoc: null, mediaChunks: [], rec: null,
     layers: { tempo: L.layerGroup(), mood: L.layerGroup(), thought: L.layerGroup(), sense: L.layerGroup(), photo: L.layerGroup(), audio: L.layerGroup() }
 };
 
@@ -91,21 +94,12 @@ function save() {
 }
 
 function init() {
-    // MAX ZOOM auf 22 erhöht für extrem tiefes Hineinzoomen
     state.map = L.map('map', { zoomControl: false, preferCanvas: true, maxZoom: 22 }).setView([47.23, 9.61], 15);
-    
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
-        crossOrigin: true,
-        maxNativeZoom: 19, // OSM hat nur Kacheln bis 19
-        maxZoom: 22        // Browser skaliert den Rest (Deep Zoom)
+        crossOrigin: true, maxNativeZoom: 19, maxZoom: 22 
     }).addTo(state.map);
-
     Object.values(state.layers).forEach(l => l.addTo(state.map));
-
-    if (state.current) { 
-        drawRoute(state.current); 
-        state.current.entries.forEach(drawM); 
-    }
+    if (state.current) { drawRoute(state.current); state.current.entries.forEach(drawM); }
     updateList();
 
     let liveM = null;
@@ -113,11 +107,8 @@ function init() {
         const newLoc = [p.coords.latitude, p.coords.longitude];
         if (!state.lastStableLoc || getDist(state.lastStableLoc[0], state.lastStableLoc[1], newLoc[0], newLoc[1]) > 1.5) {
             state.lastStableLoc = newLoc;
-            if (!liveM) {
-                liveM = L.circleMarker(newLoc, {radius:7, fillColor:"#2563eb", color:"#fff", weight:2, fillOpacity:1}).addTo(state.map);
-            } else {
-                liveM.setLatLng(newLoc);
-            }
+            if (!liveM) liveM = L.circleMarker(newLoc, {radius:7, fillColor:"#2563eb", color:"#fff", weight:2, fillOpacity:1}).addTo(state.map);
+            else liveM.setLatLng(newLoc);
             if (!state.viewing) state.map.panTo(newLoc);
             if (state.current && !state.viewing) {
                 state.current.route.push(newLoc);
@@ -135,9 +126,7 @@ function toggleL(n) {
 
 function drawRoute(w) {
     state.layers.tempo.clearLayers();
-    if (w && w.route && w.route.length > 1) {
-        L.polyline(w.route, {color:'black', weight:3}).addTo(state.layers.tempo);
-    }
+    if (w && w.route && w.route.length > 1) L.polyline(w.route, {color:'black', weight:3}).addTo(state.layers.tempo);
 }
 
 function drawM(e) {
@@ -145,26 +134,17 @@ function drawM(e) {
     if (e.type === 'photo' || e.type === 'audio') {
         const icon = L.divIcon({ 
             html: `<div style="font-size:24px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));">${e.type==='photo'?'📸':'🎙️'}</div>`, 
-            className: 'custom-div-icon',
-            iconSize: [30, 30],
-            iconAnchor: [15, 15]
+            className: 'custom-div-icon', iconSize: [30, 30], iconAnchor: [15, 15]
         });
         const m = L.marker([e.lat, e.lng], {icon}).addTo(l);
         if (e.data) {
-            const content = e.type === 'photo' 
-                ? `<div style="text-align:center"><img src="${e.data}" style="width:100%; border-radius:8px; margin-bottom:5px;"><br><small>${e.time || ''}</small></div>`
-                : `<audio controls src="${e.data}" style="width:200px;"></audio>`;
-            m.bindPopup(content, { maxWidth: 220 });
+            m.bindPopup(e.type === 'photo' 
+                ? `<img src="${e.data}" style="width:100%; border-radius:8px;">`
+                : `<audio controls src="${e.data}" style="width:200px;"></audio>`, { maxWidth: 220 });
         }
     } else {
         const colors = { mood: '#ff4500', thought: '#12345f', sense: '#3d633d' };
-        const m = L.circleMarker([e.lat, e.lng], { 
-            radius: 12, // Etwas größer für bessere Bedienbarkeit
-            fillColor: colors[e.type], 
-            color: '#fff', 
-            weight: 2, 
-            fillOpacity: 0.9 
-        }).addTo(l);
+        const m = L.circleMarker([e.lat, e.lng], { radius: 12, fillColor: colors[e.type], color: '#fff', weight: 2, fillOpacity: 0.9 }).addTo(l);
         if (e.text) m.bindPopup(`<b>${e.type.toUpperCase()}:</b><br>${e.text}`);
     }
 }
@@ -172,100 +152,57 @@ function drawM(e) {
 function updateList() {
     const container = document.getElementById('walkList');
     container.innerHTML = "";
-    const reversedWalks = [...state.walks].reverse();
-
-    reversedWalks.forEach((w, i) => {
+    [...state.walks].reverse().forEach((w, i) => {
         const originalIndex = state.walks.indexOf(w);
-        const tourNr = originalIndex + 1;
         const item = document.createElement('div');
         item.className = `walk-item ${state.selected === originalIndex ? 'active-walk' : ''}`;
-        
-        const title = document.createElement('span');
-        title.innerText = `Tour ${tourNr} (${w.id.split(',')[0]})`;
-        title.style.flex = "1";
-        title.onclick = () => loadW(originalIndex);
-
-        const del = document.createElement('span');
-        del.innerHTML = "&times;";
-        del.className = "delete-btn";
-        del.onclick = (ev) => {
-            ev.stopPropagation();
-            if(confirm(`Tour ${tourNr} löschen?`)) {
-                state.walks.splice(originalIndex, 1);
-                if(state.selected === originalIndex) {
-                    state.selected = null;
-                    state.viewing = false;
-                    Object.values(state.layers).forEach(layer => layer.clearLayers());
-                }
-                save();
-                updateList();
-            }
-        };
-        item.appendChild(title);
-        item.appendChild(del);
+        item.innerHTML = `<span style="flex:1" onclick="loadW(${originalIndex})">Tour ${originalIndex + 1}</span>
+                          <span class="delete-btn" onclick="delW(event, ${originalIndex})">&times;</span>`;
         container.appendChild(item);
     });
 }
 
-function loadW(originalIndex) {
-    state.viewing = true;
-    state.selected = originalIndex;
-    const w = state.walks[originalIndex];
-    Object.values(state.layers).forEach(l => l.clearLayers());
-    drawRoute(w);
-    if(w.entries) w.entries.forEach(drawM);
-    if (w.route && w.route.length > 0) {
-        state.map.fitBounds(L.polyline(w.route).getBounds(), { padding: [20, 20] });
+function delW(ev, idx) {
+    ev.stopPropagation();
+    if(confirm("Löschen?")) {
+        state.walks.splice(idx, 1);
+        save(); updateList();
     }
+}
+
+function loadW(idx) {
+    state.viewing = true; state.selected = idx; const w = state.walks[idx];
+    Object.values(state.layers).forEach(l => l.clearLayers());
+    drawRoute(w); if(w.entries) w.entries.forEach(drawM);
+    if (w.route && w.route.length > 0) state.map.fitBounds(L.polyline(w.route).getBounds(), { padding: [20, 20] });
     updateList();
 }
 
 document.getElementById('startWalk').onclick = () => {
-    state.viewing = false;
-    state.selected = null;
+    state.viewing = false; state.selected = null;
     state.current = { id: new Date().toLocaleString(), route: [], entries: [] };
     Object.values(state.layers).forEach(l => l.clearLayers());
-    save();
-    updateList();
-    alert("Live-Tracking gestartet.");
+    save(); updateList();
+    alert("Tracking gestartet.");
 };
 
 document.getElementById('stopWalk').onclick = () => {
-    if (state.current) {
-        state.walks.push(state.current);
-        state.current = null;
-        save();
-        updateList();
-        alert("Tour gespeichert.");
-    }
+    if (state.current) { state.walks.push(state.current); state.current = null; save(); updateList(); alert("Gespeichert."); }
 };
 
 function addE(type, data = null, text = null) {
-    if (!state.current || state.viewing) return alert("Starte erst einen NEUEN WALK!");
+    if (!state.current || state.viewing) return alert("Starte erst einen Walk!");
     const loc = state.lastStableLoc || [state.map.getCenter().lat, state.map.getCenter().lng];
     const entry = { type, lat: loc[0], lng: loc[1], data, text, time: new Date().toLocaleTimeString() };
-    state.current.entries.push(entry);
-    drawM(entry);
-    save();
+    state.current.entries.push(entry); drawM(entry); save();
 }
 
-document.getElementById('senseBtn').onclick = () => {
-    const txt = prompt("Wahrnehmung:");
-    if (txt) addE('sense', null, txt);
-};
-document.getElementById('thoughtBtn').onclick = () => {
-    const txt = prompt("Gedanke:");
-    if (txt) addE('thought', null, txt);
-};
-document.getElementById('moodBtn').onclick = () => {
-    const txt = prompt("Befinden/Batterie:");
-    if (txt) addE('mood', null, txt);
-};
+document.getElementById('senseBtn').onclick = () => { const t = prompt("Wahrnehmung:"); if(t) addE('sense', null, t); };
+document.getElementById('thoughtBtn').onclick = () => { const t = prompt("Gedanke:"); if(t) addE('thought', null, t); };
+document.getElementById('moodBtn').onclick = () => { const t = prompt("Befinden:"); if(t) addE('mood', null, t); };
 
 document.getElementById('photoBtn').onclick = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
+    const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*';
     input.onchange = e => {
         const reader = new FileReader();
         reader.onload = v => addE('photo', v.target.result);
@@ -274,32 +211,44 @@ document.getElementById('photoBtn').onclick = () => {
     input.click();
 };
 
+// AUDIO FIX LOGIK
 document.getElementById('audioToggle').onclick = async () => {
+    const btn = document.getElementById('audioToggle');
+    
     if (state.isRec) {
         state.rec.stop();
         state.isRec = false;
-        document.getElementById('audioToggle').innerText = "▶️";
+        btn.innerText = "▶️";
+        btn.classList.remove('is-recording');
     } else {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             state.rec = new MediaRecorder(stream);
-            let chunks = [];
-            state.rec.ondataavailable = ev => chunks.push(ev.data);
+            state.mediaChunks = [];
+            
+            state.rec.ondataavailable = ev => { if (ev.data.size > 0) state.mediaChunks.push(ev.data); };
+            
             state.rec.onstop = () => {
+                const blob = new Blob(state.mediaChunks, { type: state.rec.mimeType });
                 const reader = new FileReader();
                 reader.onload = () => addE('audio', reader.result);
-                reader.readAsDataURL(new Blob(chunks));
+                reader.readAsDataURL(blob);
+                stream.getTracks().forEach(track => track.stop()); // Mikro aus
             };
+            
             state.rec.start();
             state.isRec = true;
-            document.getElementById('audioToggle').innerText = "⏹️";
-        } catch(err) { alert("Mikrofon-Zugriff fehlt."); }
+            btn.innerText = "⏹️";
+            btn.classList.add('is-recording');
+        } catch(err) {
+            alert("Fehler: " + err.message + "\nBitte HTTPS nutzen oder Mikrofon freigeben.");
+        }
     }
 };
 
 document.getElementById('exportFull').onclick = async () => {
     const w = state.viewing ? state.walks[state.selected] : state.current;
-    if (!w) return alert("Kein Walk ausgewählt.");
+    if (!w) return alert("Kein Walk gewählt.");
     document.getElementById('exportLoader').style.display='flex';
     const zip = new JSZip();
     try {
@@ -308,17 +257,13 @@ document.getElementById('exportFull').onclick = async () => {
         let notes = `Walk: ${w.id}\n\n`;
         w.entries.forEach((e, i) => {
             if(e.text) notes += `[${e.time}] ${e.type.toUpperCase()}: ${e.text}\n`;
-            if(e.data) {
-                const ext = e.type === 'photo' ? 'jpg' : 'webm';
-                zip.file(`media/${e.type}_${i}.${ext}`, e.data.split(',')[1], {base64:true});
-            }
+            if(e.data) zip.file(`media/${e.type}_${i}.${e.type==='photo'?'jpg':'webm'}`, e.data.split(',')[1], {base64:true});
         });
         zip.file("notizen.txt", notes);
         const blob = await zip.generateAsync({type:"blob"});
         const a = document.createElement("a");
-        const originalIndex = state.walks.indexOf(w);
         a.href = URL.createObjectURL(blob);
-        a.download = `Walk_${originalIndex + 1}.zip`;
+        a.download = `Walk_${state.walks.indexOf(w)+1}.zip`;
         a.click();
     } catch(e) { alert("Export-Fehler."); }
     document.getElementById('exportLoader').style.display='none';
