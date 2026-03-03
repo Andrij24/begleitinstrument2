@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-    <title>Begleitinstrument — Archiv Fix & Notizen</title>
+    <title>Begleitinstrument — Nummeriertes Archiv</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -21,9 +21,7 @@
         .btn { padding: 8px 10px; border-radius: 8px; font-weight: bold; font-size: 10px; cursor: pointer; text-transform: uppercase; border: none; }
         .fab { width: 55px; height: 55px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; border: none; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
         
-        /* Archiv Styling Fix */
         .walk-item { padding: 8px; border-bottom: 1px solid #eee; font-size: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-radius: 6px; margin-bottom: 4px; background: #f9f9f9; }
-        .walk-item:active { background: #e2e8f0; }
         .active-walk { background: #2563eb !important; color: white; font-weight: bold; }
         .delete-btn { color: #ff4d4d; padding: 5px; font-weight: bold; font-size: 16px; margin-left: 5px; }
         
@@ -55,7 +53,7 @@
         </div>
     </div>
     <div class="panel max-h-[200px] overflow-y-auto">
-        <p class="font-bold text-[8px] uppercase text-gray-500 mb-1">Archiv</p>
+        <p class="font-bold text-[8px] uppercase text-gray-500 mb-1">Archiv (Nr. 1 = Älteste)</p>
         <div id="walkList"></div>
     </div>
 </div>
@@ -136,7 +134,7 @@ function drawRoute(w) {
 function drawM(e) {
     const l = state.layers[e.type]; if(!l) return;
     if (e.type === 'photo' || e.type === 'audio') {
-        const icon = L.divIcon({ html: `<div style="font-size:20px;">${e.type==='photo'?'📸':'♬'}</div>`, className: 'custom-div-icon' });
+        const icon = L.divIcon({ html: `<div style="font-size:20px;">${e.type==='photo'?'📸':'🎙️'}</div>`, className: 'custom-div-icon' });
         const m = L.marker([e.lat, e.lng], {icon}).addTo(l);
         if (e.data) m.bindPopup(e.type==='photo'?`<img src="${e.data}" width="120">`:`<audio controls src="${e.data}"></audio>`);
     } else {
@@ -149,23 +147,32 @@ function drawM(e) {
 function updateList() {
     const container = document.getElementById('walkList');
     container.innerHTML = "";
-    state.walks.forEach((w, i) => {
+    
+    // Wir zeigen die Liste umgekehrt an (neueste oben),
+    // aber die Nummern vergeben wir nach der ursprünglichen Reihenfolge.
+    const reversedWalks = [...state.walks].reverse();
+
+    reversedWalks.forEach((w, i) => {
+        // Berechne die ursprüngliche Nummer (Index + 1)
+        const originalIndex = state.walks.indexOf(w);
+        const tourNr = originalIndex + 1;
+
         const item = document.createElement('div');
-        item.className = `walk-item ${state.selected === i ? 'active-walk' : ''}`;
+        item.className = `walk-item ${state.selected === originalIndex ? 'active-walk' : ''}`;
         
         const title = document.createElement('span');
-        title.innerText = "Walk " + w.id.split(',')[0];
+        title.innerText = `Tour ${tourNr} (${w.id.split(',')[0]})`;
         title.style.flex = "1";
-        title.onclick = () => loadW(i);
+        title.onclick = () => loadW(originalIndex);
 
         const del = document.createElement('span');
         del.innerHTML = "&times;";
         del.className = "delete-btn";
         del.onclick = (ev) => {
             ev.stopPropagation();
-            if(confirm("Löschen?")) {
-                state.walks.splice(i, 1);
-                if(state.selected === i) {
+            if(confirm(`Tour ${tourNr} wirklich löschen?`)) {
+                state.walks.splice(originalIndex, 1);
+                if(state.selected === originalIndex) {
                     state.selected = null;
                     state.viewing = false;
                     Object.values(state.layers).forEach(layer => layer.clearLayers());
@@ -181,12 +188,11 @@ function updateList() {
     });
 }
 
-function loadW(i) {
+function loadW(originalIndex) {
     state.viewing = true;
-    state.selected = i;
-    const w = state.walks[i];
+    state.selected = originalIndex;
+    const w = state.walks[originalIndex];
     
-    // Karte leeren und neu zeichnen
     Object.values(state.layers).forEach(l => l.clearLayers());
     drawRoute(w);
     if(w.entries) w.entries.forEach(drawM);
@@ -213,9 +219,9 @@ document.getElementById('stopWalk').onclick = () => {
         state.current = null;
         save();
         updateList();
-        alert("Tour im Archiv gespeichert.");
+        alert("Tour gespeichert.");
     } else {
-        alert("Kein aktiver Walk zum Beenden.");
+        alert("Kein aktiver Walk.");
     }
 };
 
@@ -299,8 +305,9 @@ document.getElementById('exportFull').onclick = async () => {
         
         const blob = await zip.generateAsync({type:"blob"});
         const a = document.createElement("a");
+        const originalIndex = state.walks.indexOf(w);
         a.href = URL.createObjectURL(blob);
-        a.download = `Walk_${w.id.replace(/[: /]/g,'_')}.zip`;
+        a.download = `Walk_${originalIndex + 1}.zip`;
         a.click();
     } catch(e) { alert("Export-Fehler."); }
     
