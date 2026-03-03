@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-    <title>Begleitinstrument — Final Fix</title>
+    <title>Begleitinstrument — Stabile Version</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -32,7 +32,9 @@
 </head>
 <body>
 
-<div id="exportLoader" class="hidden fixed inset-0 bg-black/80 z-[9999] flex flex-col items-center justify-center text-white"><b>ZIP EXPORT...</b></div>
+<div id="exportLoader" class="hidden fixed inset-0 bg-black/80 z-[9999] flex flex-col items-center justify-center text-white text-center">
+    <b>ZIP EXPORT...</b><br><small>Bilder werden generiert...</small>
+</div>
 <div id="map"></div>
 
 <div class="top-ui">
@@ -92,16 +94,19 @@ function init() {
     }
     updateList();
 
+    // Kontinuierliches Tracking
     navigator.geolocation.watchPosition(p => {
         const newLoc = [p.coords.latitude, p.coords.longitude];
         state.lastStableLoc = newLoc;
-        if (!state.viewing) state.map.panTo(newLoc);
+        
+        // Wenn wir aufnehmen, zeichne die Route
         if (state.current && !state.viewing) {
             state.current.route.push(newLoc);
             drawRoute(state.current);
+            state.map.panTo(newLoc); // Folge dem User
             save();
         }
-    }, null, { enableHighAccuracy: true });
+    }, err => console.error("GPS Error", err), { enableHighAccuracy: true });
 }
 
 function save() {
@@ -133,7 +138,7 @@ function updateList() {
         const idx = state.walks.indexOf(w);
         const d = document.createElement('div');
         d.className = `walk-item ${state.selected === idx ? 'active-walk' : ''}`;
-        d.innerHTML = `<span style="flex:1" onclick="loadW(${idx})">Tour ${idx+1}</span><span onclick="delW(event, ${idx})">&times;</span>`;
+        d.innerHTML = `<span style="flex:1" onclick="loadW(${idx})">Tour ${idx+1}</span><span class="delete-btn" onclick="delW(event, ${idx})">&times;</span>`;
         c.appendChild(d);
     });
 }
@@ -144,20 +149,37 @@ function loadW(i) {
     state.viewing = true; state.selected = i; const w = state.walks[i];
     Object.values(state.layers).forEach(l => l.clearLayers());
     drawRoute(w); if(w.entries) w.entries.forEach(drawM);
-    if (w.route.length) state.map.fitBounds(L.polyline(w.route).getBounds());
+    if (w.route && w.route.length) state.map.fitBounds(L.polyline(w.route).getBounds());
     updateList();
 }
 
-// FIX: NEUER WALK REPARIERT
+// --- FIX: START BUTTON REPARIERT ---
 document.getElementById('startWalk').onclick = () => {
+    // 1. Status zurücksetzen
     state.viewing = false;
     state.selected = null;
-    state.current = { id: new Date().toLocaleString(), route: [], entries: [] };
-    // Karte visuell leeren
+    
+    // 2. Neue Datenstruktur
+    state.current = { 
+        id: new Date().toLocaleString(), 
+        route: [], 
+        entries: [] 
+    };
+
+    // 3. Karte visuell komplett leeren
     Object.values(state.layers).forEach(l => l.clearLayers());
+    
+    // 4. GPS Check & Feedback
+    if (state.lastStableLoc) {
+        state.current.route.push(state.lastStableLoc);
+        state.map.setView(state.lastStableLoc, 18); // Zoom auf den Startpunkt
+    } else {
+        alert("Warte auf GPS-Signal... Bewege dich kurz.");
+    }
+
     save();
     updateList();
-    alert("Live-Aufnahme gestartet!");
+    console.log("Neuer Walk gestartet");
 };
 
 document.getElementById('stopWalk').onclick = () => { 
@@ -166,12 +188,12 @@ document.getElementById('stopWalk').onclick = () => {
         state.current = null; 
         save(); 
         updateList(); 
-        alert("Walk gespeichert.");
+        alert("Walk beendet und gespeichert!");
     } 
 };
 
 function addE(type, data = null, text = null) {
-    if (!state.current || state.viewing) return alert("Walk starten!");
+    if (!state.current || state.viewing) return alert("Klicke zuerst auf 'NEUER WALK'!");
     const loc = state.lastStableLoc || [state.map.getCenter().lat, state.map.getCenter().lng];
     const entry = { type, lat: loc[0], lng: loc[1], data, text, time: new Date().toLocaleTimeString() };
     state.current.entries.push(entry); drawM(entry); save();
@@ -212,7 +234,7 @@ document.getElementById('photoBtn').onclick = () => {
     i.click();
 };
 
-document.getElementById('senseBtn').onclick = () => { const t = prompt("Sinn:"); if(t) addE('sense',null,t); };
+document.getElementById('senseBtn').onclick = () => { const t = prompt("Wahrnehmung:"); if(t) addE('sense',null,t); };
 document.getElementById('thoughtBtn').onclick = () => { const t = prompt("Gedanke:"); if(t) addE('thought',null,t); };
 
 function toggleL(n) {
@@ -222,7 +244,7 @@ function toggleL(n) {
 
 document.getElementById('exportFull').onclick = async () => {
     const w = state.viewing ? state.walks[state.selected] : state.current;
-    if (!w) return alert("Kein Walk.");
+    if (!w) return alert("Kein Walk gewählt.");
     document.getElementById('exportLoader').classList.remove('hidden');
     const zip = new JSZip();
     try {
@@ -231,12 +253,15 @@ document.getElementById('exportFull').onclick = async () => {
         let notes = `Tour: ${w.id}\n\n`;
         w.entries.forEach((e, i) => {
             notes += `[${e.type}] ${e.text || ''}\n`;
-            if(e.data) zip.file(`media/${e.type}_${i}.${e.type==='photo'?'jpg':'webm'}`, e.data.split(',')[1], {base64:true});
+            if(e.data) {
+                const ext = e.type === 'photo' ? 'jpg' : 'webm';
+                zip.file(`media/${e.type}_${i}.${ext}`, e.data.split(',')[1], {base64:true});
+            }
         });
         zip.file("notizen.txt", notes);
         const b = await zip.generateAsync({type:"blob"});
-        const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `Walk.zip`; a.click();
-    } catch(e) { alert("Fehler"); }
+        const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `Walk_Export.zip`; a.click();
+    } catch(e) { alert("Export-Fehler"); }
     document.getElementById('exportLoader').classList.add('hidden');
 };
 
