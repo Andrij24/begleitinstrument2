@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-    <title>Begleitinstrument — Alles-in-Einem Fix 📍</title>
+    <title>Begleitinstrument — Audio Fix 🎙️</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -14,33 +14,25 @@
     <style>
         html, body, #map { height: 100%; margin: 0; background: #eee; overflow: hidden; }
         #map { width: 100%; height: 100vh; z-index: 1; }
-        
-        /* UI Ebenen sicherstellen */
         .top-ui { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1000; display: flex; gap: 5px; width: 95%; justify-content: center; }
         .side-ui { position: fixed; top: 60px; right: 10px; z-index: 1000; width: 165px; display: flex; flex-direction: column; gap: 8px; }
         .bottom-left { position: fixed; bottom: 20px; left: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
-        
         .panel { background: white; padding: 10px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 1px solid #ccc; }
         .btn { padding: 8px 10px; border-radius: 8px; font-weight: bold; font-size: 10px; cursor: pointer; text-transform: uppercase; border: none; }
         .fab { width: 55px; height: 55px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; border: none; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
-        
         .walk-item { padding: 8px; border-bottom: 1px solid #eee; font-size: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-radius: 6px; margin-bottom: 4px; background: #f9f9f9; }
-        .active-walk { background: #2563eb !important; color: white; font-weight: bold; }
-        .delete-btn { color: #ff4d4d; padding: 5px; font-weight: bold; font-size: 16px; margin-left: 5px; }
-        
+        .active-walk { background: #2563eb !important; color: white; }
         .custom-div-icon { background: none; border: none; }
-        .loading-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 9999; color: white; flex-direction: column; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
 
-<div id="exportLoader" class="loading-overlay"><b>ZIP EXPORT...</b><br><small>Bitte warten</small></div>
 <div id="map"></div>
 
 <div class="top-ui">
-    <button id="startWalk" class="btn bg-blue-600 text-white shadow-md">NEUER WALK</button>
-    <button id="stopWalk" class="btn bg-red-600 text-white shadow-md">BEENDEN</button>
-    <button id="exportFull" class="btn bg-black text-white shadow-md">ZIP</button>
+    <button id="startWalk" class="btn bg-blue-600 text-white">NEUER WALK</button>
+    <button id="stopWalk" class="btn bg-red-600 text-white">BEENDEN</button>
+    <button id="exportFull" class="btn bg-black text-white">ZIP</button>
 </div>
 
 <div class="side-ui">
@@ -48,10 +40,6 @@
         <p class="font-bold text-[8px] uppercase text-gray-500 mb-1">Ebenen</p>
         <div class="text-[10px] space-y-1">
             <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('tempo')"> Route</label>
-            <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('mood')"> Stimmung</label>
-            <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('thought')"> Gedanken</label>
-            <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('sense')"> Wahrn.</label>
-            <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('photo')"> Fotos</label>
             <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('audio')"> Audio</label>
         </div>
     </div>
@@ -62,212 +50,131 @@
 </div>
 
 <div class="bottom-left">
-    <button id="photoBtn" class="fab bg-white">📸</button>
     <button id="audioToggle" class="fab bg-orange-400 text-white">▶️</button>
-    <button id="senseBtn" class="fab bg-[#3d633d] text-white">👁️</button>
-    <button id="thoughtBtn" class="fab bg-[#12345f] text-white">💭</button>
-    <button id="moodBtn" class="fab" style="background: radial-gradient(circle, #ff8c00, #ff4500);">🔋</button>
+    <button id="photoBtn" class="fab bg-white">📸</button>
 </div>
 
 <script>
 const state = {
     walks: JSON.parse(localStorage.getItem('savedWalks') || '[]'),
-    current: JSON.parse(localStorage.getItem('currentWalk') || 'null'),
-    map: null, isRec: false, viewing: false, selected: null,
-    lastStableLoc: null,
-    layers: { tempo: L.layerGroup(), mood: L.layerGroup(), thought: L.layerGroup(), sense: L.layerGroup(), photo: L.layerGroup(), audio: L.layerGroup() }
+    current: null, map: null, isRec: false, viewing: false, selected: null,
+    lastStableLoc: null, rec: null, chunks: [],
+    layers: { tempo: L.layerGroup(), audio: L.layerGroup(), photo: L.layerGroup(), mood: L.layerGroup(), thought: L.layerGroup(), sense: L.layerGroup() }
 };
 
-function getDist(lat1, lon1, lat2, lon2) {
-    const R = 6371000; 
-    const dLat = (lat2-lat1) * Math.PI/180;
-    const dLon = (lon2-lon1) * Math.PI/180;
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
-
-function save() {
-    localStorage.setItem('currentWalk', JSON.stringify(state.current));
-    localStorage.setItem('savedWalks', JSON.stringify(state.walks));
-}
-
 function init() {
-    state.map = L.map('map', { zoomControl: false, preferCanvas: true }).setView([47.23, 9.61], 15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { crossOrigin: true }).addTo(state.map);
+    state.map = L.map('map', { zoomControl: false }).setView([47.23, 9.61], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.map);
     Object.values(state.layers).forEach(l => l.addTo(state.map));
-
-    if (state.current) { 
-        drawRoute(state.current); 
-        state.current.entries.forEach(drawM); 
-    }
     updateList();
 
-    let liveM = null;
     navigator.geolocation.watchPosition(p => {
-        const newLoc = [p.coords.latitude, p.coords.longitude];
-        if (!state.lastStableLoc || getDist(state.lastStableLoc[0], state.lastStableLoc[1], newLoc[0], newLoc[1]) > 1.5) {
-            state.lastStableLoc = newLoc;
-            if (!liveM) {
-                liveM = L.circleMarker(newLoc, {radius:7, fillColor:"#2563eb", color:"#fff", weight:2, fillOpacity:1}).addTo(state.map);
-            } else { liveM.setLatLng(newLoc); }
-            if (!state.viewing) state.map.panTo(newLoc);
-            if (state.current && !state.viewing) {
-                state.current.route.push(newLoc);
+        const loc = [p.coords.latitude, p.coords.longitude];
+        state.lastStableLoc = loc;
+        if (!state.viewing) {
+            state.map.panTo(loc);
+            if (state.current) {
+                state.current.route.push(loc);
                 drawRoute(state.current);
-                save();
+                localStorage.setItem('savedWalks', JSON.stringify(state.walks));
             }
         }
     }, null, { enableHighAccuracy: true });
 }
 
-function toggleL(n) {
-    if (state.map.hasLayer(state.layers[n])) state.map.removeLayer(state.layers[n]);
-    else state.map.addLayer(state.layers[n]);
-}
-
 function drawRoute(w) {
     state.layers.tempo.clearLayers();
-    if (w && w.route && w.route.length > 1) {
-        L.polyline(w.route, {color:'black', weight:3}).addTo(state.layers.tempo);
+    if (w?.route?.length > 1) L.polyline(w.route, {color:'black', weight:3}).addTo(state.layers.tempo);
+}
+
+function drawM(e) {
+    const l = state.layers[e.type]; if(!l) return;
+    const icon = L.divIcon({ html: `<div style="font-size:24px;">${e.type==='audio'?'🎙️':'📸'}</div>`, className: 'custom-div-icon' });
+    const m = L.marker([e.lat, e.lng], {icon}).addTo(l);
+    
+    if (e.type === 'audio') {
+        // Erzeugt einen echten HTML5 Audio Player im Popup
+        const audioHtml = `<div style="min-width:160px; padding:10px;">
+            <b style="font-size:12px;">Audio Aufnahme</b><br>
+            <audio controls style="width:100%; margin-top:8px;">
+                <source src="${e.data}" type="audio/webm">
+                <source src="${e.data}" type="audio/mp4">
+                Ihr Browser unterstützt kein Audio.
+            </audio>
+        </div>`;
+        m.bindPopup(audioHtml);
+    } else if (e.type === 'photo') {
+        m.bindPopup(`<img src="${e.data}" width="150">`);
     }
 }
 
-// --- HIER IST DIE AUDIO-WIEDERGABE LOGIK ---
-function drawM(e) {
-    const l = state.layers[e.type]; if(!l) return;
-    if (e.type === 'photo' || e.type === 'audio') {
-        const icon = L.divIcon({ html: `<div style="font-size:20px;">${e.type==='photo'?'📸':'🎙️'}</div>`, className: 'custom-div-icon' });
-        const m = L.marker([e.lat, e.lng], {icon}).addTo(l);
-        if (e.data) {
-            const content = e.type === 'photo' 
-                ? `<img src="${e.data}" width="180" style="border-radius:8px;">` 
-                : `<div style="padding:5px; min-width:180px;"><b>Audio:</b><br><audio controls src="${e.data}" style="width:100%; margin-top:5px;"></audio></div>`;
-            m.bindPopup(content);
-        }
+document.getElementById('audioToggle').onclick = async () => {
+    const btn = document.getElementById('audioToggle');
+    if (!state.isRec) {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            state.chunks = [];
+            // Versuche verschiedene Formate für bessere Kompatibilität
+            const options = { mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '' };
+            state.rec = new MediaRecorder(stream, options);
+            state.rec.ondataavailable = e => state.chunks.push(e.data);
+            state.rec.onstop = () => {
+                const blob = new Blob(state.chunks, { type: state.rec.mimeType });
+                const reader = new FileReader();
+                reader.onload = () => {
+                    if (state.current) {
+                        const entry = { type: 'audio', lat: state.lastStableLoc[0], lng: state.lastStableLoc[1], data: reader.result };
+                        state.current.entries.push(entry);
+                        drawM(entry);
+                        localStorage.setItem('savedWalks', JSON.stringify(state.walks));
+                    }
+                };
+                reader.readAsDataURL(blob);
+                stream.getTracks().forEach(t => t.stop());
+            };
+            state.rec.start();
+            state.isRec = true;
+            btn.innerText = "⏹️";
+            btn.classList.add("bg-red-500");
+        } catch (e) { alert("Mikrofon-Fehler: " + e); }
     } else {
-        const colors = { mood: '#ff4500', thought: '#12345f', sense: '#3d633d' };
-        const m = L.circleMarker([e.lat, e.lng], { radius: 10, fillColor: colors[e.type], color: '#000', weight: 1, fillOpacity: 0.8 }).addTo(l);
-        if (e.text) m.bindPopup(`<b>${e.type.toUpperCase()}:</b><br>${e.text}`);
+        state.rec.stop();
+        state.isRec = false;
+        btn.innerText = "▶️";
+        btn.classList.remove("bg-red-500");
     }
-}
+};
 
 function updateList() {
     const container = document.getElementById('walkList');
     container.innerHTML = "";
-    const reversedWalks = [...state.walks].reverse();
-    reversedWalks.forEach((w) => {
-        const originalIndex = state.walks.indexOf(w);
+    state.walks.forEach((w, i) => {
         const item = document.createElement('div');
-        item.className = `walk-item ${state.selected === originalIndex ? 'active-walk' : ''}`;
-        const title = document.createElement('span');
-        title.innerText = `Tour ${originalIndex + 1}`;
-        title.style.flex = "1";
-        title.onclick = () => loadW(originalIndex);
-        const del = document.createElement('span');
-        del.innerHTML = "&times;";
-        del.className = "delete-btn";
-        del.onclick = (ev) => {
-            ev.stopPropagation();
-            if(confirm(`Tour ${originalIndex+1} löschen?`)) {
-                state.walks.splice(originalIndex, 1);
-                save(); updateList();
-            }
-        };
-        item.appendChild(title);
-        item.appendChild(del);
+        item.className = `walk-item ${state.selected === i ? 'active-walk' : ''}`;
+        item.innerHTML = `<span style="flex:1" onclick="loadW(${i})">Tour ${i+1}</span>`;
         container.appendChild(item);
     });
 }
 
-function loadW(idx) {
-    state.viewing = true; state.selected = idx;
-    const w = state.walks[idx];
+function loadW(i) {
+    state.viewing = true; state.selected = i;
+    const w = state.walks[i];
     Object.values(state.layers).forEach(l => l.clearLayers());
     drawRoute(w);
-    if(w.entries) w.entries.forEach(drawM);
-    if (w.route && w.route.length > 0) state.map.fitBounds(L.polyline(w.route).getBounds());
+    w.entries.forEach(drawM);
     updateList();
 }
 
 document.getElementById('startWalk').onclick = () => {
-    state.viewing = false; state.selected = null;
-    state.current = { id: new Date().toLocaleString(), route: [], entries: [] };
-    Object.values(state.layers).forEach(l => l.clearLayers());
-    save(); updateList(); alert("Tracking gestartet.");
+    state.current = { id: Date.now(), route: [], entries: [] };
+    state.walks.push(state.current);
+    state.viewing = false;
+    alert("Walk gestartet!");
 };
 
 document.getElementById('stopWalk').onclick = () => {
-    if (state.current) {
-        state.walks.push(state.current); state.current = null;
-        save(); updateList(); alert("Gespeichert.");
-    }
-};
-
-function addE(type, data = null, text = null) {
-    if (!state.current || state.viewing) return alert("Starte erst einen Walk!");
-    const loc = state.lastStableLoc || [state.map.getCenter().lat, state.map.getCenter().lng];
-    const entry = { type, lat: loc[0], lng: loc[1], data, text, time: new Date().toLocaleTimeString() };
-    state.current.entries.push(entry);
-    drawM(entry);
-    save();
-}
-
-document.getElementById('senseBtn').onclick = () => { const t = prompt("Wahrnehmung:"); if(t) addE('sense',null,t); };
-document.getElementById('thoughtBtn').onclick = () => { const t = prompt("Gedanke:"); if(t) addE('thought',null,t); };
-document.getElementById('moodBtn').onclick = () => { const t = prompt("Stimmung:"); if(t) addE('mood',null,t); };
-
-document.getElementById('photoBtn').onclick = () => {
-    const input = document.createElement('input');
-    input.type = 'file'; input.accept = 'image/*';
-    input.onchange = e => {
-        const reader = new FileReader();
-        reader.onload = v => addE('photo', v.target.result);
-        reader.readAsDataURL(e.target.files[0]);
-    };
-    input.click();
-};
-
-document.getElementById('audioToggle').onclick = async () => {
-    if (state.isRec) {
-        state.rec.stop(); state.isRec = false;
-        document.getElementById('audioToggle').innerText = "▶️";
-    } else {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            state.rec = new MediaRecorder(stream);
-            let chunks = [];
-            state.rec.ondataavailable = ev => chunks.push(ev.data);
-            state.rec.onstop = () => {
-                const blob = new Blob(chunks, { type: 'audio/webm' });
-                const reader = new FileReader();
-                reader.onload = () => addE('audio', reader.result);
-                reader.readAsDataURL(blob);
-                stream.getTracks().forEach(t => t.stop());
-            };
-            state.rec.start(); state.isRec = true;
-            document.getElementById('audioToggle').innerText = "⏹️";
-        } catch(err) { alert("Mikrofon?"); }
-    }
-};
-
-document.getElementById('exportFull').onclick = async () => {
-    const w = state.viewing ? state.walks[state.selected] : state.current;
-    if (!w) return alert("Kein Walk.");
-    document.getElementById('exportLoader').style.display='flex';
-    const zip = new JSZip();
-    try {
-        const can = await html2canvas(document.getElementById('map'), {useCORS: true});
-        zip.file("karte.jpg", can.toDataURL("image/jpeg", 0.7).split(',')[1], {base64:true});
-        let n = `Walk: ${w.id}\n`;
-        w.entries.forEach((e, i) => {
-            if(e.text) n += `${e.type}: ${e.text}\n`;
-            if(e.data) zip.file(`media/${e.type}_${i}.${e.type==='photo'?'jpg':'webm'}`, e.data.split(',')[1], {base64:true});
-        });
-        zip.file("notizen.txt", n);
-        const b = await zip.generateAsync({type:"blob"});
-        const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `Export.zip`; a.click();
-    } catch(e) { alert("Fehler"); }
-    document.getElementById('exportLoader').style.display='none';
+    state.current = null;
+    alert("Walk beendet & gespeichert.");
 };
 
 init();
