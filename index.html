@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-    <title>Begleitinstrument — Live-Standort 📍</title>
+    <title>Begleitinstrument — Finaler Standort-Fix 📍</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -75,7 +75,7 @@ const state = {
     current: JSON.parse(localStorage.getItem('currentWalk') || 'null'),
     map: null, isRec: false, viewing: false, selected: null,
     lastStableLoc: null, chunks: [], rec: null, timerInt: null,
-    userMarker: null, // Der 📍 Marker
+    userMarker: null, 
     layers: { tempo: L.layerGroup(), mood: L.layerGroup(), thought: L.layerGroup(), sense: L.layerGroup(), photo: L.layerGroup(), audio: L.layerGroup() }
 };
 
@@ -85,13 +85,14 @@ function getMoodColor(val) {
 }
 
 function init() {
+    // Startansicht (wird bei GPS-Kontakt überschrieben)
     state.map = L.map('map', { zoomControl: false, maxZoom: 22 }).setView([47.23, 9.61], 15);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxNativeZoom: 19, maxZoom: 22 }).addTo(state.map);
     Object.values(state.layers).forEach(l => l.addTo(state.map));
     
-    // Live-Standort Icon (📍)
+    // Initialer 📍 Marker (unsichtbar bis zum ersten Signal)
     const pinIcon = L.divIcon({ html: '📍', className: 'text-3xl', iconAnchor: [15, 30] });
-    state.userMarker = L.marker([0,0], {icon: pinIcon}).addTo(state.map);
+    state.userMarker = L.marker([0,0], {icon: pinIcon, zIndexOffset: 1000}).addTo(state.map);
 
     if (state.current) { 
         drawRoute(state.current); 
@@ -99,24 +100,30 @@ function init() {
     }
     updateList();
 
-    // Geolocation Echtzeit
+    // Geolocation-Überwachung starten
+    startTracking();
+}
+
+function startTracking() {
+    if (!navigator.geolocation) return alert("GPS nicht unterstützt.");
+
     navigator.geolocation.watchPosition(p => {
         const newLoc = [p.coords.latitude, p.coords.longitude];
         state.lastStableLoc = newLoc;
         
-        // 📍 Update Marker
+        // 📍 Update Standort-Pin
         state.userMarker.setLatLng(newLoc);
         
+        // Wenn wir nicht gerade eine alte Tour ansehen: Karte folgt dir
         if (!state.viewing) {
             state.map.panTo(newLoc);
-            // Route nur aufzeichnen wenn ein Walk aktiv ist
             if (state.current) {
                 state.current.route.push(newLoc);
                 drawRoute(state.current);
                 save();
             }
         }
-    }, null, { enableHighAccuracy: true });
+    }, (e) => console.log("GPS-Suche...", e), { enableHighAccuracy: true, maximumAge: 0 });
 }
 
 function save() {
@@ -132,7 +139,7 @@ function drawRoute(w) {
 function drawM(e) {
     const l = state.layers[e.type]; if(!l) return;
     if (e.type === 'mood') {
-        L.circleMarker([e.lat, e.lng], { radius: 15, fillColor: getMoodColor(e.text), color: '#fff', weight: 3, fillOpacity: 1 }).addTo(l).bindPopup(`Status: ${e.text}/5`);
+        L.circleMarker([e.lat, e.lng], { radius: 15, fillColor: getMoodColor(e.text), color: '#fff', weight: 3, fillOpacity: 1 }).addTo(l).bindPopup(`Befinden: ${e.text}`);
     } else if (e.type === 'photo' || e.type === 'audio') {
         const icon = L.divIcon({ html: `<div style="font-size:24px;">${e.type==='photo'?'📸':'🎙️'}</div>`, className: 'bg-transparent border-0', iconSize: [30, 30] });
         L.marker([e.lat, e.lng], {icon}).addTo(l).bindPopup(e.type === 'photo' ? `<img src="${e.data}" class="w-full">` : `<audio controls src="${e.data}"></audio>`);
@@ -167,12 +174,14 @@ document.getElementById('startWalk').onclick = () => {
     state.viewing = false; state.selected = null;
     state.current = { id: new Date().toLocaleString(), route: [], entries: [] };
     Object.values(state.layers).forEach(l => l.clearLayers());
+    
     if(state.lastStableLoc) {
         state.current.route.push(state.lastStableLoc);
         state.map.setView(state.lastStableLoc, 18);
+    } else {
+        alert("📍 Suche Standort... Bitte bewege dich kurz im Freien.");
     }
     save(); updateList();
-    alert("📍 Standort-Fix aktiviert. Walk läuft!");
 };
 
 document.getElementById('stopWalk').onclick = () => { 
@@ -184,8 +193,74 @@ document.getElementById('stopWalk').onclick = () => {
 };
 
 function addE(type, data = null, text = null) {
-    if (!state.current || state.viewing) return alert("Starte 'NEUER WALK'!");
+    if (!state.current || state.viewing) return alert("Bitte 'NEUER WALK' starten!");
     const loc = state.lastStableLoc || [state.map.getCenter().lat, state.map.getCenter().lng];
     const entry = { type, lat: loc[0], lng: loc[1], data, text, time: new Date().toLocaleTimeString() };
     state.current.entries.push(entry); drawM(entry); save();
 }
+
+document.getElementById('moodBtn').onclick = () => {
+    const val = prompt("Befinden (1-5):");
+    if (['1','2','3','4','5'].includes(val)) addE('mood', null, val);
+};
+
+document.getElementById('audioToggle').onclick = async () => {
+    const btn = document.getElementById('audioToggle'); const timerDisp = document.getElementById('audioTimer');
+    if (state.isRec) {
+        state.rec.stop(); state.isRec = false; clearInterval(state.timerInt);
+        btn.classList.remove('is-recording'); timerDisp.style.display = 'none';
+    } else {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mime = MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : 'audio/webm';
+            state.rec = new MediaRecorder(stream, { mimeType: mime });
+            state.chunks = []; state.rec.ondataavailable = e => { if(e.data.size > 0) state.chunks.push(e.data); };
+            state.rec.onstop = () => {
+                const blob = new Blob(state.chunks, { type: mime });
+                const r = new FileReader(); r.onload = () => addE('audio', r.result); r.readAsDataURL(blob);
+                stream.getTracks().forEach(t => t.stop());
+            };
+            state.rec.start(); state.isRec = true; btn.classList.add('is-recording'); timerDisp.style.display = 'block';
+            let sec = 0; state.timerInt = setInterval(() => { sec++; timerDisp.innerText = Math.floor(sec/60).toString().padStart(2,'0') + ":" + (sec%60).toString().padStart(2,'0'); }, 1000);
+        } catch(err) { alert("Mikro-Fehler!"); }
+    }
+};
+
+document.getElementById('photoBtn').onclick = () => {
+    const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*';
+    i.onchange = e => { const r = new FileReader(); r.onload = v => addE('photo', v.target.result); r.readAsDataURL(e.target.files[0]); };
+    i.click();
+};
+
+document.getElementById('senseBtn').onclick = () => { const t = prompt("Was nimmst du wahr?"); if(t) addE('sense',null,t); };
+document.getElementById('thoughtBtn').onclick = () => { const t = prompt("Was denkst du?"); if(t) addE('thought',null,t); };
+
+function toggleL(n) {
+    if (state.map.hasLayer(state.layers[n])) state.map.removeLayer(state.layers[n]);
+    else state.map.addLayer(state.layers[n]);
+}
+
+document.getElementById('exportFull').onclick = async () => {
+    const w = state.viewing ? state.walks[state.selected] : state.current;
+    if (!w) return alert("Kein Walk.");
+    document.getElementById('exportLoader').classList.remove('hidden');
+    const zip = new JSZip();
+    try {
+        const can = await html2canvas(document.getElementById('map'), {useCORS: true});
+        zip.file("karte.jpg", can.toDataURL("image/jpeg", 0.7).split(',')[1], {base64:true});
+        let notes = `Tour: ${w.id}\n\n`;
+        w.entries.forEach((e, i) => {
+            notes += `[${e.type}] ${e.text || ''}\n`;
+            if(e.data) zip.file(`media/${e.type}_${i}.${e.type==='photo'?'jpg':'webm'}`, e.data.split(',')[1], {base64:true});
+        });
+        zip.file("notizen.txt", notes);
+        const b = await zip.generateAsync({type:"blob"});
+        const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `Walk.zip`; a.click();
+    } catch(e) { alert("Fehler"); }
+    document.getElementById('exportLoader').classList.add('hidden');
+};
+
+init();
+</script>
+</body>
+</html>
