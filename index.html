@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-    <title>Begleitinstrument — Button-Fix 📍</title>
+    <title>Begleitinstrument — Final Fix 📍</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -12,28 +12,25 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
     <style>
-        html, body { height: 100%; margin: 0; padding: 0; background: #eee; overflow: hidden; }
+        html, body { height: 100%; margin: 0; padding: 0; background: #eee; overflow: hidden; font-family: sans-serif; }
         
-        /* Karte ganz nach unten */
-        #map { position: absolute; top: 0; bottom: 0; width: 100%; z-index: 1; }
+        /* Karte als Basis im Hintergrund */
+        #map { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 1; }
 
-        /* UI-Container ganz nach oben */
-        .ui-layer { position: relative; z-index: 9999; pointer-events: none; height: 100vh; width: 100vw; }
-        .ui-layer button, .ui-layer div, .ui-layer label, .ui-layer input { pointer-events: auto; }
-
-        .top-ui { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; width: 95%; justify-content: center; }
-        .side-ui { position: fixed; top: 70px; right: 10px; width: 160px; display: flex; flex-direction: column; gap: 8px; }
-        .bottom-left { position: fixed; bottom: 20px; left: 10px; display: flex; flex-direction: column; gap: 10px; }
+        /* UI Elemente direkt positioniert mit hohem Z-Index */
+        .top-ui { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; width: 95%; justify-content: center; z-index: 1000; }
+        .side-ui { position: fixed; top: 70px; right: 10px; width: 160px; display: flex; flex-direction: column; gap: 8px; z-index: 1000; }
+        .bottom-left { position: fixed; bottom: 20px; left: 10px; display: flex; flex-direction: column; gap: 10px; z-index: 1000; }
 
         .panel { background: white; padding: 10px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); border: 1px solid #ccc; }
-        .btn { padding: 10px; border-radius: 8px; font-weight: bold; font-size: 11px; cursor: pointer; text-transform: uppercase; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-        .fab { width: 55px; height: 55px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; border: none; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .btn { padding: 10px; border-radius: 8px; font-weight: bold; font-size: 11px; cursor: pointer; text-transform: uppercase; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.2); pointer-events: auto; }
+        .fab { width: 55px; height: 55px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; border: none; box-shadow: 0 4px 10px rgba(0,0,0,0.3); pointer-events: auto; }
         
         .walk-item { padding: 8px; border-bottom: 1px solid #eee; font-size: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-radius: 6px; margin-bottom: 4px; background: #f9f9f9; }
         .active-walk { background: #2563eb !important; color: white; font-weight: bold; }
-        .delete-btn { color: #ff4d4d; padding: 5px; font-weight: bold; font-size: 18px; margin-left: 5px; }
+        .delete-btn { color: #ff4d4d; padding: 5px; font-weight: bold; font-size: 18px; margin-left: 5px; cursor: pointer; }
         
-        .loading-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 10000; color: white; flex-direction: column; align-items: center; justify-content: center; }
+        .loading-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 9999; color: white; flex-direction: column; align-items: center; justify-content: center; }
         .pin-marker { font-size: 22px; line-height: 1; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
     </style>
 </head>
@@ -43,36 +40,34 @@
 
 <div id="map"></div>
 
-<div class="ui-layer">
-    <div class="top-ui">
-        <button id="startWalk" class="btn bg-blue-600 text-white">NEUER WALK</button>
-        <button id="stopWalk" class="btn bg-red-600 text-white">BEENDEN</button>
-        <button id="exportFull" class="btn bg-black text-white">ZIP</button>
-    </div>
+<div class="top-ui">
+    <button id="startWalk" class="btn bg-blue-600 text-white">NEUER WALK</button>
+    <button id="stopWalk" class="btn bg-red-600 text-white">BEENDEN</button>
+    <button id="exportFull" class="btn bg-black text-white">ZIP</button>
+</div>
 
-    <div class="side-ui">
-        <div class="panel">
-            <p class="font-bold text-[9px] uppercase text-gray-500 mb-2">Ebenen</p>
-            <div class="text-[11px] space-y-2">
-                <label class="flex items-center gap-2"><input type="checkbox" checked onchange="toggleL('tempo')"> Route</label>
-                <label class="flex items-center gap-2"><input type="checkbox" checked onchange="toggleL('photo')"> Fotos</label>
-                <label class="flex items-center gap-2"><input type="checkbox" checked onchange="toggleL('mood')"> Stimmung</label>
-            </div>
-        </div>
-        <div class="panel max-h-[220px] overflow-y-auto">
-            <p class="font-bold text-[9px] uppercase text-gray-500 mb-2">Archiv</p>
-            <div id="walkList"></div>
+<div class="side-ui">
+    <div class="panel">
+        <p class="font-bold text-[9px] uppercase text-gray-500 mb-2">Ebenen</p>
+        <div class="text-[11px] space-y-2">
+            <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked onchange="toggleL('tempo')"> Route</label>
+            <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked onchange="toggleL('photo')"> Fotos</label>
+            <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked onchange="toggleL('mood')"> Stimmung</label>
         </div>
     </div>
-
-    <div class="bottom-left">
-        <button id="photoBtn" class="fab bg-white">📸</button>
-        <button id="audioToggle" class="fab bg-orange-400 text-white">▶️</button>
-        <button id="senseBtn" class="fab bg-[#3d633d] text-white">👁️</button>
-        <button id="thoughtBtn" class="fab bg-[#12345f] text-white">💭</button>
-        <button id="moodBtn" class="fab" style="background: radial-gradient(circle, #ff8c00, #ff4500);">🔋</button>
-        <button id="reCenter" class="fab bg-blue-500 text-white">🎯</button>
+    <div class="panel max-h-[220px] overflow-y-auto">
+        <p class="font-bold text-[9px] uppercase text-gray-500 mb-2">Archiv</p>
+        <div id="walkList"></div>
     </div>
+</div>
+
+<div class="bottom-left">
+    <button id="photoBtn" class="fab bg-white">📸</button>
+    <button id="audioToggle" class="fab bg-orange-400 text-white">▶️</button>
+    <button id="senseBtn" class="fab bg-[#3d633d] text-white">👁️</button>
+    <button id="thoughtBtn" class="fab bg-[#12345f] text-white">💭</button>
+    <button id="moodBtn" class="fab" style="background: radial-gradient(circle, #ff8c00, #ff4500);">🔋</button>
+    <button id="reCenter" class="fab bg-blue-500 text-white">🎯</button>
 </div>
 
 <script>
@@ -105,10 +100,14 @@ function init() {
             if (state.current) {
                 state.current.route.push(newLoc);
                 drawRoute(state.current);
-                localStorage.setItem('savedWalks', JSON.stringify(state.walks));
+                saveAll();
             }
         }
     }, null, { enableHighAccuracy: true });
+}
+
+function saveAll() {
+    localStorage.setItem('savedWalks', JSON.stringify(state.walks));
 }
 
 function drawRoute(w) {
@@ -123,7 +122,19 @@ function updateList() {
         const idx = state.walks.indexOf(w);
         const item = document.createElement('div');
         item.className = `walk-item ${state.selected === idx ? 'active-walk' : ''}`;
-        item.innerHTML = `<span style="flex:1" onclick="loadW(${idx})">Tour ${idx+1}</span><span class="delete-btn" onclick="delW(event, ${idx})">&times;</span>`;
+        
+        const text = document.createElement('span');
+        text.style.flex = "1";
+        text.innerText = `Tour ${idx+1}`;
+        text.onclick = () => loadW(idx);
+        
+        const del = document.createElement('span');
+        del.className = "delete-btn";
+        del.innerHTML = "&times;";
+        del.onclick = (e) => delW(e, idx);
+
+        item.appendChild(text);
+        item.appendChild(del);
         container.appendChild(item);
     });
 }
@@ -141,7 +152,7 @@ function delW(ev, idx) {
     ev.stopPropagation();
     if(confirm("Löschen?")) {
         state.walks.splice(idx, 1);
-        localStorage.setItem('savedWalks', JSON.stringify(state.walks));
+        saveAll();
         updateList();
     }
 }
@@ -159,7 +170,7 @@ document.getElementById('stopWalk').onclick = () => {
     if (state.current) {
         state.walks.push(state.current);
         state.current = null;
-        localStorage.setItem('savedWalks', JSON.stringify(state.walks));
+        saveAll();
         updateList();
         alert("Gespeichert.");
     }
@@ -177,10 +188,12 @@ function toggleL(n) {
     else state.map.addLayer(state.layers[n]);
 }
 
-// Dummy-Funktionen für Buttons (da keine Logik im Prompt war)
-document.getElementById('photoBtn').onclick = () => alert("Foto-Funktion bereit");
-document.getElementById('audioToggle').onclick = () => alert("Audio-Funktion bereit");
-document.getElementById('moodBtn').onclick = () => alert("Stimmungs-Eingabe");
+// Event-Listener für die restlichen Buttons
+document.getElementById('photoBtn').onclick = () => alert("Foto");
+document.getElementById('audioToggle').onclick = () => alert("Audio");
+document.getElementById('senseBtn').onclick = () => alert("Wahrnehmung");
+document.getElementById('thoughtBtn').onclick = () => alert("Gedanke");
+document.getElementById('moodBtn').onclick = () => alert("Stimmung");
 
 init();
 </script>
