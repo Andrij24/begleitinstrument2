@@ -281,37 +281,73 @@ document.getElementById('audioToggle').onclick = async () => {
         } catch(err) { alert("Mikrofon-Zugriff fehlt."); }
     }
 };
-
+//Export also Zip
 document.getElementById('exportFull').onclick = async () => {
+    // 1. Welchen Walk exportieren?
     const w = state.viewing ? state.walks[state.selected] : state.current;
-    if (!w) return alert("Kein Walk ausgewählt.");
-    
-    document.getElementById('exportLoader').style.display='flex';
+    if (!w) return alert("Bitte wähle erst eine Tour aus dem Archiv aus!");
+
+    document.getElementById('exportLoader').style.display = 'flex';
     const zip = new JSZip();
-    
+
     try {
-        const can = await html2canvas(document.getElementById('map'), {useCORS: true});
-        zip.file("karte.jpg", can.toDataURL("image/jpeg", 0.7).split(',')[1], {base64:true});
+        // 2. Karten-Screenshot (Das Herzstück)
+        // Wir nutzen 'useCORS', damit die Karten-Kacheln im Bild nicht schwarz bleiben
+        const canvas = await html2canvas(document.getElementById('map'), {
+            useCORS: true,
+            allowTaint: false,
+            ignoreElements: (el) => el.classList.contains('top-ui') || el.classList.contains('bottom-left')
+        });
+        const imgData = canvas.toDataURL("image/jpeg", 0.8).split(',')[1];
+        zip.file("Uebersichtskarte.jpg", imgData, {base64: true});
+
+        // 3. Text-Logbuch erstellen
+        let logbuch = `PROJEKT: Begleitinstrument\nTour-ID: ${w.id}\n--------------------------\n\n`;
+
+        // 4. Medien & Notizen verarbeiten
+        const mediaFolder = zip.folder("media");
         
-        let notes = `Walk: ${w.id}\n\n`;
         w.entries.forEach((e, i) => {
-            if(e.text) notes += `[${e.time}] ${e.type.toUpperCase()}: ${e.text}\n`;
-            if(e.data) {
-                const ext = e.type === 'photo' ? 'jpg' : 'webm';
-                zip.file(`media/${e.type}_${i}.${ext}`, e.data.split(',')[1], {base64:true});
+            // Text-Eintrag im Logbuch vermerken
+            const zeit = e.time || "Unbekannt";
+            const inhalt = e.text || (e.type === 'photo' ? "[Foto]" : "[Audio]");
+            logbuch += `[${zeit}] ${e.type.toUpperCase()}: ${inhalt}\n`;
+
+            // Wenn Mediendaten (Bild/Audio) da sind, ins ZIP packen
+            if (e.data && e.data.includes(',')) {
+                const parts = e.data.split(',');
+                const base64Data = parts[1];
+                
+                // Intelligente Endungserkennung (funktioniert für Android & iPhone)
+                let extension = "bin"; 
+                if (e.type === 'photo') extension = "jpg";
+                else if (e.data.includes("audio/webm")) extension = "webm";
+                else if (e.data.includes("audio/mp4") || e.data.includes("audio/aac")) extension = "m4a";
+                else if (e.data.includes("audio/wav")) extension = "wav";
+                else if (e.type === 'audio') extension = "webm"; // Fallback
+
+                mediaFolder.file(`${e.type}_${i}.${extension}`, base64Data, {base64: true});
             }
         });
-        zip.file("notizen.txt", notes);
+
+        zip.file("Logbuch.txt", logbuch);
+
+        // 5. ZIP generieren und Download starten
+        const content = await zip.generateAsync({type: "blob"});
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(content);
         
-        const blob = await zip.generateAsync({type:"blob"});
-        const a = document.createElement("a");
-        const originalIndex = state.walks.indexOf(w);
-        a.href = URL.createObjectURL(blob);
-        a.download = `Walk_${originalIndex + 1}.zip`;
-        a.click();
-    } catch(e) { alert("Export-Fehler."); }
-    
-    document.getElementById('exportLoader').style.display='none';
+        // Dateiname basierend auf Tour-Nummer oder ID
+        const dateiname = `Tour_Export_${w.id.replace(/[/\\?%*:|"<>]/g, '-')}.zip`;
+        link.download = dateiname;
+        link.click();
+
+    } catch (err) {
+        console.error(err);
+        alert("Export fehlgeschlagen. Fehler: " + err.message);
+    }
+
+    document.getElementById('exportLoader').style.display = 'none';
 };
 
 init();
