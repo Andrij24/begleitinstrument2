@@ -57,7 +57,24 @@
         <div id="walkList"></div>
     </div>
 </div>
-
+    
+<div class="side-ui">
+    <div class="panel">
+        <button id="styleToggle" class="btn bg-yellow-400 text-black w-full mb-3">ANSICHT WECHSELN</button>
+        <p class="font-bold text-[9px] uppercase text-gray-400 mb-2 border-b">Ebenen</p>
+        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleTempo" type="checkbox" checked> <label>Route (Schwarz)</label></div>
+        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleMood" type="checkbox" checked> <label>Stimmung</label></div>
+        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleThought" type="checkbox" checked> <label>Gedanken</label></div>
+        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleSense" type="checkbox" checked> <label>Wahrnehmung</label></div>
+        <div class="flex items-center gap-2 mb-1 text-xs"><input id="togglePhoto" type="checkbox" checked> <label>Fotos</label></div>
+        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleAudio" type="checkbox" checked> <label>Audio</label></div>
+    </div>
+    <div class="panel max-h-[150px] overflow-y-auto">
+        <p class="font-bold text-[9px] uppercase text-gray-400 border-b mb-1">Archiv</p>
+        <div id="walkList"></div>
+    </div>
+</div>
+    
 <div class="bottom-left">
     <button id="photoBtn" class="fab bg-white">📸</button>
     <button id="audioToggle" class="fab bg-orange-400 text-white">▶️</button>
