@@ -83,6 +83,45 @@
     <button id="moodBtn" class="fab" style="background: radial-gradient(circle, #ff8c00, #ff4500);">🔋</button>
 </div>
 
+    <script>
+const state = {
+    walks: [],
+    current: null,
+    map: null,
+    currentStyle: 'standard',
+    tiles: null,
+    audioRecorder: null,
+    audioChunks: [],
+    isRecording: false,
+    layers: { 
+        tempo: L.layerGroup(), mood: L.layerGroup(), thought: L.layerGroup(), 
+        sense: L.layerGroup(), photo: L.layerGroup(), audio: L.layerGroup() 
+    }
+};
+
+let liveMarker = null;
+
+function initMap() {
+    state.map = L.map('map', { zoomControl: false }).setView([47.23, 9.61], 15);
+    state.tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.map);
+    Object.values(state.layers).forEach(l => l.addTo(state.map));
+    
+    navigator.geolocation.watchPosition(pos => {
+        const { latitude, longitude } = pos.coords;
+        if (!liveMarker) {
+            liveMarker = L.circleMarker([latitude, longitude], { radius: 8, fillColor: "#2563eb", color: "#fff", weight: 2, fillOpacity: 1 }).addTo(state.map);
+            state.map.panTo([latitude, longitude]);
+        } else {
+            liveMarker.setLatLng([latitude, longitude]);
+        }
+        if (state.current) {
+            state.current.route.push([latitude, longitude]);
+            renderRoute();
+        }
+    }, null, { enableHighAccuracy: true });
+}
+
+
 <script>
 const state = {
     walks: JSON.parse(localStorage.getItem('savedWalks') || '[]'),
