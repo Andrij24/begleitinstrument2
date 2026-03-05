@@ -104,8 +104,13 @@ let liveMarker = null;
 function initMap() {
     state.map = L.map('map', { zoomControl: false }).setView([47.23, 9.61], 15);
     state.tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.map);
+    
+    // Alle Layer zur Karte hinzufügen
     Object.values(state.layers).forEach(l => l.addTo(state.map));
     
+    // Checkbox-Logik initialisieren
+    setupLayerToggles();
+
     navigator.geolocation.watchPosition(pos => {
         const { latitude, longitude } = pos.coords;
         if (!liveMarker) {
@@ -121,289 +126,133 @@ function initMap() {
     }, null, { enableHighAccuracy: true });
 }
 
-
-<script>
-const state = {
-    walks: JSON.parse(localStorage.getItem('savedWalks') || '[]'),
-    current: JSON.parse(localStorage.getItem('currentWalk') || 'null'),
-    map: null, isRec: false, viewing: false, selected: null,
-    lastStableLoc: null,
-    layers: { tempo: L.layerGroup(), mood: L.layerGroup(), thought: L.layerGroup(), sense: L.layerGroup(), photo: L.layerGroup(), audio: L.layerGroup() }
-};
-
-function getDist(lat1, lon1, lat2, lon2) {
-    const R = 6371000; 
-    const dLat = (lat2-lat1) * Math.PI/180;
-    const dLon = (lon2-lon1) * Math.PI/180;
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
-
-function save() {
-    localStorage.setItem('currentWalk', JSON.stringify(state.current));
-    localStorage.setItem('savedWalks', JSON.stringify(state.walks));
-}
-
-function init() {
-    state.map = L.map('map', { zoomControl: false, preferCanvas: true }).setView([47.23, 9.61], 15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { crossOrigin: true }).addTo(state.map);
-    Object.values(state.layers).forEach(l => l.addTo(state.map));
-
-    if (state.current) { 
-        drawRoute(state.current); 
-        state.current.entries.forEach(drawM); 
-    }
-    updateList();
-
-    let liveM = null;
-    navigator.geolocation.watchPosition(p => {
-        const newLoc = [p.coords.latitude, p.coords.longitude];
-        if (!state.lastStableLoc || getDist(state.lastStableLoc[0], state.lastStableLoc[1], newLoc[0], newLoc[1]) > 1.5) {
-            state.lastStableLoc = newLoc;
-            if (!liveM) {
-                liveM = L.circleMarker(newLoc, {radius:7, fillColor:"#2563eb", color:"#fff", weight:2, fillOpacity:1}).addTo(state.map);
-            } else {
-                liveM.setLatLng(newLoc);
-            }
-            if (!state.viewing) state.map.panTo(newLoc);
-            if (state.current && !state.viewing) {
-                state.current.route.push(newLoc);
-                drawRoute(state.current);
-                save();
-            }
-        }
-    }, null, { enableHighAccuracy: true });
-}
-
-function toggleL(n) {
-    if (state.map.hasLayer(state.layers[n])) state.map.removeLayer(state.layers[n]);
-    else state.map.addLayer(state.layers[n]);
-}
-
-function drawRoute(w) {
-    state.layers.tempo.clearLayers();
-    if (w && w.route && w.route.length > 1) {
-        L.polyline(w.route, {color:'black', weight:3}).addTo(state.layers.tempo);
-    }
-}
-
-function drawM(e) {
-    const l = state.layers[e.type]; if(!l) return;
-    if (e.type === 'photo' || e.type === 'audio') {
-        const icon = L.divIcon({ html: `<div style="font-size:20px;">${e.type==='photo'?'📸':'🎙️'}</div>`, className: 'custom-div-icon' });
-        const m = L.marker([e.lat, e.lng], {icon}).addTo(l);
-        if (e.data) m.bindPopup(e.type==='photo'?`<img src="${e.data}" width="120">`:`<audio controls src="${e.data}"></audio>`);
-    } else {
-        const colors = { mood: '#ff4500', thought: '#12345f', sense: '#3d633d' };
-        const m = L.circleMarker([e.lat, e.lng], { radius: 10, fillColor: colors[e.type], color: '#000', weight: 1, fillOpacity: 0.8 }).addTo(l);
-        if (e.text) m.bindPopup(`<b>${e.type.toUpperCase()}:</b><br>${e.text}`);
-    }
-}
-
-function updateList() {
-    const container = document.getElementById('walkList');
-    container.innerHTML = "";
-    
-    // Wir zeigen die Liste umgekehrt an (neueste oben),
-    // aber die Nummern vergeben wir nach der ursprünglichen Reihenfolge.
-    const reversedWalks = [...state.walks].reverse();
-
-    reversedWalks.forEach((w, i) => {
-        // Berechne die ursprüngliche Nummer (Index + 1)
-        const originalIndex = state.walks.indexOf(w);
-        const tourNr = originalIndex + 1;
-
-        const item = document.createElement('div');
-        item.className = `walk-item ${state.selected === originalIndex ? 'active-walk' : ''}`;
-        
-        const title = document.createElement('span');
-        title.innerText = `Tour ${tourNr} (${w.id.split(',')[0]})`;
-        title.style.flex = "1";
-        title.onclick = () => loadW(originalIndex);
-
-        const del = document.createElement('span');
-        del.innerHTML = "&times;";
-        del.className = "delete-btn";
-        del.onclick = (ev) => {
-            ev.stopPropagation();
-            if(confirm(`Tour ${tourNr} wirklich löschen?`)) {
-                state.walks.splice(originalIndex, 1);
-                if(state.selected === originalIndex) {
-                    state.selected = null;
-                    state.viewing = false;
-                    Object.values(state.layers).forEach(layer => layer.clearLayers());
-                }
-                save();
-                updateList();
-            }
+// Verknüpft die Checkboxen mit den Leaflet LayerGroups
+function setupLayerToggles() {
+    const toggles = {
+        'toggleTempo': 'tempo', 'toggleMood': 'mood', 'toggleThought': 'thought',
+        'toggleSense': 'sense', 'togglePhoto': 'photo', 'toggleAudio': 'audio'
+    };
+    Object.entries(toggles).forEach(([id, layer]) => {
+        document.getElementById(id).onchange = (e) => {
+            if (e.target.checked) state.map.addLayer(state.layers[layer]);
+            else state.map.removeLayer(state.layers[layer]);
         };
-
-        item.appendChild(title);
-        item.appendChild(del);
-        container.appendChild(item);
     });
 }
 
-function loadW(originalIndex) {
-    state.viewing = true;
-    state.selected = originalIndex;
-    const w = state.walks[originalIndex];
-    
-    Object.values(state.layers).forEach(l => l.clearLayers());
-    drawRoute(w);
-    if(w.entries) w.entries.forEach(drawM);
-    
-    if (w.route && w.route.length > 0) {
-        state.map.fitBounds(L.polyline(w.route).getBounds());
+document.getElementById('styleToggle').onclick = () => {
+    state.map.removeLayer(state.tiles);
+    if (state.currentStyle === 'standard') {
+        state.tiles = L.tileLayer('https://{s}.tile.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png').addTo(state.map);
+        state.currentStyle = 'bright';
+    } else {
+        state.tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.map);
+        state.currentStyle = 'standard';
     }
-    updateList();
+};
+
+function renderRoute() {
+    state.layers.tempo.clearLayers();
+    if (state.current.route.length < 2) return;
+    L.polyline(state.current.route, { color: 'black', weight: 4, opacity: 1, className: 'rough-path' }).addTo(state.layers.tempo);
 }
 
 document.getElementById('startWalk').onclick = () => {
-    state.viewing = false;
-    state.selected = null;
-    state.current = { id: new Date().toLocaleString(), route: [], entries: [] };
+    state.current = { id: new Date().toLocaleTimeString(), route: [], entries: [] };
     Object.values(state.layers).forEach(l => l.clearLayers());
-    save();
-    updateList();
-    alert("Live-Tracking gestartet.");
+    alert("Walk gestartet.");
 };
 
 document.getElementById('stopWalk').onclick = () => {
-    if (state.current) {
-        state.walks.push(state.current);
-        state.current = null;
-        save();
-        updateList();
-        alert("Tour gespeichert.");
-    } else {
-        alert("Kein aktiver Walk.");
-    }
+    if (!state.current) return;
+    state.walks.push(state.current);
+    updateArchiveUI();
+    state.current = null;
+    alert("Walk im Archiv gespeichert.");
 };
 
-function addE(type, data = null, text = null) {
-    if (!state.current || state.viewing) return alert("Starte erst einen NEUEN WALK!");
-    const loc = state.lastStableLoc || [state.map.getCenter().lat, state.map.getCenter().lng];
-    const entry = { type, lat: loc[0], lng: loc[1], data, text, time: new Date().toLocaleTimeString() };
+function addEntry(type, data = {}) {
+    if (!state.current) return alert("Bitte starte erst einen Walk!");
+    const pos = liveMarker.getLatLng();
+    const entry = { type, location: { lat: pos.lat, lng: pos.lng }, timestamp: new Date().toLocaleTimeString(), ...data };
     state.current.entries.push(entry);
-    drawM(entry);
-    save();
+    drawMarker(entry);
 }
 
-document.getElementById('senseBtn').onclick = () => {
-    const txt = prompt("Wahrnehmung:");
-    if (txt) addE('sense', null, txt);
-};
-document.getElementById('thoughtBtn').onclick = () => {
-    const txt = prompt("Gedanke:");
-    if (txt) addE('thought', null, txt);
-};
-document.getElementById('moodBtn').onclick = () => {
-    const txt = prompt("Befinden/Batterie:");
-    if (txt) addE('mood', null, txt);
-};
+function drawMarker(e) {
+    const loc = [e.location.lat, e.location.lng];
+    if (e.type === 'mood') L.circleMarker(loc, { radius: 22, fillColor: '#ff4500', color: '#8b0000', weight: 2, fillOpacity: 0.7 }).addTo(state.layers.mood);
+    else if (e.type === 'thought') L.circleMarker(loc, { radius: 7, fillColor: '#12345f', color: '#fff', weight: 1, fillOpacity: 0.9 }).addTo(state.layers.thought);
+    else if (e.type === 'sense') L.circleMarker(loc, { radius: 9, fillColor: '#3d633d', color: '#1a2e1a', weight: 1.5, fillOpacity: 0.9 }).addTo(state.layers.sense);
+    else if (e.type === 'photo') {
+        const photoIcon = L.divIcon({ html: '<div style="font-size: 24px;">📸</div>', className: 'custom-div-icon', iconSize: [30, 30] });
+        L.marker(loc, {icon: photoIcon}).addTo(state.layers.photo).bindPopup(`<img src="${e.photo}" width="150" style="border-radius:8px;">`);
+    }
+    else if (e.type === 'audio') {
+        const audioIcon = L.divIcon({ html: '<div style="font-size: 24px;">🔊</div>', className: 'custom-div-icon', iconSize: [30, 30] });
+        L.marker(loc, {icon: audioIcon}).addTo(state.layers.audio).bindPopup(`<audio controls src="${e.audioUrl}" style="width:200px; height:30px;"></audio>`);
+    }
+}
 
-document.getElementById('photoBtn').onclick = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = e => {
-        const reader = new FileReader();
-        reader.onload = v => addE('photo', v.target.result);
-        reader.readAsDataURL(e.target.files[0]);
-    };
-    input.click();
-};
-
+// AUDIO LOGIK
 document.getElementById('audioToggle').onclick = async () => {
-    if (state.isRec) {
-        state.rec.stop();
-        state.isRec = false;
-        document.getElementById('audioToggle').innerText = "▶️";
-    } else {
+    if (!state.current) return alert("Walk starten!");
+    if (!state.isRecording) {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            state.rec = new MediaRecorder(stream);
-            let chunks = [];
-            state.rec.ondataavailable = ev => chunks.push(ev.data);
-            state.rec.onstop = () => {
-                const reader = new FileReader();
-                reader.onload = () => addE('audio', reader.result);
-                reader.readAsDataURL(new Blob(chunks));
+            state.audioRecorder = new MediaRecorder(stream);
+            state.audioChunks = [];
+            state.audioRecorder.ondataavailable = e => state.audioChunks.push(e.data);
+            state.audioRecorder.onstop = () => {
+                const blob = new Blob(state.audioChunks, { type: 'audio/webm' });
+                addEntry('audio', { audioUrl: URL.createObjectURL(blob), audioBlob: blob });
             };
-            state.rec.start();
-            state.isRec = true;
+            state.audioRecorder.start();
+            state.isRecording = true;
             document.getElementById('audioToggle').innerText = "⏹️";
-        } catch(err) { alert("Mikrofon-Zugriff fehlt."); }
+            document.getElementById('audioToggle').classList.replace('bg-orange-400', 'bg-red-600');
+        } catch(e) { alert("Mikrofon-Zugriff verweigert."); }
+    } else {
+        state.audioRecorder.stop();
+        state.isRecording = false;
+        document.getElementById('audioToggle').innerText = "▶️";
+        document.getElementById('audioToggle').classList.replace('bg-red-600', 'bg-orange-400');
     }
 };
-//Export also Zip
-document.getElementById('exportFull').onclick = async () => {
-    // 1. Welchen Walk exportieren?
-    const w = state.viewing ? state.walks[state.selected] : state.current;
-    if (!w) return alert("Bitte wähle erst eine Tour aus dem Archiv aus!");
 
-    document.getElementById('exportLoader').style.display = 'flex';
-    const zip = new JSZip();
+// ZIP EXPORT
+document.getElementById('exportFull').onclick = async () => {
+    const walk = state.current || state.walks[state.walks.length - 1];
+    if (!walk) return alert("Kein Walk vorhanden.");
+
+    const btn = document.getElementById('exportFull');
+    btn.innerText = "⏳..."; btn.disabled = true;
 
     try {
-        // 2. Karten-Screenshot (Das Herzstück)
-        // Wir nutzen 'useCORS', damit die Karten-Kacheln im Bild nicht schwarz bleiben
-        const canvas = await html2canvas(document.getElementById('map'), {
-            useCORS: true,
-            allowTaint: false,
-            ignoreElements: (el) => el.classList.contains('top-ui') || el.classList.contains('bottom-left')
-        });
-        const imgData = canvas.toDataURL("image/jpeg", 0.8).split(',')[1];
-        zip.file("Uebersichtskarte.jpg", imgData, {base64: true});
-
-        // 3. Text-Logbuch erstellen
-        let logbuch = `PROJEKT: Begleitinstrument\nTour-ID: ${w.id}\n--------------------------\n\n`;
-
-        // 4. Medien & Notizen verarbeiten
-        const mediaFolder = zip.folder("media");
+        const zip = new JSZip();
+        const media = zip.folder("medien");
         
-        w.entries.forEach((e, i) => {
-            // Text-Eintrag im Logbuch vermerken
-            const zeit = e.time || "Unbekannt";
-            const inhalt = e.text || (e.type === 'photo' ? "[Foto]" : "[Audio]");
-            logbuch += `[${zeit}] ${e.type.toUpperCase()}: ${inhalt}\n`;
+        const canvas = await html2canvas(document.getElementById('map'), { 
+            useCORS: true, 
+            ignoreElements: (el) => el.classList.contains('top-ui') || el.classList.contains('side-ui') 
+        });
+        
+        zip.file("karte.jpg", canvas.toDataURL("image/jpeg", 0.8).split(',')[1], {base64: true});
+        zip.file("daten.json", JSON.stringify(walk, null, 2));
 
-            // Wenn Mediendaten (Bild/Audio) da sind, ins ZIP packen
-            if (e.data && e.data.includes(',')) {
-                const parts = e.data.split(',');
-                const base64Data = parts[1];
-                
-                // Intelligente Endungserkennung (funktioniert für Android & iPhone)
-                let extension = "bin"; 
-                if (e.type === 'photo') extension = "jpg";
-                else if (e.data.includes("audio/webm")) extension = "webm";
-                else if (e.data.includes("audio/mp4") || e.data.includes("audio/aac")) extension = "m4a";
-                else if (e.data.includes("audio/wav")) extension = "wav";
-                else if (e.type === 'audio') extension = "webm"; // Fallback
-
-                mediaFolder.file(`${e.type}_${i}.${extension}`, base64Data, {base64: true});
-            }
+        walk.entries.forEach((e, i) => {
+            const ts = e.timestamp.replace(/:/g, '-');
+            if (e.photo) media.file(`foto_${ts}_${i}.jpg`, e.photo.split(',')[1], {base64: true});
+            if (e.audioBlob) media.file(`audio_${ts}_${i}.webm`, e.audioBlob);
         });
 
-        zip.file("Logbuch.txt", logbuch);
-
-        // 5. ZIP generieren und Download starten
-        const content = await zip.generateAsync({type: "blob"});
+        const content = await zip.generateAsync({type:"blob"});
         const link = document.createElement("a");
         link.href = URL.createObjectURL(content);
-        
-        // Dateiname basierend auf Tour-Nummer oder ID
-        const dateiname = `Tour_Export_${w.id.replace(/[/\\?%*:|"<>]/g, '-')}.zip`;
-        link.download = dateiname;
+        link.download = `Walk_${walk.id}.zip`;
         link.click();
-
-    } catch (err) {
-        console.error(err);
-        alert("Export fehlgeschlagen. Fehler: " + err.message);
-    }
-
-    document.getElementById('exportLoader').style.display = 'none';
+    } catch (err) { alert("Export-Fehler"); }
+    btn.innerText = "ZIP EXPORT"; btn.disabled = false;
 };
 
 init();
