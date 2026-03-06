@@ -49,7 +49,8 @@
             <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('thought')"> Gedanken</label>
             <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('sense')"> Wahrn.</label>
             <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('photo')"> Fotos</label>
-            <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('audio')"> Audio</label>
+            <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('audio')"> Sound</label>
+            <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('audio')"> Sprachnachricht</label>
         </div>
     </div>
     <div class="panel max-h-[200px] overflow-y-auto">
@@ -67,7 +68,8 @@
         <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleThought" type="checkbox" checked> <label>Gedanken</label></div>
         <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleSense" type="checkbox" checked> <label>Wahrnehmung</label></div>
         <div class="flex items-center gap-2 mb-1 text-xs"><input id="togglePhoto" type="checkbox" checked> <label>Fotos</label></div>
-        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleAudio" type="checkbox" checked> <label>Audio</label></div>
+        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleAudio" type="checkbox" checked> <label>Sound</label></div>
+        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleAudio" type="checkbox" checked> <label>Sprachnachricht</label></div>
     </div>
     <div class="panel max-h-[150px] overflow-y-auto">
         <p class="font-bold text-[9px] uppercase text-gray-400 border-b mb-1">Archiv</p>
@@ -83,7 +85,8 @@
      <button id="audioToggle" class="fab bg-orange-400 text-white">▶️</button>
     <button id="moodBtn" class="fab" style="background: radial-gradient(circle, #ff8c00, #ff4500);">🔋</button>
 </div>
-    <script>
+    
+<script>
 const state = {
     walks: [],
     current: null,
@@ -98,7 +101,7 @@ const state = {
         sense: L.layerGroup(), photo: L.layerGroup(), audio: L.layerGroup(), audio: L.layerGroup()
     }
 };
-
+ 
 let liveMarker = null;
  
 function initMap() {
@@ -120,39 +123,7 @@ function initMap() {
         }
     }, null, { enableHighAccuracy: true });
 }
-    
-    // Checkbox-Logik initialisieren
-    setupLayerToggles();
-
-    navigator.geolocation.watchPosition(pos => {
-        const { latitude, longitude } = pos.coords;
-        if (!liveMarker) {
-            liveMarker = L.circleMarker([latitude, longitude], { radius: 8, fillColor: "#2563eb", color: "#fff", weight: 2, fillOpacity: 1 }).addTo(state.map);
-            state.map.panTo([latitude, longitude]);
-        } else {
-            liveMarker.setLatLng([latitude, longitude]);
-        }
-        if (state.current) {
-            state.current.route.push([latitude, longitude]);
-            renderRoute();
-        }
-    }, null, { enableHighAccuracy: true });
-}
-
-// Verknüpft die Checkboxen mit den Leaflet LayerGroups
-function setupLayerToggles() {
-    const toggles = {
-        'toggleTempo': 'tempo', 'toggleMood': 'mood', 'toggleThought': 'thought',
-        'toggleSense': 'sense', 'togglePhoto': 'photo', 'toggleAudio': 'Sound','toggleAudio': 'Sprachnachricht'
-    };
-    Object.entries(toggles).forEach(([id, layer]) => {
-        document.getElementById(id).onchange = (e) => {
-            if (e.target.checked) state.map.addLayer(state.layers[layer]);
-            else state.map.removeLayer(state.layers[layer]);
-        };
-    });
-}
-
+ 
 document.getElementById('styleToggle').onclick = () => {
     state.map.removeLayer(state.tiles);
     if (state.currentStyle === 'standard') {
@@ -163,7 +134,7 @@ document.getElementById('styleToggle').onclick = () => {
         state.currentStyle = 'standard';
     }
 };
-
+    
 function renderRoute() {
     state.layers.tempo.clearLayers();
     if (state.current.route.length < 2) return;
