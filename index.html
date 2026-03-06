@@ -80,9 +80,9 @@
     <button id="audioToggle" class="fab bg-orange-400 text-white">▶️</button>
     <button id="senseBtn" class="fab bg-[#3d633d] text-white">👁️</button>
     <button id="thoughtBtn" class="fab bg-[#12345f] text-white">💭</button>
+     <button id="audioToggle" class="fab bg-orange-400 text-white">▶️</button>
     <button id="moodBtn" class="fab" style="background: radial-gradient(circle, #ff8c00, #ff4500);">🔋</button>
 </div>
-
     <script>
 const state = {
     walks: [],
@@ -93,20 +93,33 @@ const state = {
     audioRecorder: null,
     audioChunks: [],
     isRecording: false,
-    layers: { 
-        tempo: L.layerGroup(), mood: L.layerGroup(), thought: L.layerGroup(), 
-        sense: L.layerGroup(), photo: L.layerGroup(), audio: L.layerGroup() 
+    layers: {
+        tempo: L.layerGroup(), mood: L.layerGroup(), thought: L.layerGroup(),
+        sense: L.layerGroup(), photo: L.layerGroup(), audio: L.layerGroup(), audio: L.layerGroup()
     }
 };
 
 let liveMarker = null;
-
+ 
 function initMap() {
     state.map = L.map('map', { zoomControl: false }).setView([47.23, 9.61], 15);
     state.tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.map);
-    
-    // Alle Layer zur Karte hinzufügen
     Object.values(state.layers).forEach(l => l.addTo(state.map));
+   
+    navigator.geolocation.watchPosition(pos => {
+        const { latitude, longitude } = pos.coords;
+        if (!liveMarker) {
+            liveMarker = L.circleMarker([latitude, longitude], { radius: 8, fillColor: "#2563eb", color: "#fff", weight: 2, fillOpacity: 1 }).addTo(state.map);
+            state.map.panTo([latitude, longitude]);
+        } else {
+            liveMarker.setLatLng([latitude, longitude]);
+        }
+        if (state.current) {
+            state.current.route.push([latitude, longitude]);
+            renderRoute();
+        }
+    }, null, { enableHighAccuracy: true });
+}
     
     // Checkbox-Logik initialisieren
     setupLayerToggles();
@@ -130,7 +143,7 @@ function initMap() {
 function setupLayerToggles() {
     const toggles = {
         'toggleTempo': 'tempo', 'toggleMood': 'mood', 'toggleThought': 'thought',
-        'toggleSense': 'sense', 'togglePhoto': 'photo', 'toggleAudio': 'audio'
+        'toggleSense': 'sense', 'togglePhoto': 'photo', 'toggleAudio': 'Sound','toggleAudio': 'Sprachnachricht'
     };
     Object.entries(toggles).forEach(([id, layer]) => {
         document.getElementById(id).onchange = (e) => {
@@ -188,13 +201,42 @@ function drawMarker(e) {
         const photoIcon = L.divIcon({ html: '<div style="font-size: 24px;">📸</div>', className: 'custom-div-icon', iconSize: [30, 30] });
         L.marker(loc, {icon: photoIcon}).addTo(state.layers.photo).bindPopup(`<img src="${e.photo}" width="150" style="border-radius:8px;">`);
     }
-    else if (e.type === 'audio') {
+    else if (e.type === 'Sound') {
+        const audioIcon = L.divIcon({ html: '<div style="font-size: 24px;">🔊</div>', className: 'custom-div-icon', iconSize: [30, 30] });
+        L.marker(loc, {icon: audioIcon}).addTo(state.layers.audio).bindPopup(`<audio controls src="${e.audioUrl}" style="width:200px; height:30px;"></audio>`);
+    }
+     }
+    else if (e.type === 'Sprachaufzeichnung') {
         const audioIcon = L.divIcon({ html: '<div style="font-size: 24px;">🔊</div>', className: 'custom-div-icon', iconSize: [30, 30] });
         L.marker(loc, {icon: audioIcon}).addTo(state.layers.audio).bindPopup(`<audio controls src="${e.audioUrl}" style="width:200px; height:30px;"></audio>`);
     }
 }
 
-// AUDIO LOGIK
+// AUDIO LOGIK (Sound)
+document.getElementById('audioToggle').onclick = async () => {
+    if (!state.current) return alert("Walk starten!");
+    if (!state.isRecording) {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            state.audioRecorder = new MediaRecorder(stream);
+            state.audioChunks = [];
+            state.audioRecorder.ondataavailable = e => state.audioChunks.push(e.data);
+            state.audioRecorder.onstop = () => {
+                const blob = new Blob(state.audioChunks, { type: 'audio/webm' });
+                addEntry('audio', { audioUrl: URL.createObjectURL(blob), audioBlob: blob });
+            };
+            state.audioRecorder.start();
+            state.isRecording = true;
+            document.getElementById('audioToggle').innerText = "⏹️";
+            document.getElementById('audioToggle').classList.replace('bg-orange-400', 'bg-red-600');
+        } catch(e) { alert("Mikrofon-Zugriff verweigert."); }
+    } else {
+        state.audioRecorder.stop();
+        state.isRecording = false;
+        document.getElementById('audioToggle').innerText = "▶️";
+        document.getElementById('audioToggle').classList.replace('bg-red-600', 'bg-orange-400');
+    }
+    // AUDIO LOGIK (Sprachnachricht)
 document.getElementById('audioToggle').onclick = async () => {
     if (!state.current) return alert("Walk starten!");
     if (!state.isRecording) {
