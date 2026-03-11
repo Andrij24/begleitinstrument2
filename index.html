@@ -3,59 +3,51 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-    <title>Begleitinstrument — Finaler Export</title>
+    <title>Begleitinstrument — Analyse & Reflexion</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
     <style>
-        html, body, #map { height: 100%; margin: 0; background: #fff; overflow: hidden; }
+        html, body, #map { height: 100%; margin: 0; background: #fff; overflow: hidden; font-family: sans-serif; }
         #map { width: 100%; height: 100vh; }
         .rough-path { filter: url(#roughFilter); stroke-linecap: round; }
         .top-ui { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 1000; display: flex; gap: 8px; }
-        .side-ui { position: fixed; top: 70px; right: 12px; z-index: 1000; width: 180px; display: flex; flex-direction: column; gap: 10px; }
+        .side-ui { position: fixed; top: 70px; right: 12px; z-index: 1000; width: 220px; display: flex; flex-direction: column; gap: 10px; }
         .bottom-left { position: fixed; bottom: 20px; left: 12px; z-index: 1000; display: flex; flex-direction: column; gap: 12px; }
         .panel { background: white; padding: 12px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); border: 1px solid #ddd; }
-        .btn { padding: 10px 14px; border-radius: 10px; font-weight: bold; font-size: 11px; cursor: pointer; text-transform: uppercase; border: none; }
-        .fab { width: 60px; height: 60px; border-radius: 30px; display: flex; align-items: center; justify-content: center; font-size: 24px; border: none; box-shadow: 0 6px 12px rgba(0,0,0,0.2); cursor: pointer; }
-        .walk-item { padding: 6px; border-bottom: 1px solid #eee; font-size: 10px; cursor: pointer; }
-        .custom-div-icon { background: none; border: none; }
+        .btn { padding: 10px 14px; border-radius: 10px; font-weight: bold; font-size: 10px; cursor: pointer; text-transform: uppercase; border: none; }
+        .fab { width: 55px; height: 55px; border-radius: 30px; display: flex; align-items: center; justify-content: center; font-size: 22px; border: none; box-shadow: 0 6px 12px rgba(0,0,0,0.2); cursor: pointer; }
+        .walk-item { padding: 8px; border-bottom: 1px solid #eee; font-size: 11px; display: flex; align-items: center; gap: 8px; }
+        .color-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
     </style>
 </head>
 <body>
 
 <svg width="0" height="0" style="position:absolute">
-  <filter id="roughFilter">
-    <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="3" result="noise"/>
-    <feDisplacementMap in="SourceGraphic" in2="noise" scale="4" />
-  </filter>
+  <filter id="roughFilter"><feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="3" result="noise"/><feDisplacementMap in="SourceGraphic" in2="noise" scale="4" /></filter>
 </svg>
 
 <div id="map"></div>
 
 <div class="top-ui">
-    <button id="startWalk" class="btn bg-blue-600 text-white">NEUER WALK</button>
-    <button id="stopWalk" class="btn bg-red-600 text-white">BEENDEN</button>
-    <button id="exportFull" class="btn bg-black text-white">ZIP EXPORT</button>
+    <button id="startWalk" class="btn bg-blue-600 text-white">START</button>
+    <button id="stopWalk" class="btn bg-red-600 text-white">STOP</button>
+    <button id="exportFull" class="btn bg-black text-white">ZIP</button>
 </div>
 
 <div class="side-ui">
-    <div class="panel">
-        <button id="styleToggle" class="btn bg-yellow-400 text-black w-full mb-3">ANSICHT WECHSELN</button>
-        <p class="font-bold text-[9px] uppercase text-gray-400 mb-2 border-b">Ebenen</p>
-        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleTempo" type="checkbox" checked> <label>Route</label></div>
-        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleMood" type="checkbox" checked> <label>Stimmung</label></div>
-        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleThought" type="checkbox" checked> <label>Gedanken</label></div>
-        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleSense" type="checkbox" checked> <label>Wahrnehmung</label></div>
-        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleSoundLayer" type="checkbox" checked> <label>Umgebungssound</label></div>
-        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleVoiceLayer" type="checkbox" checked> <label>Sprachnachricht</label></div>
-    </div>
-    <div class="panel max-h-[150px] overflow-y-auto">
-        <p class="font-bold text-[9px] uppercase text-gray-400 border-b mb-1">Archiv</p>
+    <div class="panel max-h-[200px] overflow-y-auto">
+        <p class="font-bold text-[10px] uppercase text-gray-500 mb-2 border-b">Vergleichs-Archiv</p>
         <div id="walkList"></div>
+    </div>
+    
+    <div class="panel">
+        <p class="font-bold text-[10px] uppercase text-blue-600 mb-2">Reflexion der Strecke</p>
+        <textarea id="reflectionText" class="w-full text-xs p-2 border rounded h-24 mb-2" placeholder="Was fällt dir beim Vergleich auf?"></textarea>
+        <button id="saveReflection" class="btn bg-blue-100 text-blue-700 w-full">Reflexion Speichern</button>
     </div>
 </div>
 
@@ -69,210 +61,150 @@
 </div>
 
 <script>
+// Farben für verschiedene Walks
+const walkColors = ['#000000', '#FF0000', '#0000FF', '#008000', '#800080', '#FF8C00'];
+
 const state = {
-    walks: [],
+    walks: JSON.parse(localStorage.getItem('myWalks') || '[]'),
     current: null,
     map: null,
+    activeWalkLayers: {}, // Speichert die Layer-Gruppen pro Walk ID
     audioRecorder: null,
     audioChunks: [],
-    isRecording: false,
-    layers: {
-        tempo: L.layerGroup(), mood: L.layerGroup(), thought: L.layerGroup(),
-        sense: L.layerGroup(), photo: L.layerGroup(), 
-        sound: L.layerGroup(), voice: L.layerGroup()
-    }
+    isRecording: false
 };
-
-let liveMarker = null;
 
 function initMap() {
     state.map = L.map('map', { zoomControl: false }).setView([47.23, 9.61], 15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { crossOrigin: true }).addTo(state.map);
-    Object.values(state.layers).forEach(l => l.addTo(state.map));
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.map);
     
     navigator.geolocation.watchPosition(pos => {
         const { latitude, longitude } = pos.coords;
-        if (!liveMarker) {
-            liveMarker = L.circleMarker([latitude, longitude], { radius: 8, fillColor: "#2563eb", color: "#fff", weight: 2, fillOpacity: 1 }).addTo(state.map);
-            state.map.panTo([latitude, longitude]);
-        } else {
-            liveMarker.setLatLng([latitude, longitude]);
-        }
         if (state.current) {
             state.current.route.push([latitude, longitude]);
-            renderRoute();
+            updateLiveRoute();
         }
     }, null, { enableHighAccuracy: true });
+
+    updateArchiveUI();
 }
 
-function renderRoute() {
-    state.layers.tempo.clearLayers();
-    if (state.current && state.current.route.length >= 2) {
-        L.polyline(state.current.route, { color: 'black', weight: 4, opacity: 1, className: 'rough-path' }).addTo(state.layers.tempo);
-    }
+// Live-Route während des Gehens
+let liveRouteLayer = null;
+function updateLiveRoute() {
+    if (liveRouteLayer) state.map.removeLayer(liveRouteLayer);
+    liveRouteLayer = L.polyline(state.current.route, { color: '#2563eb', weight: 4, dashArray: '5, 10' }).addTo(state.map);
 }
 
+// Walk starten / stoppen
 document.getElementById('startWalk').onclick = () => {
-    state.current = { id: new Date().toLocaleString('de-DE'), route: [], entries: [] };
-    Object.values(state.layers).forEach(l => l.clearLayers());
-    alert("Walk gestartet.");
+    const color = walkColors[state.walks.length % walkColors.length];
+    state.current = { 
+        id: Date.now(), 
+        name: new Date().toLocaleString('de-DE'), 
+        route: [], 
+        entries: [], 
+        color: color,
+        reflection: "" 
+    };
+    alert("Aufzeichnung läuft...");
 };
 
 document.getElementById('stopWalk').onclick = () => {
     if (!state.current) return;
     state.walks.push(state.current);
+    saveToLocal();
     updateArchiveUI();
+    if (liveRouteLayer) state.map.removeLayer(liveRouteLayer);
     state.current = null;
     alert("Walk gespeichert.");
 };
 
-function addEntry(type, data = {}) {
-    if (!state.current) return alert("Starte erst einen Walk!");
-    const pos = liveMarker.getLatLng();
-
-    // Texteingabe hinzufügen
-    if (['mood', 'thought', 'sense'].includes(type)) {
-        const prompts = { mood: "Stimmung?", thought: "Gedanke?", sense: "Wahrnehmung?" };
-        const text = prompt(prompts[type]);
-        if (text === null) return;
-        data.text = text || "(Keine Eingabe)";
-    }
-
-    const entry = { type, location: { lat: pos.lat, lng: pos.lng }, timestamp: new Date().toLocaleTimeString(), ...data };
-    state.current.entries.push(entry);
-    drawMarker(entry);
-}
-
-function drawMarker(e) {
-    const loc = [e.location.lat, e.location.lng];
-    const options = {
-        mood: { radius: 22, fillColor: '#ff4500', color: '#8b0000', weight: 2, fillOpacity: 0.7, label: "Stimmung" },
-        thought: { radius: 7, fillColor: '#12345f', color: '#fff', weight: 1, fillOpacity: 0.9, label: "Gedanke" },
-        sense: { radius: 9, fillColor: '#3d633d', color: '#1a2e1a', weight: 1.5, fillOpacity: 0.9, label: "Wahrnehmung" }
-    };
-
-    if (options[e.type]) {
-        L.circleMarker(loc, options[e.type]).addTo(state.layers[e.type]).bindPopup(`<b>${options[e.type].label}:</b><br>${e.text || ""}`);
-    } else if (e.type === 'photo') {
-        const icon = L.divIcon({ html: '<div style="font-size: 24px;">📸</div>', className: 'custom-div-icon' });
-        L.marker(loc, {icon}).addTo(state.layers.photo).bindPopup(`<img src="${e.photo}" width="150" style="border-radius:8px">`);
-    } else if (e.type === 'Sound' || e.type === 'Sprachnachricht') {
-        const iconTxt = e.type === 'Sound' ? '🔊' : '💬';
-        const layer = e.type === 'Sound' ? state.layers.sound : state.layers.voice;
-        const icon = L.divIcon({ html: `<div style="font-size: 24px;">${iconTxt}</div>`, className: 'custom-div-icon' });
-        L.marker(loc, {icon}).addTo(layer).bindPopup(`<b>${e.type}:</b><br><audio controls src="${e.audioUrl}"></audio>`);
-    }
-}
-
-async function handleRecording(buttonId, type) {
-    const btn = document.getElementById(buttonId);
-    if (!state.isRecording) {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            state.audioRecorder = new MediaRecorder(stream);
-            state.audioChunks = [];
-            state.audioRecorder.ondataavailable = e => state.audioChunks.push(e.data);
-            state.audioRecorder.onstop = () => {
-                const blob = new Blob(state.audioChunks, { type: 'audio/webm' });
-                addEntry(type, { audioUrl: URL.createObjectURL(blob), audioBlob: blob });
-            };
-            state.audioRecorder.start();
-            state.isRecording = true;
-            btn.innerText = "⏹️"; btn.classList.replace('bg-orange-400', 'bg-red-600');
-        } catch (err) { alert("Mikro-Zugriff verweigert."); }
+// --- STRECKEN VERGLEICHEN ---
+function toggleWalk(id) {
+    if (state.activeWalkLayers[id]) {
+        state.map.removeLayer(state.activeWalkLayers[id]);
+        delete state.activeWalkLayers[id];
     } else {
-        state.audioRecorder.stop();
-        state.isRecording = false;
-        btn.innerText = (type === 'Sound') ? "▶️" : "💬";
-        btn.classList.replace('bg-red-600', 'bg-orange-400');
+        const walk = state.walks.find(w => w.id == id);
+        const group = L.layerGroup();
+        
+        // Die Strecke als farbiger Pfad
+        L.polyline(walk.route, { color: walk.color, weight: 5, className: 'rough-path', opacity: 0.8 }).addTo(group);
+        
+        // Die erhobenen Daten direkt auf der Strecke
+        walk.entries.forEach(e => {
+            const loc = [e.location.lat, e.location.lng];
+            if (['mood', 'thought', 'sense'].includes(e.type)) {
+                L.circleMarker(loc, { radius: 8, fillColor: walk.color, color: '#fff', weight: 2, fillOpacity: 1 })
+                 .addTo(group).bindPopup(`<b>${e.type}:</b> ${e.text}`);
+            } else {
+                const iconTxt = { photo: '📸', Sound: '🔊', Sprachnachricht: '💬' }[e.type];
+                const icon = L.divIcon({ html: iconTxt, className: 'text-lg' });
+                L.marker(loc, { icon }).addTo(group);
+            }
+        });
+        
+        group.addTo(state.map);
+        state.activeWalkLayers[id] = group;
+        
+        // Reflexions-Text laden
+        document.getElementById('reflectionText').value = walk.reflection || "";
+        document.getElementById('reflectionText').dataset.activeId = id;
     }
 }
 
-document.getElementById('audioToggle').onclick = () => handleRecording('audioToggle', 'Sound');
-document.getElementById('messageToggle').onclick = () => handleRecording('messageToggle', 'Sprachnachricht');
-document.getElementById('senseBtn').onclick = () => addEntry('sense');
-document.getElementById('thoughtBtn').onclick = () => addEntry('thought');
-document.getElementById('moodBtn').onclick = () => addEntry('mood');
-
-document.getElementById('photoBtn').onclick = () => {
-    const input = document.createElement('input');
-    input.type = 'file'; input.accept = 'image/*';
-    input.onchange = e => {
-        const reader = new FileReader();
-        reader.onload = ev => addEntry('photo', { photo: ev.target.result });
-        reader.readAsDataURL(e.target.files[0]);
-    };
-    input.click();
+// Reflexion speichern
+document.getElementById('saveReflection').onclick = () => {
+    const id = document.getElementById('reflectionText').dataset.activeId;
+    if (!id) return alert("Wähle erst eine Strecke im Archiv aus!");
+    const walk = state.walks.find(w => w.id == id);
+    walk.reflection = document.getElementById('reflectionText').value;
+    saveToLocal();
+    alert("Reflexion für '" + walk.name + "' gespeichert.");
 };
 
-// --- OPTIMIERTER EXPORT ---
-document.getElementById('exportFull').onclick = async () => {
-    const walk = state.current || state.walks[state.walks.length - 1];
-    if (!walk) return alert("Kein Walk vorhanden.");
-    
-    const zip = new JSZip();
-    const photoFolder = zip.folder("Fotos");
-    const voiceFolder = zip.folder("Stimmen");
-    const soundFolder = zip.folder("Umgebungssounds");
-
-    // 1. Screenshot
-    try {
-        const canvas = await html2canvas(document.getElementById('map'), { useCORS: true });
-        zip.file("KARTEN_ANSICHT.png", canvas.toDataURL("image/png").split(',')[1], {base64: true});
-    } catch(e) { console.log("Snapshot fehlgeschlagen"); }
-
-    // 2. Protokoll & Medien
-    let protokoll = `WALK EXPORT PROTOKOLL - ${walk.id}\n\n`;
-    
-    walk.entries.forEach((e, i) => {
-        const ts = e.timestamp.replace(/:/g, '-');
-        protokoll += `[${e.timestamp}] ${e.type.toUpperCase()}: ${e.text || ""}\n`;
-
-        if (e.type === 'photo' && e.photo) {
-            photoFolder.file(`FOTO_${ts}_${i}.jpg`, e.photo.split(',')[1], {base64: true});
-        }
-        if (e.audioBlob) {
-            const folder = e.type === 'Sound' ? soundFolder : voiceFolder;
-            const prefix = e.type === 'Sound' ? 'UMGEBUNG' : 'STIMME';
-            folder.file(`${prefix}_${ts}_${i}.webm`, e.audioBlob);
-        }
-    });
-
-    zip.file("PROTOKOLL.txt", protokoll);
-    zip.file("daten.json", JSON.stringify(walk, null, 2));
-
-    const content = await zip.generateAsync({type:"blob"});
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(content);
-    link.download = `Walk_Vollstaendig.zip`;
-    link.click();
-};
+function saveToLocal() {
+    localStorage.setItem('myWalks', JSON.stringify(state.walks));
+}
 
 function updateArchiveUI() {
     const list = document.getElementById('walkList');
     list.innerHTML = "";
     state.walks.forEach(w => {
         const div = document.createElement('div');
-        div.className = "walk-item p-2 hover:bg-gray-100 border-b cursor-pointer";
-        div.innerText = "Tour " + w.id;
-        div.onclick = () => {
-            Object.values(state.layers).forEach(l => l.clearLayers());
-            w.entries.forEach(drawMarker);
-            if(w.route.length > 1) L.polyline(w.route, {color:'black', className:'rough-path'}).addTo(state.layers.tempo);
-        };
+        div.className = "walk-item";
+        div.innerHTML = `
+            <input type="checkbox" onchange="toggleWalk(${w.id})">
+            <span class="color-dot" style="background:${w.color}"></span>
+            <span>${w.name}</span>
+        `;
         list.appendChild(div);
     });
 }
 
-const bindToggle = (id, layer) => {
-    document.getElementById(id).onchange = e => e.target.checked ? state.map.addLayer(layer) : state.map.removeLayer(layer);
-};
-bindToggle('toggleMood', state.layers.mood);
-bindToggle('toggleThought', state.layers.thought);
-bindToggle('toggleSense', state.layers.sense);
-bindToggle('toggleSoundLayer', state.layers.sound);
-bindToggle('toggleVoiceLayer', state.layers.voice);
-bindToggle('toggleTempo', state.layers.tempo);
+// Hilfsfunktion für Marker (vereinfacht für dieses Beispiel)
+function addEntry(type, data = {}) {
+    if (!state.current) return alert("Bitte START drücken!");
+    navigator.geolocation.getCurrentPosition(pos => {
+        if (['mood', 'thought', 'sense'].includes(type)) {
+            const txt = prompt(type + " eingeben:");
+            if (!txt) return;
+            data.text = txt;
+        }
+        state.current.entries.push({
+            type,
+            location: { lat: pos.coords.latitude, lng: pos.coords.longitude },
+            timestamp: new Date().toLocaleTimeString(),
+            ...data
+        });
+    });
+}
+
+// Event Listener für Buttons
+document.getElementById('moodBtn').onclick = () => addEntry('mood');
+document.getElementById('thoughtBtn').onclick = () => addEntry('thought');
+document.getElementById('senseBtn').onclick = () => addEntry('sense');
 
 initMap();
 </script>
