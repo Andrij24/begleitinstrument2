@@ -3,89 +3,71 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-    <title>Begleitinstrument — Nummeriertes Archiv</title>
+    <title>Begleitinstrument — Vollständiger Export</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
     <style>
-        html, body, #map { height: 100%; margin: 0; background: #eee; overflow: hidden; }
-        #map { width: 100%; height: 100vh; z-index: 1; }
-        .top-ui { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1000; display: flex; gap: 5px; width: 95%; justify-content: center; }
-        .side-ui { position: fixed; top: 60px; right: 10px; z-index: 1000; width: 165px; display: flex; flex-direction: column; gap: 8px; }
-        .bottom-left { position: fixed; bottom: 20px; left: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
-        .panel { background: white; padding: 10px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 1px solid #ccc; }
-        .btn { padding: 8px 10px; border-radius: 8px; font-weight: bold; font-size: 10px; cursor: pointer; text-transform: uppercase; border: none; }
-        .fab { width: 55px; height: 55px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; border: none; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
-        
-        .walk-item { padding: 8px; border-bottom: 1px solid #eee; font-size: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-radius: 6px; margin-bottom: 4px; background: #f9f9f9; }
-        .active-walk { background: #2563eb !important; color: white; font-weight: bold; }
-        .delete-btn { color: #ff4d4d; padding: 5px; font-weight: bold; font-size: 16px; margin-left: 5px; }
-        
+        html, body, #map { height: 100%; margin: 0; background: #fff; overflow: hidden; }
+        #map { width: 100%; height: 100vh; }
+        .rough-path { filter: url(#roughFilter); stroke-linecap: round; }
+        .top-ui { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 1000; display: flex; gap: 8px; }
+        .side-ui { position: fixed; top: 70px; right: 12px; z-index: 1000; width: 180px; display: flex; flex-direction: column; gap: 10px; }
+        .bottom-left { position: fixed; bottom: 20px; left: 12px; z-index: 1000; display: flex; flex-direction: column; gap: 12px; }
+        .panel { background: white; padding: 12px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); border: 1px solid #ddd; }
+        .btn { padding: 10px 14px; border-radius: 10px; font-weight: bold; font-size: 11px; cursor: pointer; text-transform: uppercase; border: none; }
+        .fab { width: 60px; height: 60px; border-radius: 30px; display: flex; align-items: center; justify-content: center; font-size: 24px; border: none; box-shadow: 0 6px 12px rgba(0,0,0,0.2); cursor: pointer; }
+        .walk-item { padding: 6px; border-bottom: 1px solid #eee; font-size: 10px; cursor: pointer; }
         .custom-div-icon { background: none; border: none; }
-        .loading-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 9999; color: white; flex-direction: column; align-items: center; justify-content: center; }
+        .leaflet-popup-content { font-family: sans-serif; line-height: 1.4; }
     </style>
 </head>
 <body>
 
-<div id="exportLoader" class="loading-overlay"><b>ZIP EXPORT...</b><br><small>Bitte warten</small></div>
+<svg width="0" height="0" style="position:absolute">
+  <filter id="roughFilter">
+    <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="3" result="noise"/>
+    <feDisplacementMap in="SourceGraphic" in2="noise" scale="4" />
+  </filter>
+</svg>
+
 <div id="map"></div>
 
 <div class="top-ui">
-    <button id="startWalk" class="btn bg-blue-600 text-white shadow-md">NEUER WALK</button>
-    <button id="stopWalk" class="btn bg-red-600 text-white shadow-md">BEENDEN</button>
-    <button id="exportFull" class="btn bg-black text-white shadow-md">ZIP</button>
+    <button id="startWalk" class="btn bg-blue-600 text-white">NEUER WALK</button>
+    <button id="stopWalk" class="btn bg-red-600 text-white">BEENDEN</button>
+    <button id="exportFull" class="btn bg-black text-white">ZIP EXPORT</button>
 </div>
 
-<div class="side-ui">
-    <div class="panel">
-        <p class="font-bold text-[8px] uppercase text-gray-500 mb-1">Ebenen</p>
-        <div class="text-[10px] space-y-1">
-            <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('tempo')"> Route</label>
-            <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('mood')"> Stimmung</label>
-            <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('thought')"> Gedanken</label>
-            <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('sense')"> Wahrn.</label>
-            <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('photo')"> Fotos</label>
-            <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('audio')"> Sound</label>
-            <label class="flex items-center gap-1"><input type="checkbox" checked onchange="toggleL('audio')"> Sprachnachricht</label>
-        </div>
-    </div>
-    <div class="panel max-h-[200px] overflow-y-auto">
-        <p class="font-bold text-[8px] uppercase text-gray-500 mb-1">Archiv (Nr. 1 = Älteste)</p>
-        <div id="walkList"></div>
-    </div>
-</div>
-    
 <div class="side-ui">
     <div class="panel">
         <button id="styleToggle" class="btn bg-yellow-400 text-black w-full mb-3">ANSICHT WECHSELN</button>
         <p class="font-bold text-[9px] uppercase text-gray-400 mb-2 border-b">Ebenen</p>
-        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleTempo" type="checkbox" checked> <label>Route (Schwarz)</label></div>
-        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleMood" type="checkbox" checked> <label>Stimmung</label></div>
-        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleThought" type="checkbox" checked> <label>Gedanken</label></div>
-        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleSense" type="checkbox" checked> <label>Wahrnehmung</label></div>
-        <div class="flex items-center gap-2 mb-1 text-xs"><input id="togglePhoto" type="checkbox" checked> <label>Fotos</label></div>
-        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleAudio" type="checkbox" checked> <label>Sound</label></div>
-        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleAudio" type="checkbox" checked> <label>Sprachnachricht</label></div>
+        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleTempo" type="checkbox" checked> <label>Route</label></div>
+        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleMood" type="checkbox" checked> <label>Stimmung (🔋)</label></div>
+        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleThought" type="checkbox" checked> <label>Gedanken (💭)</label></div>
+        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleSense" type="checkbox" checked> <label>Wahrnehmung (👁️)</label></div>
+        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleSoundLayer" type="checkbox" checked> <label>Sound (🔊)</label></div>
+        <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleVoiceLayer" type="checkbox" checked> <label>Voice (💬)</label></div>
     </div>
     <div class="panel max-h-[150px] overflow-y-auto">
         <p class="font-bold text-[9px] uppercase text-gray-400 border-b mb-1">Archiv</p>
         <div id="walkList"></div>
     </div>
 </div>
-    
+
 <div class="bottom-left">
     <button id="photoBtn" class="fab bg-white">📸</button>
     <button id="audioToggle" class="fab bg-orange-400 text-white">▶️</button>
     <button id="senseBtn" class="fab bg-[#3d633d] text-white">👁️</button>
     <button id="thoughtBtn" class="fab bg-[#12345f] text-white">💭</button>
-     <button id="audioToggle" class="fab bg-orange-400 text-white">▶️</button>
+    <button id="messageToggle" class="fab bg-orange-400 text-white">💬</button>
     <button id="moodBtn" class="fab" style="background: radial-gradient(circle, #ff8c00, #ff4500);">🔋</button>
 </div>
-    
+
 <script>
 const state = {
     walks: [],
@@ -98,17 +80,18 @@ const state = {
     isRecording: false,
     layers: {
         tempo: L.layerGroup(), mood: L.layerGroup(), thought: L.layerGroup(),
-        sense: L.layerGroup(), photo: L.layerGroup(), audio: L.layerGroup(), audio: L.layerGroup()
+        sense: L.layerGroup(), photo: L.layerGroup(), 
+        sound: L.layerGroup(), voice: L.layerGroup()
     }
 };
- 
+
 let liveMarker = null;
- 
+
 function initMap() {
     state.map = L.map('map', { zoomControl: false }).setView([47.23, 9.61], 15);
     state.tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.map);
     Object.values(state.layers).forEach(l => l.addTo(state.map));
-   
+    
     navigator.geolocation.watchPosition(pos => {
         const { latitude, longitude } = pos.coords;
         if (!liveMarker) {
@@ -123,24 +106,62 @@ function initMap() {
         }
     }, null, { enableHighAccuracy: true });
 }
- 
-document.getElementById('styleToggle').onclick = () => {
-    state.map.removeLayer(state.tiles);
-    if (state.currentStyle === 'standard') {
-        state.tiles = L.tileLayer('https://{s}.tile.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png').addTo(state.map);
-        state.currentStyle = 'bright';
-    } else {
-        state.tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.map);
-        state.currentStyle = 'standard';
-    }
-};
-    
+
 function renderRoute() {
     state.layers.tempo.clearLayers();
-    if (state.current.route.length < 2) return;
-    L.polyline(state.current.route, { color: 'black', weight: 4, opacity: 1, className: 'rough-path' }).addTo(state.layers.tempo);
+    if (state.current && state.current.route.length >= 2) {
+        L.polyline(state.current.route, { color: 'black', weight: 4, opacity: 1, className: 'rough-path' }).addTo(state.layers.tempo);
+    }
 }
 
+function addEntry(type, data = {}) {
+    if (!state.current) return alert("Bitte starte erst einen Walk!");
+    const pos = liveMarker.getLatLng();
+
+    // Texteingabe für Stimmung, Gedanken und Wahrnehmung
+    if (type === 'mood' || type === 'thought' || type === 'sense') {
+        const prompts = {
+            mood: "Wie ist deine Stimmung gerade?",
+            thought: "Was geht dir durch den Kopf?",
+            sense: "Was nimmst du gerade wahr?"
+        };
+        const text = prompt(prompts[type]);
+        if (text === null) return; // Abbrechen gedrückt
+        data.text = text || "(Kein Text)";
+    }
+
+    const entry = { type, location: { lat: pos.lat, lng: pos.lng }, timestamp: new Date().toLocaleTimeString(), ...data };
+    state.current.entries.push(entry);
+    drawMarker(entry);
+}
+
+function drawMarker(e) {
+    const loc = [e.location.lat, e.location.lng];
+    if (e.type === 'mood') {
+        L.circleMarker(loc, { radius: 22, fillColor: '#ff4500', color: '#8b0000', weight: 2, fillOpacity: 0.7 })
+         .addTo(state.layers.mood).bindPopup(`<b>Stimmung (🔋):</b><br>${e.text}`);
+    } 
+    else if (e.type === 'thought') {
+        L.circleMarker(loc, { radius: 7, fillColor: '#12345f', color: '#fff', weight: 1, fillOpacity: 0.9 })
+         .addTo(state.layers.thought).bindPopup(`<b>Gedanke (💭):</b><br>${e.text}`);
+    } 
+    else if (e.type === 'sense') {
+        L.circleMarker(loc, { radius: 9, fillColor: '#3d633d', color: '#1a2e1a', weight: 1.5, fillOpacity: 0.9 })
+         .addTo(state.layers.sense).bindPopup(`<b>Wahrnehmung (👁️):</b><br>${e.text}`);
+    } 
+    else if (e.type === 'photo') {
+        const icon = L.divIcon({ html: '<div style="font-size: 24px;">📸</div>', className: 'custom-div-icon' });
+        L.marker(loc, {icon}).addTo(state.layers.photo).bindPopup(`<img src="${e.photo}" width="150" style="border-radius:8px">`);
+    } 
+    else if (e.type === 'Sound' || e.type === 'Sprachnachricht') {
+        const iconTxt = e.type === 'Sound' ? '🔊' : '💬';
+        const layer = e.type === 'Sound' ? state.layers.sound : state.layers.voice;
+        const icon = L.divIcon({ html: `<div style="font-size: 24px;">${iconTxt}</div>`, className: 'custom-div-icon' });
+        L.marker(loc, {icon}).addTo(layer).bindPopup(`<b>${e.type}:</b><br><audio controls src="${e.audioUrl}"></audio>`);
+    }
+}
+
+// --- Steuerung Buttons ---
 document.getElementById('startWalk').onclick = () => {
     state.current = { id: new Date().toLocaleTimeString(), route: [], entries: [] };
     Object.values(state.layers).forEach(l => l.clearLayers());
@@ -152,40 +173,16 @@ document.getElementById('stopWalk').onclick = () => {
     state.walks.push(state.current);
     updateArchiveUI();
     state.current = null;
-    alert("Walk im Archiv gespeichert.");
+    alert("Walk gespeichert.");
 };
 
-function addEntry(type, data = {}) {
-    if (!state.current) return alert("Bitte starte erst einen Walk!");
-    const pos = liveMarker.getLatLng();
-    const entry = { type, location: { lat: pos.lat, lng: pos.lng }, timestamp: new Date().toLocaleTimeString(), ...data };
-    state.current.entries.push(entry);
-    drawMarker(entry);
-}
+document.getElementById('moodBtn').onclick = () => addEntry('mood');
+document.getElementById('thoughtBtn').onclick = () => addEntry('thought');
+document.getElementById('senseBtn').onclick = () => addEntry('sense');
 
-function drawMarker(e) {
-    const loc = [e.location.lat, e.location.lng];
-    if (e.type === 'mood') L.circleMarker(loc, { radius: 22, fillColor: '#ff4500', color: '#8b0000', weight: 2, fillOpacity: 0.7 }).addTo(state.layers.mood);
-    else if (e.type === 'thought') L.circleMarker(loc, { radius: 7, fillColor: '#12345f', color: '#fff', weight: 1, fillOpacity: 0.9 }).addTo(state.layers.thought);
-    else if (e.type === 'sense') L.circleMarker(loc, { radius: 9, fillColor: '#3d633d', color: '#1a2e1a', weight: 1.5, fillOpacity: 0.9 }).addTo(state.layers.sense);
-    else if (e.type === 'photo') {
-        const photoIcon = L.divIcon({ html: '<div style="font-size: 24px;">📸</div>', className: 'custom-div-icon', iconSize: [30, 30] });
-        L.marker(loc, {icon: photoIcon}).addTo(state.layers.photo).bindPopup(`<img src="${e.photo}" width="150" style="border-radius:8px;">`);
-    }
-    else if (e.type === 'Sound') {
-        const audioIcon = L.divIcon({ html: '<div style="font-size: 24px;">🔊</div>', className: 'custom-div-icon', iconSize: [30, 30] });
-        L.marker(loc, {icon: audioIcon}).addTo(state.layers.audio).bindPopup(`<audio controls src="${e.audioUrl}" style="width:200px; height:30px;"></audio>`);
-    }
-     }
-    else if (e.type === 'Sprachaufzeichnung') {
-        const audioIcon = L.divIcon({ html: '<div style="font-size: 24px;">🔊</div>', className: 'custom-div-icon', iconSize: [30, 30] });
-        L.marker(loc, {icon: audioIcon}).addTo(state.layers.audio).bindPopup(`<audio controls src="${e.audioUrl}" style="width:200px; height:30px;"></audio>`);
-    }
-}
-
-// AUDIO LOGIK (Sound)
-document.getElementById('audioToggle').onclick = async () => {
-    if (!state.current) return alert("Walk starten!");
+// Audio-Recording
+async function handleRecording(buttonId, type) {
+    const btn = document.getElementById(buttonId);
     if (!state.isRecording) {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -194,81 +191,72 @@ document.getElementById('audioToggle').onclick = async () => {
             state.audioRecorder.ondataavailable = e => state.audioChunks.push(e.data);
             state.audioRecorder.onstop = () => {
                 const blob = new Blob(state.audioChunks, { type: 'audio/webm' });
-                addEntry('audio', { audioUrl: URL.createObjectURL(blob), audioBlob: blob });
+                addEntry(type, { audioUrl: URL.createObjectURL(blob), audioBlob: blob });
             };
             state.audioRecorder.start();
             state.isRecording = true;
-            document.getElementById('audioToggle').innerText = "⏹️";
-            document.getElementById('audioToggle').classList.replace('bg-orange-400', 'bg-red-600');
-        } catch(e) { alert("Mikrofon-Zugriff verweigert."); }
+            btn.innerText = "⏹️";
+            btn.classList.replace('bg-orange-400', 'bg-red-600');
+        } catch (err) { alert("Mikro-Zugriff fehlgeschlagen."); }
     } else {
         state.audioRecorder.stop();
         state.isRecording = false;
-        document.getElementById('audioToggle').innerText = "▶️";
-        document.getElementById('audioToggle').classList.replace('bg-red-600', 'bg-orange-400');
+        btn.innerText = (type === 'Sound') ? "▶️" : "💬";
+        btn.classList.replace('bg-red-600', 'bg-orange-400');
     }
-    // AUDIO LOGIK (Sprachnachricht)
-document.getElementById('audioToggle').onclick = async () => {
-    if (!state.current) return alert("Walk starten!");
-    if (!state.isRecording) {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            state.audioRecorder = new MediaRecorder(stream);
-            state.audioChunks = [];
-            state.audioRecorder.ondataavailable = e => state.audioChunks.push(e.data);
-            state.audioRecorder.onstop = () => {
-                const blob = new Blob(state.audioChunks, { type: 'audio/webm' });
-                addEntry('audio', { audioUrl: URL.createObjectURL(blob), audioBlob: blob });
-            };
-            state.audioRecorder.start();
-            state.isRecording = true;
-            document.getElementById('audioToggle').innerText = "⏹️";
-            document.getElementById('audioToggle').classList.replace('bg-orange-400', 'bg-red-600');
-        } catch(e) { alert("Mikrofon-Zugriff verweigert."); }
-    } else {
-        state.audioRecorder.stop();
-        state.isRecording = false;
-        document.getElementById('audioToggle').innerText = "▶️";
-        document.getElementById('audioToggle').classList.replace('bg-red-600', 'bg-orange-400');
-    }
+}
+document.getElementById('audioToggle').onclick = () => handleRecording('audioToggle', 'Sound');
+document.getElementById('messageToggle').onclick = () => handleRecording('messageToggle', 'Sprachnachricht');
+
+document.getElementById('photoBtn').onclick = () => {
+    const input = document.createElement('input');
+    input.type = 'file'; input.accept = 'image/*';
+    input.onchange = e => {
+        const reader = new FileReader();
+        reader.onload = ev => addEntry('photo', { photo: ev.target.result });
+        reader.readAsDataURL(e.target.files[0]);
+    };
+    input.click();
 };
 
-// ZIP EXPORT
 document.getElementById('exportFull').onclick = async () => {
     const walk = state.current || state.walks[state.walks.length - 1];
     if (!walk) return alert("Kein Walk vorhanden.");
-
-    const btn = document.getElementById('exportFull');
-    btn.innerText = "⏳..."; btn.disabled = true;
-
-    try {
-        const zip = new JSZip();
-        const media = zip.folder("medien");
-        
-        const canvas = await html2canvas(document.getElementById('map'), { 
-            useCORS: true, 
-            ignoreElements: (el) => el.classList.contains('top-ui') || el.classList.contains('side-ui') 
-        });
-        
-        zip.file("karte.jpg", canvas.toDataURL("image/jpeg", 0.8).split(',')[1], {base64: true});
-        zip.file("daten.json", JSON.stringify(walk, null, 2));
-
-        walk.entries.forEach((e, i) => {
-            const ts = e.timestamp.replace(/:/g, '-');
-            if (e.photo) media.file(`foto_${ts}_${i}.jpg`, e.photo.split(',')[1], {base64: true});
-            if (e.audioBlob) media.file(`audio_${ts}_${i}.webm`, e.audioBlob);
-        });
-
-        const content = await zip.generateAsync({type:"blob"});
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(content);
-        link.download = `Walk_${walk.id}.zip`;
-        link.click();
-    } catch (err) { alert("Export-Fehler"); }
-    btn.innerText = "ZIP EXPORT"; btn.disabled = false;
+    const zip = new JSZip();
+    zip.file("daten.json", JSON.stringify(walk, null, 2));
+    const content = await zip.generateAsync({type:"blob"});
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(content);
+    link.download = `Walk_${walk.id.replace(/:/g,'-')}.zip`;
+    link.click();
 };
 
-init();
+function updateArchiveUI() {
+    const list = document.getElementById('walkList');
+    list.innerHTML = "";
+    state.walks.forEach(w => {
+        const div = document.createElement('div');
+        div.className = "walk-item";
+        div.innerText = "Tour " + w.id;
+        div.onclick = () => {
+            Object.values(state.layers).forEach(l => l.clearLayers());
+            w.entries.forEach(drawMarker);
+            if(w.route.length > 1) L.polyline(w.route, {color:'black', className:'rough-path'}).addTo(state.layers.tempo);
+        };
+        list.appendChild(div);
+    });
+}
+
+// Layer Toggles
+const bindT = (id, layer) => document.getElementById(id).onchange = e => e.target.checked ? state.map.addLayer(layer) : state.map.removeLayer(layer);
+bindT('toggleMood', state.layers.mood);
+bindT('toggleThought', state.layers.thought);
+bindT('toggleSense', state.layers.sense);
+bindT('toggleSoundLayer', state.layers.sound);
+bindT('toggleVoiceLayer', state.layers.voice);
+bindT('toggleTempo', state.layers.tempo);
+
+initMap();
 </script>
 </body>
 </html>
