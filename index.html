@@ -9,484 +9,246 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
+        /* Basis Setup */
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        html, body, #map { height: 100%; overflow: hidden; font-family: sans-serif; }
+        html, body, #map { height: 100%; overflow: hidden; font-family: sans-serif; background: #f0f0f0; }
         #map { width: 100%; height: 100vh; z-index: 1; }
 
-        /* TOP BAR */
-        #topBar {
-            position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
-            z-index: 1000; display: flex; gap: 8px; align-items: center;
-        }
-        .btn {
-            padding: 10px 14px; border-radius: 10px; font-weight: bold;
-            font-size: 10px; cursor: pointer; text-transform: uppercase;
-            border: none; letter-spacing: 0.5px;
-        }
+        /* UI Overlays */
+        #topBar { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 1000; display: flex; gap: 8px; }
+        #sidePanel { position: fixed; top: 70px; right: 12px; width: 250px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; max-height: 85vh; overflow-y: auto; }
+        
+        /* Buttons & Panels */
+        .btn { padding: 10px 14px; border-radius: 10px; font-weight: bold; font-size: 10px; cursor: pointer; text-transform: uppercase; border: none; }
         .btn-blue  { background: #2563eb; color: #fff; }
         .btn-red   { background: #dc2626; color: #fff; }
         .btn-black { background: #111;    color: #fff; }
-        .btn-gray  { background: #f0f0f0; color: #333; }
-        .btn:hover { opacity: 0.88; }
-        .btn:active { opacity: 0.75; transform: scale(0.97); }
+        .bg-yellow-400 { background: #facc15; color: #000; }
+        
+        .panel { background: #fff; padding: 12px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.12); border: 1px solid #e5e5e5; }
+        
+        /* Layer Menu Styling */
+        #layerMenu { display: none; flex-direction: column; gap: 4px; margin-bottom: 12px; background: #f9f9f9; padding: 8px; border-radius: 8px; border: 1px solid #eee; }
+        .menu-label { font-size: 9px; font-weight: bold; color: #999; text-transform: uppercase; margin-bottom: 4px; }
+        .layer-opt { text-align: left; padding: 8px 10px; border-radius: 6px; border: 1px solid #ddd; cursor: pointer; font-size: 11px; background: #fff; }
+        .layer-opt.active { background: #dbeafe; color: #1d4ed8; font-weight: bold; border-color: #1d4ed8; }
 
-        /* LAYER DROPDOWN */
-        #layerMenu {
-            display: none; position: fixed; top: 50px; left: 50%;
-            transform: translateX(-50%); z-index: 2000;
-            background: #fff; border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.18); border: 1px solid #e0e0e0;
-            padding: 10px; flex-direction: column; gap: 5px; min-width: 200px;
-        }
-        #layerMenu.open { display: flex; }
-        #layerMenu .menu-label {
-            font-size: 10px; font-weight: bold; color: #999;
-            text-transform: uppercase; padding: 2px 6px 6px;
-        }
-        .layer-opt {
-            text-align: left; padding: 9px 12px; border-radius: 8px;
-            border: none; cursor: pointer; font-size: 11px;
-            background: #f5f5f5; color: #333; font-family: sans-serif;
-        }
-        .layer-opt:hover { background: #e8f0fe; color: #1d4ed8; }
-        .layer-opt.active { background: #dbeafe; color: #1d4ed8; font-weight: bold; }
+        /* Utility Classes für Ebenen-HTML */
+        .w-full { width: 100%; }
+        .mb-3 { margin-bottom: 12px; }
+        .mb-2 { margin-bottom: 8px; }
+        .mb-1 { margin-bottom: 4px; }
+        .border-b { border-bottom: 1px solid #f0f0f0; padding-bottom: 4px; }
+        .flex { display: flex; }
+        .items-center { align-items: center; }
+        .gap-2 { gap: 8px; }
+        .text-xs { font-size: 11px; }
+        .text-\[9px\] { font-size: 9px; }
+        .font-bold { font-weight: bold; }
+        .uppercase { text-transform: uppercase; }
+        .text-gray-400 { color: #9ca3af; }
 
-        /* SIDE PANEL */
-        #sidePanel {
-            position: fixed; top: 70px; right: 12px; width: 250px;
-            z-index: 1000; display: flex; flex-direction: column; gap: 10px;
-        }
-        .panel {
-            background: #fff; padding: 12px; border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.12); border: 1px solid #e5e5e5;
-        }
-        .panel-title {
-            font-size: 10px; font-weight: bold; text-transform: uppercase;
-            color: #999; margin-bottom: 8px; padding-bottom: 6px;
-            border-bottom: 1px solid #f0f0f0;
-        }
-        #archiveList { max-height: 220px; overflow-y: auto; }
-        .walk-row {
-            display: flex; align-items: center; gap: 8px;
-            padding: 7px 4px; border-bottom: 1px solid #f5f5f5;
-            font-size: 11px; color: #333;
-        }
-        .walk-row:last-child { border-bottom: none; }
-        .walk-row input[type="checkbox"] {
-            width: 15px; height: 15px; cursor: pointer; flex-shrink: 0;
-            accent-color: #2563eb;
-        }
-        .color-dot {
-            width: 11px; height: 11px; border-radius: 50%;
-            border: 1px solid rgba(0,0,0,0.15); flex-shrink: 0;
-        }
-        .walk-name { flex: 1; }
-        .empty-msg { font-size: 11px; color: #bbb; padding: 8px 4px; }
+        /* Archiv & Reflexion */
+        .walk-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #f0f0f0; font-size: 11px; }
+        .color-dot { width: 10px; height: 10px; border-radius: 50%; }
+        #reflexionText { width: 100%; height: 80px; font-size: 11px; margin: 8px 0; padding: 8px; border-radius: 8px; border: 1px solid #ddd; resize: none; }
 
-        /* REFLEXION */
-        #reflexionPanel { display: none; }
-        .ref-title { font-size: 10px; font-weight: bold; text-transform: uppercase; color: #2563eb; margin-bottom: 4px; }
-        .ref-name { color: #666; font-weight: normal; }
-        #reflexionText {
-            width: 100%; font-size: 11px; padding: 7px; border: 1px solid #ddd;
-            border-radius: 8px; height: 110px; margin: 6px 0; resize: none;
-            font-family: sans-serif;
-        }
-        #reflexionText:focus { outline: 2px solid #2563eb; border-color: transparent; }
-        .btn-save-ref { background: #dbeafe; color: #1d4ed8; width: 100%; padding: 8px; }
-
-        /* FAB GRID */
-        #fabGrid {
-            position: fixed; bottom: 18px; left: 12px; z-index: 1001;
-            display: grid; grid-template-columns: 55px 55px; gap: 10px;
-        }
-        .fab {
-            width: 55px; height: 55px; border-radius: 50%; border: none;
-            cursor: pointer; font-size: 22px; display: flex; align-items: center;
-            justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.22);
-        }
-        .fab:hover { opacity: 0.88; }
-        .fab:active { transform: scale(0.93); }
-        .fab-white  { background: #fff; }
-        .fab-orange { background: #f97316; color: #fff; }
-        .fab-green  { background: #3d633d; color: #fff; }
-        .fab-navy   { background: #12345f; color: #fff; }
-        .fab-mood   { background: radial-gradient(circle, #ff8c00, #ff4500); }
-        .fab-rec    { background: #dc2626; color: #fff; }
-
-        /* PRINT HIDE */
-        .no-print { display: none !important; }
-
-        /* ROUGH FILTER PATH */
-        .rough-path { stroke-linecap: round; }
+        /* FABs */
+        #fabGrid { position: fixed; bottom: 18px; left: 12px; z-index: 1001; display: grid; grid-template-columns: 55px 55px; gap: 10px; }
+        .fab { width: 55px; height: 55px; border-radius: 50%; border: none; cursor: pointer; font-size: 22px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.22); color: white; }
     </style>
 </head>
 <body>
 
-<svg width="0" height="0" style="position:absolute">
-  <filter id="roughFilter">
-    <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="3" result="noise"/>
-    <feDisplacementMap in="SourceGraphic" in2="noise" scale="3"/>
-  </filter>
-</svg>
-
 <div id="map"></div>
 
-<!-- TOP BAR -->
 <div id="topBar">
     <button id="btnStart"  class="btn btn-blue">START</button>
     <button id="btnStop"   class="btn btn-red">STOP / SAVE</button>
     <button id="btnExport" class="btn btn-black">ZIP EXPORT</button>
-    <button id="btnLayer"  class="btn btn-gray">&#x1F5FA; LAYER</button>
 </div>
 
-<!-- LAYER MENU -->
-<div id="layerMenu">
-    <div class="menu-label">Kartenansicht</div>
-    <button class="layer-opt active" data-url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png">Standard</button>
-    <button class="layer-opt" data-url="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}">Satellit</button>
-    <button class="layer-opt" data-url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png">Topografie</button>
-    <button class="layer-opt" data-url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png">Graustufen</button>
-    <button class="layer-opt" data-url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png">Dunkel</button>
-</div>
-
-<!-- SIDE PANEL -->
 <div id="sidePanel">
-    <div class="panel">
-        <div class="panel-title">Vergleichs-Archiv</div>
-        <div id="archiveList">
-            <div class="empty-msg">Noch keine Walks gespeichert.</div>
+    <div class="side-ui">
+        <div class="panel">
+            <button id="styleToggle" class="btn bg-yellow-400 w-full mb-3">ANSICHT WECHSELN</button>
+            
+            <div id="layerMenu">
+                <div class="menu-label">Kartenansicht</div>
+                <button class="layer-opt active" data-url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png">Standard</button>
+                <button class="layer-opt" data-url="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}">Satellit</button>
+                <button class="layer-opt" data-url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png">Topografie</button>
+                <button class="layer-opt" data-url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png">Graustufen</button>
+                <button class="layer-opt" data-url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png">Dunkel</button>
+            </div>
+
+            <p class="font-bold text-[9px] uppercase text-gray-400 mb-2 border-b">Ebenen</p>
+            <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleTempo" type="checkbox" checked> <label>Route</label></div>
+            <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleMood" type="checkbox" checked> <label>Stimmung</label></div>
+            <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleThought" type="checkbox" checked> <label>Gedanken</label></div>
+            <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleSense" type="checkbox" checked> <label>Wahrnehmung</label></div>
+            <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleSoundLayer" type="checkbox" checked> <label>Umgebungssound</label></div>
+            <div class="flex items-center gap-2 mb-1 text-xs"><input id="toggleVoiceLayer" type="checkbox" checked> <label>Sprachnachricht</label></div>
         </div>
     </div>
-    <div class="panel" id="reflexionPanel">
-        <div class="ref-title">Reflexion: <span class="ref-name" id="refWalkName"></span></div>
+
+    <div class="panel">
+        <p class="font-bold text-[9px] uppercase text-gray-400 mb-2 border-b">Vergleichs-Archiv</p>
+        <div id="archiveList">
+            <div style="font-size:11px; color:#999;">Noch keine Walks gespeichert.</div>
+        </div>
+    </div>
+
+    <div class="panel" id="reflexionPanel" style="display:none;">
+        <p class="font-bold text-[9px] uppercase text-gray-400 mb-2 border-b">Reflexion: <span id="refWalkName"></span></p>
         <textarea id="reflexionText" placeholder="Deine Analyse hier..."></textarea>
-        <button class="btn ref-save" id="btnSaveRef" style="background:#dbeafe;color:#1d4ed8;width:100%;padding:8px;border-radius:8px;font-size:11px;font-weight:bold;border:none;cursor:pointer;">Reflexion Speichern</button>
+        <button id="btnSaveRef" class="btn btn-blue w-full">Speichern</button>
     </div>
 </div>
 
-<!-- FAB BUTTONS -->
 <div id="fabGrid">
-    <button id="fabPhoto"   class="fab fab-white"  title="Foto">&#x1F4F8;</button>
-    <button id="fabSound"   class="fab fab-orange" title="Sound aufnehmen">&#x25B6;&#xFE0F;</button>
-    <button id="fabSense"   class="fab fab-green"  title="Wahrnehmung">&#x1F441;&#xFE0F;</button>
-    <button id="fabThought" class="fab fab-navy"   title="Gedanke">&#x1F4AD;</button>
-    <button id="fabMsg"     class="fab fab-orange" title="Sprachnachricht">&#x1F4AC;</button>
-    <button id="fabMood"    class="fab fab-mood"   title="Stimmung">&#x1F50B;</button>
+    <button id="fabPhoto" class="fab" style="background:#fff;">📸</button>
+    <button id="fabSound" class="fab" style="background:#f97316;">▶️</button>
+    <button id="fabSense" class="fab" style="background:#3d633d;">👁️</button>
+    <button id="fabThought" class="fab" style="background:#12345f;">💭</button>
+    <button id="fabMsg" class="fab" style="background:#f97316;">💬</button>
+    <button id="fabMood" class="fab" style="background:radial-gradient(circle, #ff8c00, #ff4500);">🔋</button>
 </div>
 
 <script>
-var walkColors = ['#e6194b','#3cb44b','#ffe119','#4363d8','#f58231','#911eb4','#46f0f0','#f032e6'];
-
-var state = {
+// Zustand & Farben
+const walkColors = ['#e6194b','#3cb44b','#ffe119','#4363d8','#f58231','#911eb4','#42d4f4','#f032e6'];
+let state = {
     walks: JSON.parse(localStorage.getItem('psychogeo_walks') || '[]'),
     current: null,
     map: null,
     liveMarker: null,
     liveRouteLayer: null,
-    activeCompLayers: {},
-    currentTile: null,
-    audioRecorder: null,
-    audioChunks: [],
-    isRecording: false,
-    recordingType: null,
-    tempGroup: null
+    activeLayers: {},
+    currentTile: null
 };
 
-/* ====== KARTE ====== */
-state.map = L.map('map', { zoomControl: false, preferCanvas: true }).setView([47.23, 9.61], 15);
-state.currentTile = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    crossOrigin: true, attribution: '© OpenStreetMap'
-}).addTo(state.map);
+// 1. Karte Initialisieren
+state.map = L.map('map', { zoomControl: false }).setView([47.23, 9.61], 15);
+state.currentTile = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { crossOrigin: true }).addTo(state.map);
 
-/* ====== LAYER SWITCHER ====== */
-var layerMenu = document.getElementById('layerMenu');
-var btnLayer  = document.getElementById('btnLayer');
+// 2. Kartenwechsel-Logik (Layer Menu)
+const styleToggle = document.getElementById('styleToggle');
+const layerMenu = document.getElementById('layerMenu');
 
-btnLayer.addEventListener('click', function(e) {
-    e.stopPropagation();
-    layerMenu.classList.toggle('open');
-});
-document.addEventListener('click', function(e) {
-    if (!layerMenu.contains(e.target) && e.target !== btnLayer) {
-        layerMenu.classList.remove('open');
-    }
-});
-document.querySelectorAll('.layer-opt').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-        var url = btn.getAttribute('data-url');
-        if (state.currentTile) state.map.removeLayer(state.currentTile);
-        state.currentTile = L.tileLayer(url, { crossOrigin: true, maxZoom: 19 }).addTo(state.map);
-        state.currentTile.bringToBack();
-        document.querySelectorAll('.layer-opt').forEach(function(b) { b.classList.remove('active'); });
+styleToggle.onclick = () => {
+    const isHidden = (layerMenu.style.display === 'none' || layerMenu.style.display === '');
+    layerMenu.style.display = isHidden ? 'flex' : 'none';
+};
+
+document.querySelectorAll('.layer-opt').forEach(btn => {
+    btn.onclick = () => {
+        const url = btn.getAttribute('data-url');
+        state.map.removeLayer(state.currentTile);
+        state.currentTile = L.tileLayer(url, { crossOrigin: true }).addTo(state.map);
+        
+        document.querySelectorAll('.layer-opt').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        layerMenu.classList.remove('open');
-    });
+        layerMenu.style.display = 'none'; // Nach Wahl schließen
+    };
 });
 
-/* ====== GPS ====== */
-navigator.geolocation.watchPosition(function(pos) {
-    var lt = pos.coords.latitude, ln = pos.coords.longitude, ll = [lt, ln];
+// 3. GPS & Live-Route
+navigator.geolocation.watchPosition(pos => {
+    const ll = [pos.coords.latitude, pos.coords.longitude];
     if (!state.liveMarker) {
-        state.liveMarker = L.circleMarker(ll, {
-            radius: 8, fillColor: '#2563eb', color: '#fff', weight: 2, fillOpacity: 1
-        }).addTo(state.map);
+        state.liveMarker = L.circleMarker(ll, { radius: 8, fillColor: '#2563eb', color: '#fff', weight: 2, fillOpacity: 1 }).addTo(state.map);
         state.map.panTo(ll);
-    } else {
-        state.liveMarker.setLatLng(ll);
-    }
+    } else { state.liveMarker.setLatLng(ll); }
+    
     if (state.current) {
         state.current.route.push(ll);
         if (state.liveRouteLayer) state.map.removeLayer(state.liveRouteLayer);
-        if (state.current.route.length > 1) {
-            state.liveRouteLayer = L.polyline(state.current.route, {
-                color: '#2563eb', weight: 3, dashArray: '5,10', opacity: 0.5
-            }).addTo(state.map);
-        }
+        state.liveRouteLayer = L.polyline(state.current.route, { color: '#2563eb', weight: 3, dashArray: '5,10' }).addTo(state.map);
     }
-}, function(e) { console.warn('GPS: ' + e.message); }, { enableHighAccuracy: true });
+}, null, { enableHighAccuracy: true });
 
-/* ====== START / STOP ====== */
-document.getElementById('btnStart').addEventListener('click', function() {
-    if (state.current) { alert('Walk läuft bereits!'); return; }
-    clearAllComp();
-    state.current = {
-        id: Date.now(),
-        startTime: new Date().toISOString(),
-        name: new Date().toLocaleString('de-DE'),
-        route: [], entries: [],
+// 4. Start / Stop
+document.getElementById('btnStart').onclick = () => {
+    state.current = { 
+        id: Date.now(), 
+        name: new Date().toLocaleString('de-DE'), 
+        route: [], 
+        entries: [], 
         color: walkColors[state.walks.length % walkColors.length],
-        reflection: ''
+        reflection: ""
     };
-    alert('Aufzeichnung gestartet!');
-});
-
-document.getElementById('btnStop').addEventListener('click', function() {
-    if (!state.current) { alert('Kein aktiver Walk!'); return; }
-    if (state.current.route.length < 2 && !confirm('Strecke sehr kurz. Trotzdem speichern?')) return;
-    state.walks.push(state.current);
-    saveLS(); renderArchive();
-    if (state.liveRouteLayer) { state.map.removeLayer(state.liveRouteLayer); state.liveRouteLayer = null; }
-    if (state.tempGroup)      { state.map.removeLayer(state.tempGroup); state.tempGroup = null; }
-    state.current = null;
-    alert('Walk gespeichert!');
-});
-
-/* ====== EINTRAEGE ====== */
-function addEntry(type, data) {
-    if (!state.current) { alert('Bitte erst START drücken!'); return; }
-    if (!state.liveMarker) { alert('Warte auf GPS...'); return; }
-    var pos = state.liveMarker.getLatLng();
-    var entry = Object.assign({
-        type: type,
-        location: { lat: pos.lat, lng: pos.lng },
-        timestamp: new Date().toLocaleTimeString('de-DE'),
-        isoDate: new Date().toISOString()
-    }, data || {});
-    state.current.entries.push(entry);
-    drawTempMarker(entry);
-}
-
-function drawTempMarker(e) {
-    if (!state.tempGroup) state.tempGroup = L.layerGroup().addTo(state.map);
-    var loc = [e.location.lat, e.location.lng];
-    if (['mood','thought','sense'].includes(e.type)) {
-        L.circleMarker(loc, { radius: 8, fillColor: '#2563eb', color: '#fff', weight: 2, fillOpacity: 1 })
-         .addTo(state.tempGroup)
-         .bindPopup('<b>' + e.type.toUpperCase() + '</b><br>' + (e.text || '') + '<br><small>' + e.timestamp + '</small>');
-    } else if (e.type === 'photo') {
-        L.marker(loc, { icon: L.divIcon({ html: '&#x1F4F8;', className: '' }) })
-         .addTo(state.tempGroup).bindPopup('<img src="' + e.photo + '" style="width:150px">');
-    } else if (e.type === 'Sound' || e.type === 'Sprachnachricht') {
-        var ic = e.type === 'Sound' ? '&#x1F50A;' : '&#x1F4AC;';
-        L.marker(loc, { icon: L.divIcon({ html: ic, className: '' }) })
-         .addTo(state.tempGroup).bindPopup('<audio controls src="' + e.audioUrl + '"></audio>');
-    }
-}
-
-/* ====== VERGLEICH ====== */
-window.toggleWalk = function(id) {
-    var wid = parseInt(id);
-    var walk = state.walks.find(function(w) { return w.id === wid; });
-    if (!walk) return;
-    if (state.current) { alert('Bitte erst Walk beenden.'); renderArchive(); return; }
-
-    if (state.activeCompLayers[wid]) {
-        state.map.removeLayer(state.activeCompLayers[wid]);
-        delete state.activeCompLayers[wid];
-        hideRef();
-    } else {
-        var g = L.layerGroup();
-        L.polyline(walk.route, { color: walk.color, weight: 5, className: 'rough-path', opacity: 0.75 }).addTo(g);
-        walk.entries.forEach(function(e) {
-            var loc = [e.location.lat, e.location.lng];
-            if (['mood','thought','sense'].includes(e.type)) {
-                L.circleMarker(loc, { radius: 8, fillColor: walk.color, color: '#fff', weight: 2, fillOpacity: 1 })
-                 .addTo(g).bindPopup('<b>' + e.type.toUpperCase() + '</b><br>' + (e.text||'') + '<br><small>' + e.timestamp + '</small>');
-            } else if (e.type === 'photo') {
-                L.marker(loc, { icon: L.divIcon({ html: '&#x1F4F8;', className: '' }) })
-                 .addTo(g).bindPopup('<img src="' + e.photo + '" style="width:150px">');
-            } else if (e.type === 'Sound' || e.type === 'Sprachnachricht') {
-                var ic = e.type === 'Sound' ? '&#x1F50A;' : '&#x1F4AC;';
-                L.marker(loc, { icon: L.divIcon({ html: ic, className: '' }) })
-                 .addTo(g).bindPopup('<audio controls src="' + e.audioUrl + '"></audio>');
-            }
-        });
-        g.addTo(state.map);
-        state.activeCompLayers[wid] = g;
-        showRef(walk);
-    }
+    alert("Walk gestartet!");
 };
 
-function clearAllComp() {
-    Object.values(state.activeCompLayers).forEach(function(l) { state.map.removeLayer(l); });
-    state.activeCompLayers = {};
-    hideRef(); renderArchive();
+document.getElementById('btnStop').onclick = () => {
+    if (!state.current) return;
+    state.walks.push(state.current);
+    localStorage.setItem('psychogeo_walks', JSON.stringify(state.walks));
+    renderArchive();
+    if (state.liveRouteLayer) state.map.removeLayer(state.liveRouteLayer);
+    state.current = null;
+    alert("Im Archiv gespeichert!");
+};
+
+// 5. Einträge (FABs)
+function addEntry(type, data) {
+    if (!state.current) return alert("Erst START drücken!");
+    const pos = state.liveMarker.getLatLng();
+    const entry = { type, location: { lat: pos.lat, lng: pos.lng }, timestamp: new Date().toLocaleTimeString(), ...data };
+    state.current.entries.push(entry);
+    L.marker([pos.lat, pos.lng]).addTo(state.map).bindPopup(`<b>${type.toUpperCase()}</b><br>${data.text || ""}`).openPopup();
 }
 
-/* ====== REFLEXION ====== */
-function showRef(walk) {
-    var p = document.getElementById('reflexionPanel');
-    p.style.display = 'block';
-    document.getElementById('refWalkName').textContent = walk.name;
-    var ta = document.getElementById('reflexionText');
-    ta.value = walk.reflection || '';
-    ta.dataset.wid = walk.id;
-}
-function hideRef() {
-    document.getElementById('reflexionPanel').style.display = 'none';
-}
-document.getElementById('btnSaveRef').addEventListener('click', function() {
-    var ta = document.getElementById('reflexionText');
-    var walk = state.walks.find(function(w) { return w.id === parseInt(ta.dataset.wid); });
-    if (walk) { walk.reflection = ta.value; saveLS(); alert('Reflexion gespeichert!'); }
-});
+document.getElementById('fabMood').onclick = () => { const t = prompt("Stimmung (0-100)?"); if(t) addEntry('mood', {text:t}); };
+document.getElementById('fabThought').onclick = () => { const t = prompt("Gedanke?"); if(t) addEntry('thought', {text:t}); };
+document.getElementById('fabSense').onclick = () => { const t = prompt("Wahrnehmung?"); if(t) addEntry('sense', {text:t}); };
 
-/* ====== ARCHIV RENDERN ====== */
-function renderArchive() {
-    var list = document.getElementById('archiveList');
-    list.innerHTML = '';
-    if (!state.walks.length) {
-        list.innerHTML = '<div class="empty-msg">Noch keine Walks gespeichert.</div>';
-        return;
+// 6. Archiv & Vergleich
+function toggleWalk(id) {
+    if (state.activeLayers[id]) {
+        state.map.removeLayer(state.activeLayers[id]);
+        delete state.activeLayers[id];
+        document.getElementById('reflexionPanel').style.display = 'none';
+    } else {
+        const walk = state.walks.find(w => w.id == id);
+        const group = L.layerGroup();
+        L.polyline(walk.route, { color: walk.color, weight: 4 }).addTo(group);
+        walk.entries.forEach(e => {
+            L.circleMarker([e.location.lat, e.location.lng], { color: walk.color, radius: 6 }).addTo(group).bindPopup(e.text);
+        });
+        group.addTo(state.map);
+        state.activeLayers[id] = group;
+        
+        // Reflexion Laden
+        const panel = document.getElementById('reflexionPanel');
+        panel.style.display = 'block';
+        document.getElementById('refWalkName').innerText = walk.name;
+        document.getElementById('reflexionText').value = walk.reflection || "";
+        document.getElementById('btnSaveRef').onclick = () => {
+            walk.reflection = document.getElementById('reflexionText').value;
+            localStorage.setItem('psychogeo_walks', JSON.stringify(state.walks));
+            alert("Reflexion für diesen Walk gespeichert.");
+        };
     }
-    state.walks.forEach(function(w) {
-        var row = document.createElement('div');
+}
+
+function renderArchive() {
+    const list = document.getElementById('archiveList');
+    list.innerHTML = state.walks.length ? "" : "Noch keine Daten.";
+    state.walks.forEach(w => {
+        const row = document.createElement('div');
         row.className = 'walk-row';
-        var checked = state.activeCompLayers[w.id] ? 'checked' : '';
-        row.innerHTML =
-            '<input type="checkbox" ' + checked + ' onchange="toggleWalk(' + w.id + ')">' +
-            '<span class="color-dot" style="background:' + w.color + '"></span>' +
-            '<span class="walk-name">' + w.name + '</span>';
+        row.innerHTML = `
+            <input type="checkbox" onchange="toggleWalk('${w.id}')">
+            <span class="color-dot" style="background:${w.color}"></span>
+            <span>${w.name}</span>
+        `;
         list.appendChild(row);
     });
 }
 
-/* ====== STORAGE ====== */
-function saveLS() {
-    var clean = state.walks.map(function(w) {
-        return Object.assign({}, w, {
-            entries: w.entries.map(function(e) {
-                var c = Object.assign({}, e); delete c.audioBlob; return c;
-            })
-        });
-    });
-    localStorage.setItem('psychogeo_walks', JSON.stringify(clean));
-}
-
-/* ====== FAB EVENTS ====== */
-document.getElementById('fabMood').addEventListener('click', function() {
-    var t = prompt('Stimmung beschreiben:'); if (t === null) return;
-    addEntry('mood', { text: t || '(leer)' });
-});
-document.getElementById('fabThought').addEventListener('click', function() {
-    var t = prompt('Gedanke?'); if (t === null) return;
-    addEntry('thought', { text: t || '(leer)' });
-});
-document.getElementById('fabSense').addEventListener('click', function() {
-    var t = prompt('Wahrnehmung?'); if (t === null) return;
-    addEntry('sense', { text: t || '(leer)' });
-});
-document.getElementById('fabPhoto').addEventListener('click', function() {
-    if (!state.current) { alert('Bitte erst START drücken!'); return; }
-    var inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
-    inp.onchange = function(ev) {
-        var r = new FileReader();
-        r.onload = function(x) { addEntry('photo', { photo: x.target.result }); };
-        r.readAsDataURL(ev.target.files[0]);
-    };
-    inp.click();
-});
-
-function handleRec(btnId, type) {
-    if (!state.current) { alert('Bitte erst START drücken!'); return; }
-    var btn = document.getElementById(btnId);
-    if (!state.isRecording) {
-        navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
-            state.audioRecorder = new MediaRecorder(stream);
-            state.audioChunks = [];
-            state.audioRecorder.ondataavailable = function(e) { state.audioChunks.push(e.data); };
-            state.audioRecorder.onstop = function() {
-                var blob = new Blob(state.audioChunks, { type: 'audio/webm' });
-                addEntry(type, { audioUrl: URL.createObjectURL(blob), audioBlob: blob });
-            };
-            state.audioRecorder.start(); state.isRecording = true; state.recordingType = type;
-            btn.textContent = '⏹️';
-            btn.style.background = '#dc2626';
-        }).catch(function() { alert('Mikrofon-Zugriff verweigert.'); });
-    } else {
-        state.audioRecorder.stop(); state.isRecording = false;
-        btn.innerHTML = type === 'Sound' ? '&#x25B6;&#xFE0F;' : '&#x1F4AC;';
-        btn.style.background = '#f97316';
-    }
-}
-document.getElementById('fabSound').addEventListener('click', function() { handleRec('fabSound', 'Sound'); });
-document.getElementById('fabMsg').addEventListener('click',   function() { handleRec('fabMsg', 'Sprachnachricht'); });
-
-/* ====== ZIP EXPORT ====== */
-document.getElementById('btnExport').addEventListener('click', async function() {
-    var activeIds = Object.keys(state.activeCompLayers);
-    var isComp = activeIds.length > 0;
-    var walkExp = isComp
-        ? state.walks.find(function(w) { return w.id == activeIds[0]; })
-        : (state.current || state.walks[state.walks.length - 1]);
-    if (!walkExp) { alert('Kein Walk zum Exportieren.'); return; }
-
-    var btn = document.getElementById('btnExport'), orig = btn.textContent;
-    btn.textContent = '...'; btn.disabled = true;
-    var uis = document.querySelectorAll('#topBar,#sidePanel,#fabGrid,.leaflet-control-zoom,.leaflet-control-attribution');
-    uis.forEach(function(el) { el.classList.add('no-print'); });
-
-    try {
-        var zip = new JSZip(), photos = zip.folder('Fotos');
-        await new Promise(function(r) { setTimeout(r, 500); });
-        var canvas = await html2canvas(document.getElementById('map'), {
-            useCORS: true, allowTaint: false, logging: false,
-            ignoreElements: function(el) { return el.classList.contains('no-print'); }
-        });
-        zip.file(isComp ? 'VERGLEICH.png' : 'KARTE.png', canvas.toDataURL('image/png').split(',')[1], { base64: true });
-
-        var txt = 'PROTOKOLL - ' + walkExp.name + '\n\nREFLEXION:\n' + (walkExp.reflection || '(leer)') + '\n\nEINTRAEGE:\n';
-        walkExp.entries.forEach(function(e, i) {
-            txt += '[' + e.timestamp + '] ' + e.type.toUpperCase() + ': ' + (e.text || '') + '\n';
-            if (e.type === 'photo' && e.photo) photos.file('Foto_' + i + '.jpg', e.photo.split(',')[1], { base64: true });
-        });
-        zip.file('PROTOKOLL.txt', txt);
-        zip.file('rohdaten.json', JSON.stringify(walkExp, null, 2));
-
-        var content = await zip.generateAsync({ type: 'blob' });
-        var a = document.createElement('a');
-        a.href = URL.createObjectURL(content);
-        a.download = isComp ? 'Analyse.zip' : 'Walk_' + walkExp.id + '.zip';
-        a.click();
-    } catch(err) { console.error(err); alert('Export fehlgeschlagen.'); }
-    finally {
-        uis.forEach(function(el) { el.classList.remove('no-print'); });
-        btn.textContent = orig; btn.disabled = false;
-    }
-});
-
-/* ====== INIT ====== */
+// Initialer Aufruf
 renderArchive();
 </script>
 </body>
