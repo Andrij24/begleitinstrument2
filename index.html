@@ -313,12 +313,18 @@ window.addEventListener('load', function () {
     });
 
     // ── Kartenwechsel ──
+    // currentTileUrl tracks selected tile for export
+    let currentTileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+
     document.querySelectorAll('.layer-opt').forEach(btn => {
         btn.onclick = () => {
+            const url = btn.getAttribute('data-url');
+            currentTileUrl = url;
             state.map.removeLayer(state.currentTile);
-            state.currentTile = L.tileLayer(btn.getAttribute('data-url'), { crossOrigin: true, maxZoom: 22, maxNativeZoom: 19 }).addTo(state.map);
+            state.currentTile = L.tileLayer(url, { crossOrigin: true, maxZoom: 22, maxNativeZoom: 19 }).addTo(state.map);
             document.querySelectorAll('.layer-opt').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
+            // Keep drawer open — user can keep switching without closing
         };
     });
 
@@ -518,9 +524,11 @@ window.addEventListener('load', function () {
 
     function placePhotoMarker(dataUrl, pos) {
         const ts = new Date().toLocaleTimeString();
+        // Dezenter Punkt mit kleinem Foto-Thumbnail als Ring
         const icon = L.divIcon({
-            html: '<div style="width:44px;height:44px;border-radius:8px;border:3px solid #fff;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.4);"><img src="' + dataUrl + '" style="width:100%;height:100%;object-fit:cover;"/></div>',
-            iconSize:[44,44], iconAnchor:[22,22], popupAnchor:[0,-24]
+            html: '<div style="width:26px;height:26px;border-radius:50%;border:2.5px solid #fff;overflow:hidden;box-shadow:0 1px 5px rgba(0,0,0,0.4);background:#555;">' +
+                  '<img src="' + dataUrl + '" style="width:100%;height:100%;object-fit:cover;opacity:0.85;"/></div>',
+            iconSize:[26,26], iconAnchor:[13,13], popupAnchor:[0,-16]
         });
         const popup = '<img src="' + dataUrl + '" style="width:200px;border-radius:8px;"/><br><small>' + ts + '</small>';
         const m = placeMarker('photo', pos, popup);
@@ -613,11 +621,15 @@ window.addEventListener('load', function () {
         const entryId = 'audio_' + Date.now();
         audioBlobs[entryId] = blob;  // store blob for export
         state.current.entries.push({ type:audioType, location:{lat:pos.lat,lng:pos.lng}, timestamp:ts, audioDuration:dur, audioUrl:url, entryId });
-        const emoji = audioType === 'voice' ? '💬' : '🔊';
         const color = audioType === 'voice' ? '#7c3aed' : '#f97316';
+        // Dezenter Punkt: kleiner Kreis mit Symbol-Linie innen
+        const svgInner = audioType === 'voice'
+            ? '<line x1="8" y1="5" x2="8" y2="11" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/><line x1="5" y1="8" x2="11" y2="8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>'
+            : '<circle cx="8" cy="8" r="3" fill="none" stroke="#fff" stroke-width="1.8"/><line x1="8" y1="2" x2="8" y2="5" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>';
         const icon = L.divIcon({
-            html: '<div style="width:38px;height:38px;border-radius:50%;background:' + color + ';border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,0.3);">' + emoji + '</div>',
-            iconSize:[38,38], iconAnchor:[19,19], popupAnchor:[0,-22]
+            html: '<div style="width:22px;height:22px;border-radius:50%;background:' + color + ';border:2.5px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;">' +
+                  '<svg width="16" height="16" viewBox="0 0 16 16">' + svgInner + '</svg></div>',
+            iconSize:[22,22], iconAnchor:[11,11], popupAnchor:[0,-14]
         });
         const popupHTML = '<b>' + (audioType==='voice'?'Sprachnachricht':'Umgebungssound') + '</b><br><small>' + ts + ' · ' + dur + '</small><br><audio controls src="' + url + '" style="margin-top:6px;width:180px;"></audio>';
         const m = placeMarker(audioType, pos, popupHTML);
@@ -636,6 +648,15 @@ window.addEventListener('load', function () {
             html: '<div style="width:' + size + 'px;height:' + size + 'px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:' + bgColor + ';border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;">' +
                   '<span style="transform:rotate(45deg);font-size:' + Math.round(size*0.42) + 'px;line-height:1;">' + emoji + '</span></div>',
             iconSize:[size,size], iconAnchor:[size/2, size], popupAnchor:[0,-(size+4)]
+        });
+    }
+
+    function makeDotIcon(color, size) {
+        size = size || 18;
+        const ring = size + 6;
+        return L.divIcon({
+            html: '<div style="width:' + ring + 'px;height:' + ring + 'px;border-radius:50%;background:' + color + ';border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.35);"></div>',
+            iconSize:[ring, ring], iconAnchor:[ring/2, ring/2], popupAnchor:[0, -(ring/2+4)]
         });
     }
 
@@ -664,9 +685,9 @@ window.addEventListener('load', function () {
         const note = document.getElementById('moodText').value.trim();
         const pos = currentLatLng();
         const ts = new Date().toLocaleTimeString();
-        state.current.entries.push({ type:'mood', location:{lat:pos.lat,lng:pos.lng}, timestamp:ts, moodValue:val, text:note });
+        state.current.entries.push({ type:'mood', location:{lat:pos.lat,lng:pos.lng}, timestamp:ts, moodValue:val, markerColor:col, text:note });
         const col = moodColor(val);
-        const icon = makePinIcon('🔋', col, 42);
+        const icon = makeDotIcon(col, 16);
         const popup = '<div style="min-width:140px;">' +
             '<b style="font-size:13px;">Stimmung</b><br>' +
             '<div style="margin:6px 0;background:#f0f0f0;border-radius:6px;height:12px;overflow:hidden;">' +
@@ -695,7 +716,7 @@ window.addEventListener('load', function () {
         const pos = currentLatLng();
         const ts = new Date().toLocaleTimeString();
         state.current.entries.push({ type:'thought', location:{lat:pos.lat,lng:pos.lng}, timestamp:ts, text:t || '(kein Text)' });
-        const icon = makePinIcon('💭', '#12345f', 40);
+        const icon = makeDotIcon('#22c55e', 16);
         const popup = '<div style="min-width:140px;"><b>Gedanke</b><br>' +
             '<p style="margin:4px 0;font-size:12px;color:#333;">' + (t||'—') + '</p>' +
             '<small style="color:#aaa;">' + ts + '</small></div>';
@@ -718,7 +739,7 @@ window.addEventListener('load', function () {
         const pos = currentLatLng();
         const ts = new Date().toLocaleTimeString();
         state.current.entries.push({ type:'sense', location:{lat:pos.lat,lng:pos.lng}, timestamp:ts, text:t||'(keine Eingabe)' });
-        const icon = makePinIcon('👁', '#3d633d', 40);
+        const icon = makeDotIcon('#f97316', 16);
         const popup = '<div style="min-width:140px;"><b>Wahrnehmung</b><br>' +
             (t ? '<p style="margin:4px 0;font-size:12px;color:#333;">' + t + '</p>' : '') +
             '<small style="color:#aaa;">' + ts + '</small></div>';
@@ -752,7 +773,19 @@ window.addEventListener('load', function () {
                 let popup = '<b>' + (e.type||'').toUpperCase() + '</b><br>' + (e.text || e.audioDuration || '');
                 if (e.dataUrl) popup = '<img src="' + e.dataUrl + '" style="width:180px;border-radius:6px;"/><br><small>' + (e.timestamp||'') + '</small>';
                 if (e.audioUrl) popup += '<br><audio controls src="' + e.audioUrl + '" style="width:180px;margin-top:4px;"></audio>';
-                L.circleMarker([e.location.lat, e.location.lng], { color: walk.color, radius: 6, fillOpacity: 0.8 }).addTo(group).bindPopup(popup);
+                const dotColor = e.type === 'thought' ? '#22c55e'
+                    : e.type === 'sense'  ? '#f97316'
+                    : e.type === 'mood'   ? (e.markerColor || walk.color)
+                    : e.type === 'voice'  ? '#7c3aed'
+                    : e.type === 'sound'  ? '#f97316'
+                    : e.type === 'photo'  ? '#555'
+                    : walk.color;
+                // mood/thought/sense bigger; audio/photo smaller & more transparent
+                const dotRadius  = (e.type==='mood'||e.type==='thought'||e.type==='sense') ? 7 : 5;
+                const dotOpacity = (e.type==='photo'||e.type==='voice'||e.type==='sound')  ? 0.6 : 0.92;
+                L.circleMarker([e.location.lat, e.location.lng], {
+                    color: '#fff', weight: 1.5, fillColor: dotColor, fillOpacity: dotOpacity, radius: dotRadius
+                }).addTo(group).bindPopup(popup);
             });
             group.addTo(state.map);
             state.activeLayers[id] = group;
@@ -844,6 +877,7 @@ window.addEventListener('load', function () {
                 name: walk.name,
                 date: walk.name,
                 color: walk.color,
+                kartenansicht: currentTileUrl,
                 reflection: walk.reflection || '',
                 route: walk.route,
                 entries: walk.entries.map(e => ({
