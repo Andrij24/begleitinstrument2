@@ -1,1364 +1,806 @@
 <!doctype html>
 <html lang="de">
 <head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-    <title>Begleitinstrument PRO</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
-    <style>
-        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-        html,body{height:100%;overflow:hidden;font-family:sans-serif;}
-        #map{width:100%;height:100vh;z-index:1;}
-
-        #topBar{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:1000;display:flex;gap:8px;}
-        .btn{padding:10px 14px;border-radius:10px;font-weight:bold;font-size:10px;cursor:pointer;text-transform:uppercase;border:none;}
-        .btn-blue{background:#2563eb;color:#fff;}
-        .btn-red{background:#dc2626;color:#fff;}
-        .btn-green{background:#16a34a;color:#fff;}
-        .w-full{width:100%;}
-
-        #panelToggles{position:fixed;top:12px;right:12px;z-index:1001;display:flex;flex-direction:column;gap:6px;}
-        .panel-tab{padding:8px 12px;border-radius:10px;border:none;font-size:10px;font-weight:bold;text-transform:uppercase;cursor:pointer;background:#fff;color:#333;box-shadow:0 2px 8px rgba(0,0,0,0.15);transition:background 0.15s,color 0.15s;white-space:nowrap;}
-        .panel-tab.active{background:#2563eb;color:#fff;}
-
-        #drawer{position:fixed;top:0;right:-320px;width:300px;height:100vh;z-index:1002;background:#f5f5f5;box-shadow:-4px 0 20px rgba(0,0,0,0.15);transition:right 0.3s ease;display:flex;flex-direction:column;overflow:hidden;}
-        #drawer.open{right:0;}
-        #drawerHeader{background:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e5e5e5;flex-shrink:0;}
-        #drawerTitle{font-size:12px;font-weight:bold;text-transform:uppercase;color:#333;}
-        #drawerClose{width:28px;height:28px;border-radius:50%;border:none;background:#eee;cursor:pointer;font-size:14px;}
-        #drawerBody{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px;}
-
-        .section{background:#fff;border-radius:12px;padding:12px;border:1px solid #e5e5e5;}
-        .section-label{font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;border-bottom:1px solid #f0f0f0;padding-bottom:4px;margin-bottom:10px;}
-
-        .layer-opt{display:block;width:100%;text-align:left;padding:8px 10px;border-radius:6px;border:1px solid #ddd;cursor:pointer;font-size:11px;background:#fff;margin-bottom:4px;}
-        .layer-opt:last-child{margin-bottom:0;}
-        .layer-opt.active{background:#dbeafe;color:#1d4ed8;font-weight:bold;border-color:#1d4ed8;}
-
-        .layer-toggle-btn{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;border:1.5px solid #ddd;background:#f9f9f9;cursor:pointer;font-size:11px;font-weight:bold;color:#555;width:100%;margin-bottom:5px;transition:all 0.15s ease;}
-        .layer-toggle-btn:last-child{margin-bottom:0;}
-        .layer-toggle-btn.active{background:#dbeafe;border-color:#2563eb;color:#1d4ed8;}
-        .layer-toggle-btn .dot{width:8px;height:8px;border-radius:50%;background:#ccc;flex-shrink:0;}
-        .layer-toggle-btn.active .dot{background:#2563eb;}
-
-        /* Archive rows */
-        .walk-item{background:#fff;border-radius:10px;border:1px solid #e5e5e5;margin-bottom:8px;overflow:hidden;}
-        .walk-item:last-child{margin-bottom:0;}
-        .walk-header{display:flex;align-items:center;gap:8px;padding:9px 10px;cursor:pointer;transition:background 0.1s;}
-        .walk-header:hover{background:#f0f4ff;}
-        .walk-header.shown{background:#dbeafe;}
-        .color-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
-        .walk-label{flex:1;font-size:11px;font-weight:bold;color:#333;}
-        .walk-badge{font-size:9px;font-weight:bold;color:#1d4ed8;background:#bfdbfe;padding:2px 6px;border-radius:10px;display:none;}
-        .walk-header.shown .walk-badge{display:block;}
-        .walk-actions{display:none;padding:0 10px 10px;gap:6px;flex-direction:column;}
-        .walk-actions.open{display:flex;}
-        .walk-name-input{width:100%;padding:6px 8px;border-radius:6px;border:1px solid #ddd;font-size:11px;margin-bottom:2px;}
-        .walk-btn-row{display:flex;gap:6px;}
-        .walk-btn{flex:1;padding:7px 6px;border-radius:7px;border:none;font-size:10px;font-weight:bold;cursor:pointer;text-transform:uppercase;}
-        .wb-save{background:#2563eb;color:#fff;}
-        .wb-export{background:#16a34a;color:#fff;}
-        .wb-delete{background:#fee2e2;color:#dc2626;}
-
-        #reflexionText{width:100%;height:70px;font-size:11px;margin:6px 0;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;}
-
-        /* FABs */
-        #fabGrid{position:fixed;bottom:18px;left:12px;z-index:1001;display:flex;flex-direction:column;gap:10px;}
-        .fab{width:52px;height:52px;border-radius:50%;border:none;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.22);color:white;transition:transform 0.1s;}
-        .fab:active{transform:scale(0.92);}
-
-        /* Modals */
-        #cameraModal,#audioModal,#stopModal{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,0.88);display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
-        #cameraModal.open,#audioModal.open,#stopModal.open{display:flex;}
-        #cameraPreview{width:min(90vw,400px);border-radius:12px;background:#000;}
-        #captureBtn{padding:14px 32px;border-radius:50px;border:none;background:#fff;font-size:14px;font-weight:bold;cursor:pointer;}
-        #closeCamera,#closeAudio{position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:18px;width:36px;height:36px;border-radius:50%;cursor:pointer;}
-        #audioStatus{color:#fff;font-size:14px;font-weight:bold;text-align:center;}
-        #audioTimer{color:#ef4444;font-size:32px;font-weight:bold;font-variant-numeric:tabular-nums;}
-        #audioViz{display:flex;align-items:flex-end;gap:3px;height:48px;margin:8px 0;}
-        .bar{width:6px;background:#ef4444;border-radius:3px;transition:height 0.1s;}
-        #stopAudioBtn{padding:14px 32px;border-radius:50px;border:none;background:#ef4444;color:#fff;font-size:14px;font-weight:bold;cursor:pointer;}
-        #photoInput{display:none;}
-
-        /* Stop Modal */
-        #stopModal .modal-box{background:#fff;border-radius:16px;padding:24px;width:min(90vw,320px);display:flex;flex-direction:column;gap:12px;}
-        #stopModal h3{font-size:14px;font-weight:bold;color:#111;}
-        #stopModal p{font-size:11px;color:#666;}
-        #walkNameInput{width:100%;padding:10px 12px;border-radius:8px;border:1px solid #ddd;font-size:13px;}
-        .modal-btns{display:flex;gap:8px;}
-        .modal-btns button{flex:1;padding:11px;border-radius:8px;border:none;font-size:11px;font-weight:bold;cursor:pointer;text-transform:uppercase;}
-        #modalCancel{background:#f0f0f0;color:#555;}
-        #modalSave{background:#2563eb;color:#fff;}
-
-        /* Export progress */
-        #exportOverlay{position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;}
-        #exportOverlay.open{display:flex;}
-        #exportBox{background:#fff;border-radius:14px;padding:24px 28px;text-align:center;min-width:200px;}
-        #exportMsg{font-size:13px;color:#333;margin-top:8px;}
-    </style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <title>Begleitinstrument PRO</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" defer></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html,body{height:100%;overflow:hidden;font-family:sans-serif;}
+    #map{width:100%;height:100vh;z-index:1;}
+    #topBar{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:1000;display:flex;gap:8px;}
+    .btn{padding:10px 14px;border-radius:10px;font-weight:bold;font-size:10px;cursor:pointer;text-transform:uppercase;border:none;}
+    .btn-blue{background:#2563eb;color:#fff;}
+    .btn-red{background:#dc2626;color:#fff;}
+    .w-full{width:100%;}
+    #panelToggles{position:fixed;top:12px;right:12px;z-index:1001;display:flex;flex-direction:column;gap:6px;}
+    .panel-tab{padding:8px 12px;border-radius:10px;border:none;font-size:10px;font-weight:bold;text-transform:uppercase;cursor:pointer;background:#fff;color:#333;box-shadow:0 2px 8px rgba(0,0,0,0.15);transition:background 0.15s,color 0.15s;white-space:nowrap;}
+    .panel-tab.active{background:#2563eb;color:#fff;}
+    #drawer{position:fixed;top:0;right:-340px;width:320px;height:100vh;z-index:1002;background:#f5f5f5;box-shadow:-4px 0 20px rgba(0,0,0,0.15);transition:right 0.3s ease;display:flex;flex-direction:column;overflow:hidden;}
+    #drawer.open{right:0;}
+    #drawerHeader{background:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e5e5e5;flex-shrink:0;}
+    #drawerTitle{font-size:12px;font-weight:bold;text-transform:uppercase;color:#333;}
+    #drawerClose{width:28px;height:28px;border-radius:50%;border:none;background:#eee;cursor:pointer;font-size:14px;}
+    #drawerBody{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px;}
+    .section{background:#fff;border-radius:12px;padding:12px;border:1px solid #e5e5e5;}
+    .section-label{font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;border-bottom:1px solid #f0f0f0;padding-bottom:4px;margin-bottom:10px;}
+    .layer-opt{display:block;width:100%;text-align:left;padding:8px 10px;border-radius:6px;border:1px solid #ddd;cursor:pointer;font-size:11px;background:#fff;margin-bottom:4px;}
+    .layer-opt.active{background:#dbeafe;color:#1d4ed8;font-weight:bold;border-color:#1d4ed8;}
+    .layer-toggle-btn{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;border:1.5px solid #ddd;background:#f9f9f9;cursor:pointer;font-size:11px;font-weight:bold;color:#555;width:100%;margin-bottom:5px;transition:all 0.15s ease;}
+    .layer-toggle-btn.active{background:#dbeafe;border-color:#2563eb;color:#1d4ed8;}
+    .layer-toggle-btn .dot{width:8px;height:8px;border-radius:50%;background:#ccc;flex-shrink:0;}
+    .layer-toggle-btn.active .dot{background:#2563eb;}
+    .walk-item{background:#fff;border-radius:10px;border:1px solid #e5e5e5;margin-bottom:8px;overflow:hidden;}
+    .walk-header{display:flex;align-items:center;gap:8px;padding:9px 10px;cursor:pointer;transition:background 0.1s;}
+    .walk-header:hover{background:#f0f4ff;}
+    .walk-header.shown{background:#dbeafe;}
+    .color-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+    .walk-label{flex:1;font-size:11px;font-weight:bold;color:#333;}
+    .walk-badge{font-size:9px;font-weight:bold;color:#1d4ed8;background:#bfdbfe;padding:2px 6px;border-radius:10px;display:none;}
+    .walk-header.shown .walk-badge{display:block;}
+    .walk-actions{display:none;padding:0 10px 10px;gap:6px;flex-direction:column;}
+    .walk-actions.open{display:flex;}
+    .walk-name-input{width:100%;padding:6px 8px;border-radius:6px;border:1px solid #ddd;font-size:11px;margin-bottom:2px;}
+    .walk-btn-row{display:flex;gap:5px;flex-wrap:wrap;}
+    .walk-btn{flex:1;padding:7px 4px;border-radius:7px;border:none;font-size:9px;font-weight:bold;cursor:pointer;text-transform:uppercase;min-width:50px;}
+    .wb-save{background:#2563eb;color:#fff;}
+    .wb-export{background:#16a34a;color:#fff;}
+    .wb-analyse{background:#7c3aed;color:#fff;}
+    .wb-delete{background:#fee2e2;color:#dc2626;}
+    /* Reflexion */
+    .ref-question{font-size:11px;font-weight:bold;color:#374151;margin-bottom:4px;margin-top:10px;}
+    .ref-question:first-of-type{margin-top:0;}
+    textarea.ref-input{width:100%;font-size:11px;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;font-family:sans-serif;background:#fafafa;}
+    .mood-retro-wrap{display:flex;align-items:center;gap:8px;margin:4px 0;}
+    .mood-retro-wrap input[type=range]{flex:1;}
+    .mood-retro-val{font-size:14px;font-weight:bold;min-width:28px;text-align:right;}
+    /* Auswertungs-Modal */
+    #analyseModal{position:fixed;inset:0;z-index:3500;background:rgba(0,0,0,0.82);display:none;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;}
+    #analyseModal.open{display:flex;}
+    #analyseBox{background:#f8f8f8;border-radius:20px;width:min(96vw,560px);padding:20px;display:flex;flex-direction:column;gap:14px;margin:auto;}
+    .analyse-header{display:flex;align-items:center;justify-content:space-between;}
+    .analyse-title{font-size:14px;font-weight:bold;color:#111;}
+    .analyse-close{width:28px;height:28px;border-radius:50%;border:none;background:#eee;cursor:pointer;font-size:14px;}
+    .view-toggle{display:flex;gap:6px;}
+    .vt-btn{padding:6px 14px;border-radius:16px;border:1px solid #ddd;background:#fff;font-size:11px;font-weight:bold;cursor:pointer;color:#555;}
+    .vt-btn.active{background:#2563eb;color:#fff;border-color:#2563eb;}
+    .a-card{background:#fff;border-radius:12px;padding:12px;border:1px solid #e5e5e5;}
+    .a-label{font-size:9px;font-weight:bold;text-transform:uppercase;color:#9ca3af;margin-bottom:8px;}
+    .stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+    .stat-box{background:#f0f4ff;border-radius:8px;padding:10px;text-align:center;}
+    .stat-val{font-size:20px;font-weight:bold;color:#1a1a1a;}
+    .stat-lbl{font-size:9px;color:#6b7280;text-transform:uppercase;margin-top:2px;}
+    .disk-row{display:flex;align-items:center;gap:8px;margin:5px 0;}
+    .disk-bar-bg{flex:1;height:7px;border-radius:4px;background:#f0f0f0;overflow:hidden;}
+    .disk-bar-fill{height:100%;border-radius:4px;}
+    .anon-banner{background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:8px 10px;font-size:10px;color:#92400e;}
+    /* Modals */
+    #cameraModal,#audioModal,#stopModal{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,0.88);display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
+    #cameraModal.open,#audioModal.open,#stopModal.open{display:flex;}
+    #cameraPreview{width:min(90vw,400px);border-radius:12px;background:#000;}
+    #captureBtn{padding:14px 32px;border-radius:50px;border:none;background:#fff;font-size:14px;font-weight:bold;cursor:pointer;}
+    #closeCamera,#closeAudio{position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:18px;width:36px;height:36px;border-radius:50%;cursor:pointer;}
+    #audioStatus{color:#fff;font-size:14px;font-weight:bold;text-align:center;}
+    #audioTimer{color:#ef4444;font-size:32px;font-weight:bold;}
+    #audioViz{display:flex;align-items:flex-end;gap:3px;height:48px;margin:8px 0;}
+    .bar{width:6px;background:#ef4444;border-radius:3px;transition:height 0.1s;}
+    #stopAudioBtn{padding:14px 32px;border-radius:50px;border:none;background:#ef4444;color:#fff;font-size:14px;font-weight:bold;cursor:pointer;}
+    #photoInput{display:none;}
+    #stopModal .modal-box{background:#fff;border-radius:16px;padding:24px;width:min(90vw,320px);display:flex;flex-direction:column;gap:12px;}
+    #stopModal h3{font-size:14px;font-weight:bold;color:#111;}
+    #stopModal p{font-size:11px;color:#666;}
+    #walkNameInput{width:100%;padding:10px 12px;border-radius:8px;border:1px solid #ddd;font-size:13px;}
+    .modal-btns{display:flex;gap:8px;}
+    .modal-btns button{flex:1;padding:11px;border-radius:8px;border:none;font-size:11px;font-weight:bold;cursor:pointer;text-transform:uppercase;}
+    #modalCancel{background:#f0f0f0;color:#555;}
+    #modalSave{background:#2563eb;color:#fff;}
+    #exportOverlay{position:fixed;inset:0;z-index:4000;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;}
+    #exportOverlay.open{display:flex;}
+    #exportBox{background:#fff;border-radius:14px;padding:24px 28px;text-align:center;min-width:200px;}
+    #exportMsg{font-size:13px;color:#333;margin-top:8px;}
+    #fabGrid{position:fixed;bottom:18px;left:12px;z-index:1001;display:flex;flex-direction:column;gap:10px;}
+    .fab{width:52px;height:52px;border-radius:50%;border:none;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.22);color:white;transition:transform 0.1s;}
+    .fab:active{transform:scale(0.92);}
+    #moodModal,#thoughtModal,#senseModal{position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,0.78);display:none;align-items:center;justify-content:center;}
+    #thoughtModal,#senseModal{z-index:2000;background:rgba(0,0,0,0.75);}
+  </style>
 </head>
 <body>
 <div id="map"></div>
-
 <div id="topBar">
-    <button id="btnStart" class="btn btn-blue">START</button>
-    <button id="btnStop"  class="btn btn-red">STOP / SAVE</button>
+  <button id="btnStart" class="btn btn-blue">START</button>
+  <button id="btnStop" class="btn btn-red">STOP / SAVE</button>
 </div>
-
 <div id="panelToggles">
-    <button class="panel-tab" data-panel="ansicht">🗺 Ansicht</button>
-    <button class="panel-tab" data-panel="ebenen">☰ Ebenen</button>
-    <button class="panel-tab" data-panel="archiv">📂 Archiv</button>
+  <button class="panel-tab" data-panel="ansicht">🗺 Ansicht</button>
+  <button class="panel-tab" data-panel="ebenen">☰ Ebenen</button>
+  <button class="panel-tab" data-panel="archiv">📂 Archiv</button>
 </div>
-
 <div id="drawer">
-    <div id="drawerHeader">
-        <span id="drawerTitle">Panel</span>
-        <button id="drawerClose">✕</button>
+  <div id="drawerHeader">
+    <span id="drawerTitle">Panel</span>
+    <button id="drawerClose">✕</button>
+  </div>
+  <div id="drawerBody">
+    <div class="section" id="sec-ansicht" style="display:none;">
+      <div class="section-label">Kartenansicht</div>
+      <button class="layer-opt active" data-url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png">Standard</button>
+      <button class="layer-opt" data-url="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}">Satellit</button>
+      <button class="layer-opt" data-url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png">Topografie</button>
+      <button class="layer-opt" data-url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png">Graustufen</button>
+      <button class="layer-opt" data-url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png">Dunkel</button>
     </div>
-    <div id="drawerBody">
-        <!-- Ansicht -->
-        <div class="section" id="sec-ansicht" style="display:none;">
-            <div class="section-label">Kartenansicht</div>
-            <button class="layer-opt active" data-url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png">Standard</button>
-            <button class="layer-opt" data-url="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}">Satellit</button>
-            <button class="layer-opt" data-url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png">Topografie</button>
-            <button class="layer-opt" data-url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png">Graustufen</button>
-            <button class="layer-opt" data-url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png">Dunkel</button>
+    <div class="section" id="sec-ebenen" style="display:none;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        <div style="background:#f0f4ff;border-radius:10px;padding:10px 12px;text-align:center;">
+          <div style="font-size:9px;font-weight:bold;color:#6b7280;text-transform:uppercase;margin-bottom:4px;">Schritte</div>
+          <div id="stepCount" style="font-size:22px;font-weight:bold;color:#1a1a1a;">0</div>
         </div>
-        <!-- Ebenen -->
-        <div class="section" id="sec-ebenen" style="display:none;">
-            <!-- Live Stats -->
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-                <div style="background:#f0f4ff;border-radius:10px;padding:10px 12px;text-align:center;">
-                    <div style="font-size:9px;font-weight:bold;color:#6b7280;text-transform:uppercase;margin-bottom:4px;">Schritte</div>
-                    <div id="stepCount" style="font-size:22px;font-weight:bold;color:#1a1a1a;">0</div>
-                </div>
-                <div style="background:#f0f4ff;border-radius:10px;padding:10px 12px;text-align:center;">
-                    <div style="font-size:9px;font-weight:bold;color:#6b7280;text-transform:uppercase;margin-bottom:4px;">Tempo</div>
-                    <div id="currentSpeed" style="font-size:18px;font-weight:bold;color:#1a1a1a;">—</div>
-                </div>
-            </div>
-            <div style="font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;border-bottom:1px solid #f0f0f0;padding-bottom:4px;margin-bottom:10px;">Ebenen ein-/ausblenden</div>
-            <button class="layer-toggle-btn active" data-layer="route"><span class="dot"></span> Route</button>
-            <button class="layer-toggle-btn active" data-layer="mood"><span class="dot"></span> Stimmung</button>
-            <button class="layer-toggle-btn active" data-layer="thought"><span class="dot"></span> Gedanken</button>
-            <button class="layer-toggle-btn active" data-layer="sense"><span class="dot"></span> Wahrnehmung</button>
-            <button class="layer-toggle-btn active" data-layer="sound"><span class="dot"></span> Umgebungssound</button>
-            <button class="layer-toggle-btn active" data-layer="voice"><span class="dot"></span> Sprachnachricht</button>
-            <button class="layer-toggle-btn active" data-layer="photo"><span class="dot"></span> Fotos</button>
+        <div style="background:#f0f4ff;border-radius:10px;padding:10px 12px;text-align:center;">
+          <div style="font-size:9px;font-weight:bold;color:#6b7280;text-transform:uppercase;margin-bottom:4px;">Tempo</div>
+          <div id="currentSpeed" style="font-size:18px;font-weight:bold;color:#1a1a1a;">—</div>
         </div>
-        <!-- Archiv -->
-        <div class="section" id="sec-archiv" style="display:none;">
-            <div class="section-label">Walks — klicken zum Anzeigen</div>
-            <div id="archiveList"><div style="font-size:11px;color:#999;">Noch keine Walks gespeichert.</div></div>
-        </div>
-        <!-- Reflexion -->
-        <div class="section" id="reflexionPanel" style="display:none;">
-            <div class="section-label">Reflexion: <span id="refWalkName"></span></div>
-            <textarea id="reflexionText" placeholder="Deine Analyse hier..."></textarea>
-            <button id="btnSaveRef" class="btn btn-blue w-full">Speichern</button>
-        </div>
+      </div>
+      <div style="font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;border-bottom:1px solid #f0f0f0;padding-bottom:4px;margin-bottom:10px;">Ebenen</div>
+      <button class="layer-toggle-btn active" data-layer="route"><span class="dot"></span> Route</button>
+      <button class="layer-toggle-btn active" data-layer="mood"><span class="dot"></span> Stimmung</button>
+      <button class="layer-toggle-btn active" data-layer="thought"><span class="dot"></span> Gedanken</button>
+      <button class="layer-toggle-btn active" data-layer="sense"><span class="dot"></span> Wahrnehmung</button>
+      <button class="layer-toggle-btn active" data-layer="sound"><span class="dot"></span> Umgebungssound</button>
+      <button class="layer-toggle-btn active" data-layer="voice"><span class="dot"></span> Sprachnachricht</button>
+      <button class="layer-toggle-btn active" data-layer="photo"><span class="dot"></span> Fotos</button>
     </div>
-</div>
-
-<!-- FABs -->
-<div id="fabGrid">
-    <button id="fabPhoto"   class="fab" style="background:#555;">📸</button>
-    <button id="fabSound"   class="fab" style="background:#f97316;">🎙</button>
-    <button id="fabSense"   class="fab" style="background:#3d633d;">👁️</button>
-    <button id="fabThought" class="fab" style="background:#12345f;">💭</button>
-    <button id="fabMsg"     class="fab" style="background:#7c3aed;">💬</button>
-    <button id="fabMood"    class="fab" style="background:#ff6600;">🔋</button>
-</div>
-
-<!-- Kamera Modal -->
-<div id="cameraModal">
-    <button id="closeCamera">✕</button>
-    <video id="cameraPreview" autoplay playsinline muted></video>
-    <button id="captureBtn">📸 Foto aufnehmen</button>
-    <canvas id="photoCanvas" style="display:none;"></canvas>
-</div>
-
-<!-- Audio Modal -->
-<div id="audioModal">
-    <button id="closeAudio">✕</button>
-    <div id="audioStatus">Aufnahme läuft...</div>
-    <div id="audioTimer">0:00</div>
-    <div id="audioViz">
-        <div class="bar" style="height:8px"></div><div class="bar" style="height:16px"></div>
-        <div class="bar" style="height:24px"></div><div class="bar" style="height:16px"></div>
-        <div class="bar" style="height:8px"></div><div class="bar" style="height:20px"></div>
-        <div class="bar" style="height:12px"></div><div class="bar" style="height:28px"></div>
-        <div class="bar" style="height:14px"></div><div class="bar" style="height:8px"></div>
+    <div class="section" id="sec-archiv" style="display:none;">
+      <div class="section-label">Walks</div>
+      <div id="archiveList"><div style="font-size:11px;color:#999;">Noch keine Walks gespeichert.</div></div>
     </div>
-    <button id="stopAudioBtn">⏹ Aufnahme beenden</button>
-</div>
-
-<!-- Stop/Name Modal -->
-<div id="stopModal">
-    <div class="modal-box">
-        <h3>Walk beenden &amp; speichern</h3>
-        <p>Gib deinem Walk einen Namen:</p>
-        <input id="walkNameInput" type="text" placeholder="z.B. Morgenspaziergang Zentrum"/>
-        <div class="modal-btns">
-            <button id="modalCancel">Abbrechen</button>
-            <button id="modalSave">💾 Speichern</button>
-        </div>
-    </div>
-</div>
-
-<!-- Export Overlay -->
-<div id="exportOverlay">
-    <div id="exportBox">
-        <div style="font-size:24px;">📦</div>
-        <div id="exportMsg">Exportiere Daten...</div>
-    </div>
-</div>
-
-<input type="file" id="photoInput" accept="image/*" capture="environment"/>
-
-<!-- Stimmungs-Modal -->
-<div id="moodModal" style="position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,0.78);display:none;align-items:center;justify-content:center;">
-  <div style="background:#fff;border-radius:20px;padding:28px 24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:16px;position:relative;z-index:3001;">
-    <div style="font-size:14px;font-weight:bold;color:#111;text-align:center;letter-spacing:0.5px;">🔋 Stimmung</div>
-
-    <div id="moodColorBar" style="height:16px;border-radius:8px;background:linear-gradient(to right,#3b82f6,#22c55e,#facc15,#f97316,#ef4444);position:relative;">
-      <div id="moodThumb" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;background:#fff;border:3px solid #facc15;box-shadow:0 2px 8px rgba(0,0,0,0.3);pointer-events:none;"></div>
-    </div>
-
-    <input type="range" id="moodSlider" min="0" max="100" value="50"
-      style="width:100%;margin:-8px 0;opacity:0;height:32px;cursor:pointer;"/>
-
-    <div style="display:flex;justify-content:space-between;font-size:10px;color:#aaa;margin-top:-8px;">
-      <span>0 — tief</span><span>50 — neutral</span><span>100 — hoch</span>
-    </div>
-
-    <div style="text-align:center;">
-      <span id="moodVal" style="font-size:36px;font-weight:bold;color:#facc15;line-height:1;">50</span>
-      <span style="font-size:13px;color:#aaa;">/100</span>
-    </div>
-
-    <textarea id="moodText" placeholder="Notiz (optional)..." style="width:100%;height:56px;border-radius:10px;border:1.5px solid #e5e5e5;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
-
-    <div style="display:flex;gap:10px;">
-      <button id="moodCancel" style="flex:1;padding:13px;border-radius:12px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:12px;cursor:pointer;text-transform:uppercase;">Abbrechen</button>
-      <button id="moodSave"   style="flex:2;padding:13px;border-radius:12px;border:none;font-weight:bold;font-size:12px;cursor:pointer;text-transform:uppercase;color:#fff;" >Marker setzen ●</button>
+    <!-- REFLEXION (strukturiert) -->
+    <div class="section" id="reflexionPanel" style="display:none;">
+      <div class="section-label">Reflexion: <span id="refWalkName"></span></div>
+      <div class="ref-question">Wie erinnerst du den Walk insgesamt?</div>
+      <textarea class="ref-input" id="refFrei" rows="3" placeholder="Freie Beschreibung..."></textarea>
+      <div class="ref-question">Stimmung rückblickend (0=tief, 100=hoch)</div>
+      <div class="mood-retro-wrap">
+        <input type="range" id="refMoodSlider" min="0" max="100" value="50" step="1"/>
+        <span class="mood-retro-val" id="refMoodVal" style="color:#facc15;">50</span>
+      </div>
+      <div class="ref-question">Welcher Moment blieb am stärksten in Erinnerung?</div>
+      <textarea class="ref-input" id="refMoment" rows="2" placeholder="Ort, Situation, Eindruck..."></textarea>
+      <div class="ref-question">Orte die deine Stimmung beeinflusst haben?</div>
+      <textarea class="ref-input" id="refOrte" rows="2" placeholder="Park, Kreuzung, Lärm..."></textarea>
+      <div class="ref-question">Was war bedeutsam aber nicht aufgezeichnet?</div>
+      <textarea class="ref-input" id="refNicht" rows="2" placeholder="Was fehlt in den Daten?"></textarea>
+      <div class="ref-question">Was überrascht dich beim Blick auf die Aufzeichnung?</div>
+      <textarea class="ref-input" id="refUeber" rows="2" placeholder="Diskrepanz, Überraschung..."></textarea>
+      <button id="btnSaveRef" class="btn btn-blue w-full" style="margin-top:10px;">💾 Reflexion speichern</button>
     </div>
   </div>
 </div>
 
-<!-- Gedanken-Modal -->
-<div id="thoughtModal" style="position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center;">
+<div id="fabGrid">
+  <button id="fabPhoto" class="fab" style="background:#555;">📸</button>
+  <button id="fabSound" class="fab" style="background:#f97316;">🎙</button>
+  <button id="fabSense" class="fab" style="background:#3d633d;">👁️</button>
+  <button id="fabThought" class="fab" style="background:#12345f;">💭</button>
+  <button id="fabMsg" class="fab" style="background:#7c3aed;">💬</button>
+  <button id="fabMood" class="fab" style="background:#ff6600;">🔋</button>
+</div>
+
+<div id="cameraModal">
+  <button id="closeCamera">✕</button>
+  <video id="cameraPreview" autoplay playsinline muted></video>
+  <button id="captureBtn">📸 Foto aufnehmen</button>
+  <canvas id="photoCanvas" style="display:none;"></canvas>
+</div>
+<div id="audioModal">
+  <button id="closeAudio">✕</button>
+  <div id="audioStatus">Aufnahme läuft...</div>
+  <div id="audioTimer">0:00</div>
+  <div id="audioViz">
+    <div class="bar" style="height:8px"></div><div class="bar" style="height:16px"></div>
+    <div class="bar" style="height:24px"></div><div class="bar" style="height:16px"></div>
+    <div class="bar" style="height:8px"></div><div class="bar" style="height:20px"></div>
+    <div class="bar" style="height:12px"></div><div class="bar" style="height:28px"></div>
+    <div class="bar" style="height:14px"></div><div class="bar" style="height:8px"></div>
+  </div>
+  <button id="stopAudioBtn">⏹ Aufnahme beenden</button>
+</div>
+<div id="stopModal">
+  <div class="modal-box">
+    <h3>Walk beenden &amp; speichern</h3>
+    <p>Gib deinem Walk einen Namen:</p>
+    <input id="walkNameInput" type="text" placeholder="z.B. Morgenspaziergang Zentrum"/>
+    <div class="modal-btns">
+      <button id="modalCancel">Abbrechen</button>
+      <button id="modalSave">💾 Speichern</button>
+    </div>
+  </div>
+</div>
+<div id="exportOverlay"><div id="exportBox"><div style="font-size:24px;">📦</div><div id="exportMsg">Exportiere...</div></div></div>
+<input type="file" id="photoInput" accept="image/*" capture="environment"/>
+
+<!-- AUSWERTUNGS-MODAL -->
+<div id="analyseModal">
+  <div id="analyseBox">
+    <div class="analyse-header">
+      <div class="analyse-title" id="analyseWalkName">Auswertung</div>
+      <button class="analyse-close" id="analyseClose">✕</button>
+    </div>
+    <div class="view-toggle">
+      <button class="vt-btn active" id="vtIch" onclick="setAnalyseView('ich')">Ich-Sicht</button>
+      <button class="vt-btn" id="vtDritte" onclick="setAnalyseView('dritte')">Dritte-Sicht</button>
+    </div>
+    <!-- ICH-SICHT -->
+    <div id="analyseIch">
+      <div class="stat-row" style="margin-bottom:12px;">
+        <div class="stat-box"><div class="stat-val" id="aStat1">—</div><div class="stat-lbl">Ø aufgez.</div></div>
+        <div class="stat-box"><div class="stat-val" id="aStat2" style="color:#7c3aed;">—</div><div class="stat-lbl">Erinnert</div></div>
+        <div class="stat-box"><div class="stat-val" id="aStat3">—</div><div class="stat-lbl">Diskrepanz</div></div>
+      </div>
+      <div class="a-card" style="margin-bottom:10px;">
+        <div class="a-label" style="color:#0F6E56;">Schicht 1 — Aufgezeichnete Stimmung</div>
+        <div style="position:relative;height:120px;"><canvas id="chartAufz"></canvas></div>
+      </div>
+      <div class="a-card" style="margin-bottom:10px;">
+        <div class="a-label" style="color:#534AB7;">Schicht 2 — Selbstreflexion</div>
+        <div style="position:relative;height:120px;"><canvas id="chartErin"></canvas></div>
+        <div style="background:#f5f3ff;border-radius:8px;padding:8px 10px;margin-top:8px;font-size:11px;color:#374151;font-style:italic;" id="refFreiDisplay">—</div>
+      </div>
+      <div class="a-card" style="margin-bottom:10px;">
+        <div class="a-label" style="color:#854F0B;">Diskrepanz pro Abschnitt</div>
+        <div id="diskBars"></div>
+        <div style="font-size:10px;color:#9ca3af;margin-top:6px;">Grün = Erinnerung positiver als Aufzeichnung · Rot = negativer</div>
+      </div>
+      <div class="a-card">
+        <div class="a-label">Reflexionsantworten</div>
+        <div id="refAnswersDisplay" style="display:flex;flex-direction:column;gap:8px;"></div>
+      </div>
+    </div>
+    <!-- DRITTE-SICHT -->
+    <div id="analyseDritte" style="display:none;">
+      <div class="anon-banner" style="margin-bottom:10px;">Kein Name, keine Adresse, keine Identifikationsmerkmale — freigegeben im Rahmen eines Projekts.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+        <div class="stat-box"><div class="stat-val" id="dStat1">—</div><div class="stat-lbl">Diskrepanz Ø</div></div>
+        <div class="stat-box"><div class="stat-val" id="dStat2">—</div><div class="stat-lbl">Einträge gesamt</div></div>
+      </div>
+      <div class="a-card" style="margin-bottom:10px;">
+        <div class="a-label">Aufgezeichnet vs. erinnert</div>
+        <div style="position:relative;height:150px;"><canvas id="chartDritte"></canvas></div>
+        <div style="display:flex;gap:14px;margin-top:8px;font-size:10px;color:#6b7280;">
+          <span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:2px;background:#1D9E75;display:inline-block;"></span>Aufgezeichnet</span>
+          <span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:2px;background:#534AB7;display:inline-block;"></span>Erinnert (gesch.)</span>
+        </div>
+      </div>
+      <div class="a-card" style="margin-bottom:10px;">
+        <div class="a-label">Reflexion (anonymisiert)</div>
+        <div style="font-size:12px;color:#374151;line-height:1.6;font-style:italic;" id="dRefDisplay">—</div>
+        <div id="dTags" style="margin-top:8px;"></div>
+      </div>
+      <div class="a-card">
+        <div class="a-label">Erhobene Datenebenen</div>
+        <div id="dEbenen" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- STIMMUNGS-MODAL -->
+<div id="moodModal" style="display:none;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;padding:28px 24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:16px;">
+    <div style="font-size:14px;font-weight:bold;color:#111;text-align:center;">🔋 Stimmung</div>
+    <div style="height:16px;border-radius:8px;background:linear-gradient(to right,#3b82f6,#22c55e,#facc15,#f97316,#ef4444);position:relative;">
+      <div id="moodThumb" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;background:#fff;border:3px solid #facc15;box-shadow:0 2px 8px rgba(0,0,0,0.3);pointer-events:none;"></div>
+    </div>
+    <input type="range" id="moodSlider" min="0" max="100" value="50" style="width:100%;margin:-8px 0;opacity:0;height:32px;cursor:pointer;"/>
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:#aaa;margin-top:-8px;"><span>0 — tief</span><span>50 — neutral</span><span>100 — hoch</span></div>
+    <div style="text-align:center;"><span id="moodVal" style="font-size:36px;font-weight:bold;color:#facc15;">50</span><span style="font-size:13px;color:#aaa;">/100</span></div>
+    <textarea id="moodText" placeholder="Notiz (optional)..." style="width:100%;height:56px;border-radius:10px;border:1.5px solid #e5e5e5;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
+    <div style="display:flex;gap:10px;">
+      <button id="moodCancel" style="flex:1;padding:13px;border-radius:12px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:12px;cursor:pointer;">Abbrechen</button>
+      <button id="moodSave" style="flex:2;padding:13px;border-radius:12px;border:none;font-weight:bold;font-size:12px;cursor:pointer;color:#fff;background:#facc15;">Marker setzen</button>
+    </div>
+  </div>
+</div>
+<!-- GEDANKEN-MODAL -->
+<div id="thoughtModal" style="display:none;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:20px;padding:24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:14px;">
     <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">💭 Gedanke</div>
     <textarea id="thoughtText" placeholder="Was denkst du gerade?" style="width:100%;height:100px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
     <div style="display:flex;gap:8px;">
-      <button id="thoughtCancel" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;text-transform:uppercase;">Abbrechen</button>
-      <button id="thoughtSave"   style="flex:1;padding:12px;border-radius:10px;border:none;background:#12345f;color:#fff;font-weight:bold;font-size:11px;cursor:pointer;text-transform:uppercase;">Marker setzen</button>
+      <button id="thoughtCancel" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;">Abbrechen</button>
+      <button id="thoughtSave" style="flex:1;padding:12px;border-radius:10px;border:none;background:#12345f;color:#fff;font-weight:bold;font-size:11px;cursor:pointer;">Marker setzen</button>
     </div>
   </div>
 </div>
-
-<!-- Wahrnehmung-Modal -->
-<div id="senseModal" style="position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center;">
+<!-- WAHRNEHMUNG-MODAL -->
+<div id="senseModal" style="display:none;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:20px;padding:24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:14px;">
     <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">👁 Wahrnehmung</div>
     <textarea id="senseText" placeholder="Was nimmst du wahr?" style="width:100%;height:100px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
     <div style="display:flex;gap:8px;">
-      <button id="senseCancel" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;text-transform:uppercase;">Abbrechen</button>
-      <button id="senseSave"   style="flex:1;padding:12px;border-radius:10px;border:none;background:#3d633d;color:#fff;font-weight:bold;font-size:11px;cursor:pointer;text-transform:uppercase;">Marker setzen</button>
+      <button id="senseCancel" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;">Abbrechen</button>
+      <button id="senseSave" style="flex:1;padding:12px;border-radius:10px;border:none;background:#3d633d;color:#fff;font-weight:bold;font-size:11px;cursor:pointer;">Marker setzen</button>
     </div>
   </div>
 </div>
 
 <script>
-window.addEventListener('load', function () {
+window.addEventListener('load', function() {
+  const walkColors=['#e6194b','#3cb44b','#ffe119','#4363d8','#f58231','#911eb4','#42d4f4','#f032e6'];
+  const layerVisibility={route:true,mood:true,thought:true,sense:true,sound:true,voice:true,photo:true};
+  const mapLayers={route:[],mood:[],thought:[],sense:[],sound:[],voice:[],photo:[]};
+  let state={walks:JSON.parse(localStorage.getItem('psychogeo_walks')||'[]'),current:null,map:null,liveMarker:null,activeLayers:{},currentTile:null,archiveInkLayers:{}};
+  const audioBlobs={};
+  let currentTileUrl='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+  let currentRefId=null;
 
-    // ── State ──
-    const walkColors = ['#e6194b','#3cb44b','#ffe119','#4363d8','#f58231','#911eb4','#42d4f4','#f032e6'];
-    const layerVisibility = { route:true, mood:true, thought:true, sense:true, sound:true, voice:true, photo:true };
-    const mapLayers = { route:[], mood:[], thought:[], sense:[], sound:[], voice:[], photo:[] };
+  state.map=L.map('map',{zoomControl:false,maxZoom:22}).setView([47.23,9.61],17);
+  state.currentTile=L.tileLayer(currentTileUrl,{crossOrigin:true,maxZoom:22,maxNativeZoom:19}).addTo(state.map);
 
-    let state = {
-        walks: JSON.parse(localStorage.getItem('psychogeo_walks') || '[]'),
-        current: null, map: null, liveMarker: null,
-        liveRouteLayer: null, activeLayers: {}, currentTile: null
+  // Drawer
+  const drawer=document.getElementById('drawer');
+  const drawerTitle=document.getElementById('drawerTitle');
+  const panelNames={ansicht:'🗺 Ansicht',ebenen:'☰ Ebenen',archiv:'📂 Archiv'};
+  let currentPanel=null;
+  function openPanel(name){
+    ['ansicht','ebenen','archiv'].forEach(p=>document.getElementById('sec-'+p).style.display='none');
+    document.querySelectorAll('.panel-tab').forEach(t=>t.classList.remove('active'));
+    if(currentPanel===name){drawer.classList.remove('open');currentPanel=null;return;}
+    document.getElementById('sec-'+name).style.display='block';
+    drawerTitle.textContent=panelNames[name];
+    drawer.classList.add('open');currentPanel=name;
+    document.querySelector('.panel-tab[data-panel="'+name+'"]').classList.add('active');
+  }
+  document.querySelectorAll('.panel-tab').forEach(b=>b.addEventListener('click',()=>openPanel(b.getAttribute('data-panel'))));
+  document.getElementById('drawerClose').addEventListener('click',()=>{drawer.classList.remove('open');document.querySelectorAll('.panel-tab').forEach(t=>t.classList.remove('active'));currentPanel=null;});
+
+  document.querySelectorAll('.layer-opt').forEach(btn=>{
+    btn.onclick=()=>{
+      const url=btn.getAttribute('data-url');currentTileUrl=url;
+      state.map.removeLayer(state.currentTile);
+      state.currentTile=L.tileLayer(url,{crossOrigin:true,maxZoom:22,maxNativeZoom:19}).addTo(state.map);
+      document.querySelectorAll('.layer-opt').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
     };
+  });
 
-    // audio blobs stored separately (can't JSON serialize)
-    const audioBlobs = {};
-
-    // ── Karte ──
-    state.map = L.map('map', { zoomControl: false, maxZoom: 22 }).setView([47.23, 9.61], 17);
-    state.currentTile = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { crossOrigin: true, maxZoom: 22, maxNativeZoom: 19 }).addTo(state.map);
-
-    // ── Drawer ──
-    const drawer = document.getElementById('drawer');
-    const drawerTitle = document.getElementById('drawerTitle');
-    const panelNames = { ansicht:'🗺 Ansicht', ebenen:'☰ Ebenen', archiv:'📂 Archiv' };
-    let currentPanel = null;
-
-    function openPanel(name) {
-        ['ansicht','ebenen','archiv'].forEach(p => document.getElementById('sec-' + p).style.display = 'none');
-        document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
-        if (currentPanel === name) { drawer.classList.remove('open'); currentPanel = null; return; }
-        document.getElementById('sec-' + name).style.display = 'block';
-        drawerTitle.textContent = panelNames[name];
-        drawer.classList.add('open');
-        currentPanel = name;
-        document.querySelector('.panel-tab[data-panel="' + name + '"]').classList.add('active');
-    }
-    document.querySelectorAll('.panel-tab').forEach(b => b.addEventListener('click', () => openPanel(b.getAttribute('data-panel'))));
-    document.getElementById('drawerClose').addEventListener('click', () => {
-        drawer.classList.remove('open');
-        document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
-        currentPanel = null;
+  document.querySelectorAll('.layer-toggle-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const key=btn.getAttribute('data-layer');
+      const isActive=btn.classList.toggle('active');
+      layerVisibility[key]=isActive;
+      if(key==='route'){
+        if(state.inkLayer&&state.inkLayer._canvas)state.inkLayer._canvas.style.display=isActive?'':'none';
+        Object.values(state.archiveInkLayers).forEach(al=>{if(al._canvas)al._canvas.style.display=isActive?'':'none';});
+      } else {
+        mapLayers[key].forEach(l=>isActive?state.map.addLayer(l):state.map.removeLayer(l));
+      }
     });
+  });
 
-    // ── Kartenwechsel ──
-    // currentTileUrl tracks selected tile for export
-    let currentTileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-
-    document.querySelectorAll('.layer-opt').forEach(btn => {
-        btn.onclick = () => {
-            const url = btn.getAttribute('data-url');
-            currentTileUrl = url;
-            state.map.removeLayer(state.currentTile);
-            state.currentTile = L.tileLayer(url, { crossOrigin: true, maxZoom: 22, maxNativeZoom: 19 }).addTo(state.map);
-            document.querySelectorAll('.layer-opt').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            // Keep drawer open — user can keep switching without closing
-        };
+  // Schrittzähler
+  let stepCount=0,lastStepTime=0;
+  if(window.DeviceMotionEvent){
+    window.addEventListener('devicemotion',e=>{
+      if(!state.current)return;
+      const a=e.accelerationIncludingGravity;if(!a)return;
+      const mag=Math.sqrt(a.x*a.x+a.y*a.y+a.z*a.z),now=Date.now();
+      if(mag>13.5&&(now-lastStepTime)>550){stepCount++;lastStepTime=now;if(state.current)state.current.steps=stepCount;const el=document.getElementById('stepCount');if(el)el.textContent=stepCount.toLocaleString('de-DE');}
     });
+  }
 
-    // ── Ebenen-Toggles ──
-    document.querySelectorAll('.layer-toggle-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const key = btn.getAttribute('data-layer');
-            const isActive = btn.classList.toggle('active');
-            layerVisibility[key] = isActive;
-            if (key === 'route') {
-                // Toggle InkLayer canvas visibility
-                if (state.inkLayer && state.inkLayer._canvas) {
-                    state.inkLayer._canvas.style.display = isActive ? '' : 'none';
-                }
-                // Also toggle archive ink layers
-                Object.values(state.archiveInkLayers || {}).forEach(al => {
-                    if (al._canvas) al._canvas.style.display = isActive ? '' : 'none';
-                });
-            } else {
-                mapLayers[key].forEach(l => isActive ? state.map.addLayer(l) : state.map.removeLayer(l));
-            }
-        });
+  // Tuschelinie
+  let lastPos=null,lastPosTime=null,smoothedSpeed=0;
+  function haversineDist(a,b){const R=6371000,tr=x=>x*Math.PI/180;const dLat=tr(b[0]-a[0]),dLon=tr(b[1]-a[1]);const h=Math.sin(dLat/2)**2+Math.cos(tr(a[0]))*Math.cos(tr(b[0]))*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
+  function speedToWeight(s){const t=Math.min(s/3.5,1);return Math.max(1,26*Math.pow(1-t,1.6));}
+  function speedToOpacity(s){const t=Math.min(s/3.5,1);return Math.max(0.04,0.92*Math.pow(1-t,1.4));}
+  function jitter(sc){return(Math.random()-0.5)*sc;}
+  function drawInkStroke(ctx,x1,y1,x2,y2,weight,opacity){
+    if(weight<0.5)return;
+    const alpha=Math.min(opacity,1),strokes=Math.max(1,Math.round(weight*0.7));
+    for(let s=0;s<strokes;s++){
+      const sp=weight*0.3,ox1=jitter(sp),oy1=jitter(sp),ox2=jitter(sp),oy2=jitter(sp);
+      const mx=(x1+x2)/2+jitter(weight*0.4),my=(y1+y2)/2+jitter(weight*0.4);
+      const w=weight*(0.75+Math.random()*0.5)/strokes;
+      ctx.beginPath();ctx.moveTo(x1+ox1,y1+oy1);ctx.quadraticCurveTo(mx,my,x2+ox2,y2+oy2);
+      ctx.lineWidth=w;ctx.lineCap='round';ctx.lineJoin='round';
+      ctx.strokeStyle='rgba(20,16,12,'+(alpha*(0.6+Math.random()*0.4)).toFixed(3)+')';ctx.stroke();
+    }
+    if(weight>4){const gc=Math.round(weight*1.2);for(let g=0;g<gc;g++){const t=Math.random(),gx=x1+(x2-x1)*t+jitter(weight*0.6),gy=y1+(y2-y1)*t+jitter(weight*0.6),gr=Math.random()*weight*0.18;ctx.beginPath();ctx.arc(gx,gy,gr,0,Math.PI*2);ctx.fillStyle='rgba(20,16,12,'+(alpha*Math.random()*0.5).toFixed(3)+')';ctx.fill();}}
+  }
+
+  const InkLayer=L.Layer.extend({
+    initialize(){this._segments=[];this._canvas=null;this._ctx=null;},
+    onAdd(map){this._map=map;this._canvas=document.createElement('canvas');this._canvas.style.cssText='position:absolute;top:0;left:0;pointer-events:none;z-index:400;';map.getPanes().overlayPane.appendChild(this._canvas);this._ctx=this._canvas.getContext('2d');map.on('moveend zoomend resize',this._redraw,this);this._resize();this._redraw();return this;},
+    onRemove(map){map.getPanes().overlayPane.removeChild(this._canvas);map.off('moveend zoomend resize',this._redraw,this);},
+    _resize(){const sz=this._map.getSize();this._canvas.width=sz.x;this._canvas.height=sz.y;},
+    addSegment(ll1,ll2,w,op){this._segments.push({ll1,ll2,weight:w,opacity:op});this._drawSegment(ll1,ll2,w,op);},
+    _latLngToCanvas(ll){return this._map.latLngToContainerPoint(ll);},
+    _drawSegment(ll1,ll2,w,op){if(!this._ctx)return;const p1=this._latLngToCanvas(ll1),p2=this._latLngToCanvas(ll2);drawInkStroke(this._ctx,p1.x,p1.y,p2.x,p2.y,w,op);},
+    _redraw(){if(!this._ctx)return;this._resize();this._ctx.clearRect(0,0,this._canvas.width,this._canvas.height);this._segments.forEach(s=>this._drawSegment(s.ll1,s.ll2,s.weight,s.opacity));},
+    clearSegments(){this._segments=[];if(this._ctx)this._ctx.clearRect(0,0,this._canvas.width,this._canvas.height);},
+    getSegments(){return this._segments;}
+  });
+
+  let inkLayer=new InkLayer();inkLayer.addTo(state.map);state.inkLayer=inkLayer;
+
+  // GPS
+  let smoothLat=null,smoothLng=null;
+  navigator.geolocation.watchPosition(pos=>{
+    if(pos.coords.accuracy>30)return;
+    const rawLat=pos.coords.latitude,rawLng=pos.coords.longitude;
+    if(smoothLat===null){smoothLat=rawLat;smoothLng=rawLng;}
+    else{smoothLat+=0.25*(rawLat-smoothLat);smoothLng+=0.25*(rawLng-smoothLng);}
+    const ll=[smoothLat,smoothLng],now=Date.now();
+    if(!state.liveMarker){state.liveMarker=L.circleMarker(ll,{radius:6,fillColor:'#111',color:'#fff',weight:2,fillOpacity:1,zIndexOffset:1000}).addTo(state.map);state.map.panTo(ll);}
+    else state.liveMarker.setLatLng(ll);
+    if(state.current){
+      if(lastPos&&lastPosTime){
+        const dist=haversineDist(lastPos,ll);if(dist<3)return;
+        const dt=(now-lastPosTime)/1000,raw=dt>0?dist/dt:0;
+        smoothedSpeed=smoothedSpeed*0.7+raw*0.3;
+        const w=speedToWeight(smoothedSpeed),op=speedToOpacity(smoothedSpeed);
+        state.current.route.push(ll);
+        if(!state.current.segments)state.current.segments=[];
+        state.current.segments.push({ll1:lastPos,ll2:ll,weight:w,opacity:op});
+        if(layerVisibility.route)inkLayer.addSegment(lastPos,ll,w,op);
+        const se=document.getElementById('currentSpeed');if(se)se.textContent=(smoothedSpeed*3.6).toFixed(1)+' km/h';
+      } else state.current.route.push(ll);
+      lastPos=ll;lastPosTime=now;
+    }
+  },err=>console.warn('GPS:',err.code),{enableHighAccuracy:true,maximumAge:2000,timeout:20000});
+
+  // START
+  document.getElementById('btnStart').onclick=()=>{
+    stepCount=0;lastStepTime=0;smoothedSpeed=0;lastPos=null;lastPosTime=null;
+    document.getElementById('stepCount').textContent='0';
+    document.getElementById('currentSpeed').textContent='—';
+    inkLayer.clearSegments();
+    state.current={id:Date.now(),name:new Date().toLocaleString('de-DE'),route:[],segments:[],entries:[],steps:0,color:walkColors[state.walks.length%walkColors.length],reflection:{frei:'',moodRetro:50,moment:'',orte:'',nicht:'',ueber:''}};
+    alert('Walk gestartet!');
+  };
+
+  // STOP
+  document.getElementById('btnStop').onclick=()=>{if(!state.current)return alert('Kein aktiver Walk.');document.getElementById('walkNameInput').value='';document.getElementById('stopModal').classList.add('open');};
+  document.getElementById('modalCancel').onclick=()=>document.getElementById('stopModal').classList.remove('open');
+  document.getElementById('modalSave').onclick=()=>{
+    const nv=document.getElementById('walkNameInput').value.trim();if(nv)state.current.name=nv;
+    document.getElementById('stopModal').classList.remove('open');
+    inkLayer.clearSegments();
+    Object.keys(mapLayers).forEach(k=>{mapLayers[k].forEach(l=>{try{state.map.removeLayer(l);}catch(e){}});mapLayers[k]=[];});
+    if(!state.current.reflection)state.current.reflection={frei:'',moodRetro:50,moment:'',orte:'',nicht:'',ueber:''};
+    state.walks.push(state.current);saveWalks();state.current=null;renderArchive();openPanel('archiv');
+  };
+
+  function saveWalks(){
+    const ts=state.walks.map(w=>({...w,entries:w.entries.map(e=>{const c={...e};delete c.audioUrl;return c;})}));
+    localStorage.setItem('psychogeo_walks',JSON.stringify(ts));
+  }
+
+  // Reflexion speichern
+  document.getElementById('btnSaveRef').onclick=()=>{
+    const walk=state.walks.find(w=>w.id==currentRefId);if(!walk)return;
+    if(!walk.reflection)walk.reflection={};
+    walk.reflection.frei=document.getElementById('refFrei').value;
+    walk.reflection.moodRetro=parseInt(document.getElementById('refMoodSlider').value);
+    walk.reflection.moment=document.getElementById('refMoment').value;
+    walk.reflection.orte=document.getElementById('refOrte').value;
+    walk.reflection.nicht=document.getElementById('refNicht').value;
+    walk.reflection.ueber=document.getElementById('refUeber').value;
+    saveWalks();alert('Reflexion gespeichert.');
+  };
+  document.getElementById('refMoodSlider').addEventListener('input',function(){
+    const v=parseInt(this.value),col=moodColor(v);
+    document.getElementById('refMoodVal').textContent=v;
+    document.getElementById('refMoodVal').style.color=col;
+  });
+
+  // Marker Hilfsfunktionen
+  function placeMarker(type,latLng,popupHTML){
+    mapLayers[type]=mapLayers[type]||[];
+    const m=L.marker(latLng).bindPopup(popupHTML);
+    mapLayers[type].push(m);
+    if(layerVisibility[type]!==false){m.addTo(state.map);m.openPopup();}
+    return m;
+  }
+  function requireWalk(){if(!state.current){alert('Erst START drücken!');return false;}return true;}
+  function getPos(){if(state.liveMarker)return state.liveMarker.getLatLng();const c=state.map.getCenter();return{lat:c.lat,lng:c.lng};}
+  function moodColor(v){if(v<25)return'#3b82f6';if(v<50)return'#22c55e';if(v<75)return'#facc15';if(v<90)return'#f97316';return'#ef4444';}
+  function makeDotIcon(color,size){size=size||20;return L.divIcon({className:'',html:'<div style="width:'+size+'px;height:'+size+'px;border-radius:50%;background:'+color+';border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,0.4);"></div>',iconSize:[size,size],iconAnchor:[size/2,size/2],popupAnchor:[0,-(size/2+6)]});}
+  function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+  // Foto
+  const cameraModal=document.getElementById('cameraModal');
+  const cameraPreview=document.getElementById('cameraPreview');
+  const photoCanvas=document.getElementById('photoCanvas');
+  let cameraStream=null;
+  async function openCamera(){try{cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});cameraPreview.srcObject=cameraStream;cameraModal.classList.add('open');}catch(e){document.getElementById('photoInput').click();}}
+  function closeCamera(){if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}cameraModal.classList.remove('open');}
+  document.getElementById('closeCamera').onclick=closeCamera;
+  function placePhotoMarker(dataUrl,pos){
+    const ts=new Date().toLocaleTimeString();
+    const icon=L.divIcon({html:'<div style="width:26px;height:26px;border-radius:50%;border:2.5px solid #fff;overflow:hidden;box-shadow:0 1px 5px rgba(0,0,0,0.4);background:#555;"><img src="'+dataUrl+'" style="width:100%;height:100%;object-fit:cover;opacity:0.85;"/></div>',iconSize:[26,26],iconAnchor:[13,13],popupAnchor:[0,-16]});
+    const popup='<img src="'+dataUrl+'" style="width:200px;border-radius:8px;"/><br><small>'+ts+'</small>';
+    const m=placeMarker('photo',pos,popup);m.setIcon(icon);return ts;
+  }
+  document.getElementById('captureBtn').onclick=()=>{if(!requireWalk()){closeCamera();return;}const pos=getPos();photoCanvas.width=cameraPreview.videoWidth;photoCanvas.height=cameraPreview.videoHeight;photoCanvas.getContext('2d').drawImage(cameraPreview,0,0);const dataUrl=photoCanvas.toDataURL('image/jpeg',0.7);const ts=placePhotoMarker(dataUrl,pos);state.current.entries.push({type:'photo',location:{lat:pos.lat,lng:pos.lng},timestamp:ts,dataUrl});closeCamera();};
+  document.getElementById('photoInput').onchange=function(){if(!this.files||!this.files[0]||!requireWalk())return;const pos=getPos();const reader=new FileReader();reader.onload=e=>{const dataUrl=e.target.result;const ts=placePhotoMarker(dataUrl,pos);state.current.entries.push({type:'photo',location:{lat:pos.lat,lng:pos.lng},timestamp:ts,dataUrl});};reader.readAsDataURL(this.files[0]);this.value='';};
+  document.getElementById('fabPhoto').onclick=()=>openCamera();
+
+  // Audio
+  const audioModal=document.getElementById('audioModal');
+  const bars=document.querySelectorAll('.bar');
+  let mediaRecorder=null,audioChunks=[],audioType='voice',timerInterval=null,timerSec=0,audioContext=null,analyser=null,vizRaf=null;
+  function formatTime(s){return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
+  function startViz(stream){audioContext=new(window.AudioContext||window.webkitAudioContext)();analyser=audioContext.createAnalyser();analyser.fftSize=64;audioContext.createMediaStreamSource(stream).connect(analyser);const data=new Uint8Array(analyser.frequencyBinCount);function draw(){vizRaf=requestAnimationFrame(draw);analyser.getByteFrequencyData(data);bars.forEach((b,i)=>{const v=data[i*2]||0;b.style.height=Math.max(4,v*48/255)+'px';});}draw();}
+  function stopViz(){if(vizRaf)cancelAnimationFrame(vizRaf);if(audioContext){audioContext.close();audioContext=null;}bars.forEach(b=>b.style.height='8px');}
+  async function openAudioModal(type){
+    if(!requireWalk())return;audioType=type;
+    document.getElementById('audioStatus').textContent=type==='voice'?'🎙 Sprachnachricht aufnehmen...':'🔊 Umgebungssound aufnehmen...';
+    audioChunks=[];timerSec=0;document.getElementById('audioTimer').textContent='0:00';
+    try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});mediaRecorder=new MediaRecorder(stream);mediaRecorder.ondataavailable=e=>audioChunks.push(e.data);mediaRecorder.onstop=()=>finishRecording(stream);mediaRecorder.start();startViz(stream);timerInterval=setInterval(()=>{timerSec++;document.getElementById('audioTimer').textContent=formatTime(timerSec);},1000);audioModal.classList.add('open');}
+    catch(e){alert('Mikrofon-Zugriff verweigert.');}
+  }
+  function finishRecording(stream){
+    stream.getTracks().forEach(t=>t.stop());stopViz();clearInterval(timerInterval);audioModal.classList.remove('open');
+    const blob=new Blob(audioChunks,{type:MediaRecorder.isTypeSupported('audio/mp4')?'audio/mp4':'audio/webm'});
+    const url=URL.createObjectURL(blob);const pos=getPos();const ts=new Date().toLocaleTimeString();const dur=formatTime(timerSec);
+    const entryId='audio_'+Date.now();audioBlobs[entryId]=blob;
+    state.current.entries.push({type:audioType,location:{lat:pos.lat,lng:pos.lng},timestamp:ts,audioDuration:dur,audioUrl:url,entryId});
+    const color=audioType==='voice'?'#7c3aed':'#f97316';
+    const svgI=audioType==='voice'?'<line x1="8" y1="5" x2="8" y2="11" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/><line x1="5" y1="8" x2="11" y2="8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>':'<circle cx="8" cy="8" r="3" fill="none" stroke="#fff" stroke-width="1.8"/><line x1="8" y1="2" x2="8" y2="5" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>';
+    const icon=L.divIcon({html:'<div style="width:22px;height:22px;border-radius:50%;background:'+color+';border:2.5px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;"><svg width="16" height="16" viewBox="0 0 16 16">'+svgI+'</svg></div>',iconSize:[22,22],iconAnchor:[11,11],popupAnchor:[0,-14]});
+    const ph='<b>'+(audioType==='voice'?'Sprachnachricht':'Umgebungssound')+'</b><br><small>'+ts+' · '+dur+'</small><br><audio controls src="'+url+'" style="margin-top:6px;width:180px;"></audio>';
+    const m=placeMarker(audioType,pos,ph);m.setIcon(icon);
+  }
+  document.getElementById('stopAudioBtn').onclick=()=>{if(mediaRecorder&&mediaRecorder.state!=='inactive')mediaRecorder.stop();};
+  document.getElementById('closeAudio').onclick=()=>{if(mediaRecorder&&mediaRecorder.state!=='inactive')mediaRecorder.stop();};
+  document.getElementById('fabSound').onclick=()=>openAudioModal('sound');
+  document.getElementById('fabMsg').onclick=()=>openAudioModal('voice');
+
+  // Stimmung
+  const moodModal=document.getElementById('moodModal');
+  const moodSlider=document.getElementById('moodSlider');
+  const moodValEl=document.getElementById('moodVal');
+  const moodThumb=document.getElementById('moodThumb');
+  const moodSaveBtn=document.getElementById('moodSave');
+  function updateMoodUI(v){const col=moodColor(v);moodValEl.textContent=v;moodValEl.style.color=col;moodThumb.style.borderColor=col;moodThumb.style.left=v+'%';moodSaveBtn.style.background=col;}
+  updateMoodUI(50);
+  moodSlider.addEventListener('input',()=>updateMoodUI(parseInt(moodSlider.value)));
+  document.getElementById('moodCancel').addEventListener('click',()=>{moodModal.style.display='none';});
+  document.getElementById('moodSave').addEventListener('click',()=>{
+    if(!requireWalk())return;
+    const val=parseInt(moodSlider.value),col=moodColor(val),note=document.getElementById('moodText').value.trim();
+    const pos=getPos(),ts=new Date().toLocaleTimeString();
+    state.current.entries.push({type:'mood',location:{lat:pos.lat,lng:pos.lng},timestamp:ts,moodValue:val,markerColor:col,text:note});
+    const icon=L.divIcon({className:'',html:'<div style="width:22px;height:22px;border-radius:50%;background:'+col+';border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,0.45);"></div>',iconSize:[22,22],iconAnchor:[11,11],popupAnchor:[0,-16]});
+    const popup='<div style="min-width:150px;padding:4px;"><b style="font-size:13px;">Stimmung</b><br><div style="margin:8px 0 4px;background:#eee;border-radius:6px;height:10px;overflow:hidden;"><div style="height:100%;width:'+val+'%;background:'+col+';border-radius:6px;"></div></div><span style="font-size:22px;font-weight:bold;color:'+col+';">'+val+'</span><span style="font-size:12px;color:#aaa;"> / 100</span>'+(note?'<br><span style="font-size:11px;color:#555;margin-top:4px;display:block;">'+note+'</span>':'')+'<br><span style="font-size:10px;color:#bbb;">'+ts+'</span></div>';
+    mapLayers['mood']=mapLayers['mood']||[];const m=L.marker([pos.lat,pos.lng],{icon}).bindPopup(popup);mapLayers['mood'].push(m);
+    if(layerVisibility['mood']!==false){m.addTo(state.map);setTimeout(()=>m.openPopup(),100);}
+    moodModal.style.display='none';document.getElementById('moodText').value='';moodSlider.value=50;updateMoodUI(50);
+  });
+  document.getElementById('fabMood').addEventListener('click',()=>{if(!requireWalk())return;moodModal.style.display='flex';});
+
+  // Gedanke
+  const thoughtModal=document.getElementById('thoughtModal');
+  document.getElementById('thoughtCancel').onclick=()=>{thoughtModal.style.display='none';};
+  document.getElementById('thoughtSave').onclick=()=>{
+    if(!requireWalk())return;const t=document.getElementById('thoughtText').value.trim();const pos=getPos();const ts=new Date().toLocaleTimeString();
+    state.current.entries.push({type:'thought',location:{lat:pos.lat,lng:pos.lng},timestamp:ts,text:t||'(kein Text)'});
+    const icon=makeDotIcon('#22c55e',16);const popup='<div style="min-width:140px;"><b>Gedanke</b><br><p style="margin:4px 0;font-size:12px;color:#333;">'+(t||'—')+'</p><small style="color:#aaa;">'+ts+'</small></div>';
+    mapLayers['thought']=mapLayers['thought']||[];const m=L.marker([pos.lat,pos.lng],{icon}).bindPopup(popup);mapLayers['thought'].push(m);
+    if(layerVisibility['thought']!==false){m.addTo(state.map);m.openPopup();}
+    thoughtModal.style.display='none';document.getElementById('thoughtText').value='';
+  };
+  document.getElementById('fabThought').onclick=()=>{if(!requireWalk())return;thoughtModal.style.display='flex';};
+
+  // Wahrnehmung
+  const senseModal=document.getElementById('senseModal');
+  document.getElementById('senseCancel').onclick=()=>{senseModal.style.display='none';};
+  document.getElementById('senseSave').onclick=()=>{
+    if(!requireWalk())return;const t=document.getElementById('senseText').value.trim();const pos=getPos();const ts=new Date().toLocaleTimeString();
+    state.current.entries.push({type:'sense',location:{lat:pos.lat,lng:pos.lng},timestamp:ts,text:t||'(keine Eingabe)'});
+    const icon=makeDotIcon('#f97316',16);const popup='<div style="min-width:140px;"><b>Wahrnehmung</b><br>'+(t?'<p style="margin:4px 0;font-size:12px;color:#333;">'+t+'</p>':'')+'<small style="color:#aaa;">'+ts+'</small></div>';
+    mapLayers['sense']=mapLayers['sense']||[];const m=L.marker([pos.lat,pos.lng],{icon}).bindPopup(popup);mapLayers['sense'].push(m);
+    if(layerVisibility['sense']!==false){m.addTo(state.map);m.openPopup();}
+    senseModal.style.display='none';document.getElementById('senseText').value='';
+  };
+  document.getElementById('fabSense').onclick=()=>{if(!requireWalk())return;senseModal.style.display='flex';};
+
+  // ARCHIV
+  function toggleWalk(id){
+    const walk=state.walks.find(w=>w.id==id);if(!walk)return;
+    const header=document.querySelector('.walk-header[data-id="'+id+'"]');
+    const actions=document.querySelector('.walk-actions[data-id="'+id+'"]');
+    if(state.activeLayers[id]){
+      state.map.removeLayer(state.activeLayers[id]);delete state.activeLayers[id];
+      if(state.archiveInkLayers[id]){state.map.removeLayer(state.archiveInkLayers[id]);delete state.archiveInkLayers[id];}
+      if(header)header.classList.remove('shown');if(actions)actions.classList.remove('open');
+      if(Object.keys(state.activeLayers).length===0)document.getElementById('reflexionPanel').style.display='none';
+    } else {
+      const group=L.layerGroup();
+      if(walk.segments&&walk.segments.length>0){
+        const ai=new InkLayer();ai.addTo(state.map);walk.segments.forEach(s=>ai.addSegment(s.ll1,s.ll2,s.weight,s.opacity));state.archiveInkLayers[id]=ai;if(!layerVisibility.route)ai._canvas.style.display='none';
+      } else if(walk.route&&walk.route.length>1){
+        const ai=new InkLayer();ai.addTo(state.map);for(let i=1;i<walk.route.length;i++)ai.addSegment(walk.route[i-1],walk.route[i],6,0.7);state.archiveInkLayers[id]=ai;if(!layerVisibility.route)ai._canvas.style.display='none';
+      }
+      walk.entries.forEach(e=>{
+        let popup='<b>'+(e.type||'').toUpperCase()+'</b><br>'+(e.text||e.audioDuration||'');
+        if(e.dataUrl)popup='<img src="'+e.dataUrl+'" style="width:180px;border-radius:6px;"/><br><small>'+(e.timestamp||'')+'</small>';
+        if(e.audioUrl)popup+='<br><audio controls src="'+e.audioUrl+'" style="width:180px;margin-top:4px;"></audio>';
+        const dc=e.type==='thought'?'#22c55e':e.type==='sense'?'#f97316':e.type==='mood'?(e.markerColor||walk.color):e.type==='voice'?'#7c3aed':e.type==='sound'?'#f97316':e.type==='photo'?'#555':walk.color;
+        const dr=(e.type==='mood'||e.type==='thought'||e.type==='sense')?7:5;
+        const dop=(e.type==='photo'||e.type==='voice'||e.type==='sound')?0.6:0.92;
+        L.circleMarker([e.location.lat,e.location.lng],{color:'#fff',weight:1.5,fillColor:dc,fillOpacity:dop,radius:dr}).addTo(group).bindPopup(popup);
+      });
+      group.addTo(state.map);state.activeLayers[id]=group;
+      if(header)header.classList.add('shown');if(actions)actions.classList.add('open');
+      // Reflexionspanel befüllen
+      currentRefId=id;
+      document.getElementById('reflexionPanel').style.display='block';
+      document.getElementById('refWalkName').innerText=walk.name;
+      const ref=walk.reflection||{};
+      document.getElementById('refFrei').value=ref.frei||'';
+      document.getElementById('refMoment').value=ref.moment||'';
+      document.getElementById('refOrte').value=ref.orte||'';
+      document.getElementById('refNicht').value=ref.nicht||'';
+      document.getElementById('refUeber').value=ref.ueber||'';
+      const mr=ref.moodRetro!==undefined?ref.moodRetro:50;
+      document.getElementById('refMoodSlider').value=mr;
+      document.getElementById('refMoodVal').textContent=mr;
+      document.getElementById('refMoodVal').style.color=moodColor(mr);
+    }
+  }
+  window.toggleWalk=toggleWalk;
+
+  // AUSWERTUNG
+  let analyseCharts={};
+  function destroyAnalyseCharts(){Object.values(analyseCharts).forEach(c=>{try{c.destroy();}catch(e){}});analyseCharts={};}
+
+  window.setAnalyseView=function(v){
+    document.getElementById('analyseIch').style.display=v==='ich'?'block':'none';
+    document.getElementById('analyseDritte').style.display=v==='dritte'?'block':'none';
+    document.getElementById('vtIch').classList.toggle('active',v==='ich');
+    document.getElementById('vtDritte').classList.toggle('active',v==='dritte');
+  };
+
+  function openAnalyse(walk){
+    destroyAnalyseCharts();
+    document.getElementById('analyseWalkName').textContent='Auswertung: '+walk.name;
+    setAnalyseView('ich');
+
+    const moodEntries=walk.entries.filter(e=>e.type==='mood'&&e.moodValue!==undefined);
+    const aufgezWerte=moodEntries.map(e=>e.moodValue);
+    const avgAufgez=aufgezWerte.length?Math.round(aufgezWerte.reduce((a,b)=>a+b,0)/aufgezWerte.length):null;
+    const ref=walk.reflection||{};
+    const moodRetro=ref.moodRetro!==undefined?ref.moodRetro:null;
+    const diskrepanz=(avgAufgez!==null&&moodRetro!==null)?(moodRetro-avgAufgez):null;
+
+    document.getElementById('aStat1').textContent=avgAufgez!==null?avgAufgez:'—';
+    document.getElementById('aStat2').textContent=moodRetro!==null?moodRetro:'—';
+    document.getElementById('aStat3').textContent=diskrepanz!==null?(diskrepanz>=0?'+':'')+diskrepanz:'—';
+    document.getElementById('aStat3').style.color=diskrepanz>5?'#7c3aed':diskrepanz<-5?'#dc2626':'#374151';
+    document.getElementById('dStat1').textContent=diskrepanz!==null?(diskrepanz>=0?'+':'')+diskrepanz+' Pkt':'—';
+    document.getElementById('dStat2').textContent=walk.entries.length;
+
+    const chartLabels=moodEntries.length>0?moodEntries.map((e,i)=>e.timestamp||(i+1)+'.'):['—'];
+    const chartData=aufgezWerte.length>0?aufgezWerte:[0];
+    const erinData=chartData.map(v=>moodRetro!==null?Math.round(v*0.4+moodRetro*0.6):v);
+
+    const chartOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:100,ticks:{color:'#888',font:{size:10}},grid:{color:'rgba(0,0,0,0.04)'}},x:{ticks:{color:'#888',font:{size:10}},grid:{display:false}}}};
+
+    analyseCharts.aufz=new Chart(document.getElementById('chartAufz').getContext('2d'),{type:'line',data:{labels:chartLabels,datasets:[{data:chartData,borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.08)',borderWidth:2,pointRadius:4,pointBackgroundColor:'#1D9E75',tension:0.4,fill:true}]},options:chartOpts});
+    analyseCharts.erin=new Chart(document.getElementById('chartErin').getContext('2d'),{type:'line',data:{labels:chartLabels,datasets:[{data:erinData,borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,0.08)',borderWidth:2,pointRadius:4,pointBackgroundColor:'#534AB7',tension:0.4,fill:true}]},options:chartOpts});
+    analyseCharts.dritte=new Chart(document.getElementById('chartDritte').getContext('2d'),{type:'line',data:{labels:chartLabels,datasets:[{data:chartData,borderColor:'#1D9E75',borderWidth:2.5,pointRadius:3,tension:0.4,fill:false},{data:erinData,borderColor:'#534AB7',borderWidth:2,borderDash:[5,4],pointRadius:3,tension:0.4,fill:false}]},options:chartOpts});
+
+    // Diskrepanz-Balken
+    const db=document.getElementById('diskBars');db.innerHTML='';
+    if(chartData.length>=2){
+      const ss=Math.ceil(chartData.length/4);
+      for(let i=0;i<4;i++){
+        const seg=chartData.slice(i*ss,(i+1)*ss);const segE=erinData.slice(i*ss,(i+1)*ss);if(!seg.length)break;
+        const aS=seg.reduce((a,b)=>a+b,0)/seg.length;const aE=segE.reduce((a,b)=>a+b,0)/segE.length;
+        const diff=Math.round(aE-aS);const pct=Math.min(Math.abs(diff),50)*2;const col=diff>=0?'#22c55e':'#ef4444';
+        db.innerHTML+='<div class="disk-row"><div style="width:64px;font-size:10px;color:#6b7280;">Abschn. '+(i+1)+'</div><div class="disk-bar-bg"><div class="disk-bar-fill" style="width:'+pct+'%;background:'+col+';"></div></div><div style="font-size:10px;color:#6b7280;min-width:30px;text-align:right;">'+(diff>=0?'+':'')+diff+'</div></div>';
+      }
+    } else {
+      db.innerHTML='<div style="font-size:11px;color:#9ca3af;">Mind. 2 Stimmungsmarker setzen für Segmentauswertung.</div>';
+    }
+
+    document.getElementById('refFreiDisplay').textContent=ref.frei||'(keine freie Reflexion)';
+    document.getElementById('dRefDisplay').textContent=ref.frei||'(keine Reflexion)';
+
+    const rA=document.getElementById('refAnswersDisplay');
+    const fragen=[{l:'Stärkster Moment',v:ref.moment},{l:'Orte & Einflüsse',v:ref.orte},{l:'Nicht Aufgezeichnetes',v:ref.nicht},{l:'Überraschung',v:ref.ueber}];
+    rA.innerHTML=fragen.map(f=>f.v?'<div style="border-left:3px solid #e5e5e5;padding-left:8px;"><div style="font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;margin-bottom:2px;">'+f.l+'</div><div style="font-size:11px;color:#374151;">'+escHtml(f.v)+'</div></div>':'').join('');
+
+    const typen=[...new Set(walk.entries.map(e=>e.type))];
+    const typL={mood:'Stimmung',thought:'Gedanken',sense:'Wahrnehmung',voice:'Sprache',sound:'Umgebungssound',photo:'Fotos'};
+    document.getElementById('dTags').innerHTML=typen.map(t=>'<span style="display:inline-block;font-size:10px;padding:3px 8px;border-radius:10px;background:#f0f4ff;color:#3730a3;margin:2px;">'+(typL[t]||t)+'</span>').join('');
+
+    const ebFarben={route:'#1D9E75',mood:'#facc15',thought:'#22c55e',sense:'#f97316',voice:'#7c3aed',sound:'#f97316',photo:'#555'};
+    const alleEb=['route','mood','thought','sense','voice','sound','photo'];
+    const vorh=new Set(['route',...typen]);
+    document.getElementById('dEbenen').innerHTML=alleEb.map(e=>{const ak=vorh.has(e);return'<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:3px 8px;border-radius:10px;background:'+(ak?ebFarben[e]+'22':'#f0f0f0')+';color:'+(ak?ebFarben[e]:'#bbb')+';border:1px solid '+(ak?ebFarben[e]+'44':'#e5e5e5')+';margin:2px;">'+(ak?'●':'○')+' '+(typL[e]||e)+'</span>';}).join('');
+
+    document.getElementById('analyseModal').classList.add('open');
+  }
+
+  document.getElementById('analyseClose').onclick=()=>{document.getElementById('analyseModal').classList.remove('open');destroyAnalyseCharts();};
+
+  // ARCHIV rendern
+  function renderArchive(){
+    const list=document.getElementById('archiveList');
+    if(!state.walks.length){list.innerHTML='<div style="font-size:11px;color:#999;">Noch keine Walks gespeichert.</div>';return;}
+    list.innerHTML='';
+    state.walks.forEach(w=>{
+      const item=document.createElement('div');item.className='walk-item';
+      const header=document.createElement('div');header.className='walk-header';header.setAttribute('data-id',w.id);
+      const hasRef=w.reflection&&(w.reflection.frei||w.reflection.moment);
+      header.innerHTML='<span class="color-dot" style="background:'+w.color+'"></span><span class="walk-label">'+escHtml(w.name)+(w.steps?'<br><span style="font-size:9px;color:#9ca3af;font-weight:normal;">👣 '+(w.steps||0).toLocaleString('de-DE')+' Schritte'+(hasRef?' · ✍️':'')+'</span>':'')+'</span><span class="walk-badge">sichtbar</span>';
+      header.addEventListener('click',()=>toggleWalk(w.id));
+      const actions=document.createElement('div');actions.className='walk-actions';actions.setAttribute('data-id',w.id);
+      actions.innerHTML='<input class="walk-name-input" type="text" placeholder="Name ändern..." value="'+escHtml(w.name)+'"/><div class="walk-btn-row"><button class="walk-btn wb-save">✏️ Umbenennen</button><button class="walk-btn wb-analyse">📊 Auswerten</button><button class="walk-btn wb-export">📦 Export</button><button class="walk-btn wb-delete">🗑</button></div>';
+      actions.querySelector('.wb-save').onclick=()=>{const n=actions.querySelector('.walk-name-input').value.trim();if(!n)return;w.name=n;header.querySelector('.walk-label').firstChild.textContent=n;saveWalks();};
+      actions.querySelector('.wb-analyse').onclick=()=>openAnalyse(w);
+      actions.querySelector('.wb-export').onclick=()=>exportWalk(w);
+      actions.querySelector('.wb-delete').onclick=()=>{if(!confirm('Walk "'+w.name+'" wirklich löschen?'))return;if(state.activeLayers[w.id]){state.map.removeLayer(state.activeLayers[w.id]);delete state.activeLayers[w.id];}if(state.archiveInkLayers[w.id]){state.map.removeLayer(state.archiveInkLayers[w.id]);delete state.archiveInkLayers[w.id];}state.walks=state.walks.filter(x=>x.id!==w.id);saveWalks();renderArchive();if(Object.keys(state.activeLayers).length===0)document.getElementById('reflexionPanel').style.display='none';};
+      item.appendChild(header);item.appendChild(actions);list.appendChild(item);
     });
-
-    // ── Schrittzähler (DeviceMotion) ──
-    let stepCount = 0, lastStepTime = 0;
-    const STEP_THRESHOLD = 13.5, STEP_MIN_MS = 550;
-
-    if (window.DeviceMotionEvent) {
-        window.addEventListener('devicemotion', e => {
-            if (!state.current) return;
-            const a = e.accelerationIncludingGravity;
-            if (!a) return;
-            const mag = Math.sqrt(a.x*a.x + a.y*a.y + a.z*a.z);
-            const now = Date.now();
-            if (mag > STEP_THRESHOLD && (now - lastStepTime) > STEP_MIN_MS) {
-                stepCount++;
-                lastStepTime = now;
-                if (state.current) state.current.steps = stepCount;
-                const el = document.getElementById('stepCount');
-                if (el) el.textContent = stepCount.toLocaleString('de-DE');
-            }
-        });
-    }
-
-    // ══════════════════════════════════════════════════════════════
-    //  ORGANISCHE TUSCHELINIE — Canvas-basierter Leaflet Layer
-    //  Langsam = dick & opak (Tintenklecks), schnell = dünn & transparent
-    // ══════════════════════════════════════════════════════════════
-
-    let lastPos = null, lastPosTime = null, smoothedSpeed = 0;
-
-    function haversineDist(a, b) {
-        const R = 6371000, toRad = x => x * Math.PI / 180;
-        const dLat = toRad(b[0]-a[0]), dLon = toRad(b[1]-a[1]);
-        const h = Math.sin(dLat/2)**2 + Math.cos(toRad(a[0]))*Math.cos(toRad(b[0]))*Math.sin(dLon/2)**2;
-        return 2 * R * Math.asin(Math.sqrt(h));
-    }
-
-    // Geschwindigkeit → Breite: 0 m/s=26px, 1.4 m/s=9px, 3.5+ m/s=1px
-    function speedToWeight(mps) {
-        const t = Math.min(mps / 3.5, 1);
-        return Math.max(1, 26 * Math.pow(1 - t, 1.6));
-    }
-    // Geschwindigkeit → Opacity: stehen=0.92, schnell=0.04
-    function speedToOpacity(mps) {
-        const t = Math.min(mps / 3.5, 1);
-        return Math.max(0.04, 0.92 * Math.pow(1 - t, 1.4));
-    }
-
-    // Zufälliger Versatz für organische Textur (Seed aus Position)
-    function jitter(scale) { return (Math.random() - 0.5) * scale; }
-
-    // Zeichnet einen organischen Pinselstrich zwischen zwei Punkten auf dem Canvas
-    function drawInkStroke(ctx, x1, y1, x2, y2, weight, opacity) {
-        if (weight < 0.5) return;
-        const alpha = Math.min(opacity, 1);
-        const strokes = Math.max(1, Math.round(weight * 0.7)); // mehrere Substriche für Textur
-
-        for (let s = 0; s < strokes; s++) {
-            // Leichte zufällige Verschiebung pro Substrich
-            const spread = weight * 0.3;
-            const ox1 = jitter(spread), oy1 = jitter(spread);
-            const ox2 = jitter(spread), oy2 = jitter(spread);
-
-            // Kontrollpunkte für Kurve (organisch, nicht gerade)
-            const mx = (x1 + x2) / 2 + jitter(weight * 0.4);
-            const my = (y1 + y2) / 2 + jitter(weight * 0.4);
-
-            // Breite variiert leicht entlang des Strichs
-            const w = weight * (0.75 + Math.random() * 0.5) / strokes;
-
-            ctx.beginPath();
-            ctx.moveTo(x1 + ox1, y1 + oy1);
-            ctx.quadraticCurveTo(mx, my, x2 + ox2, y2 + oy2);
-
-            ctx.lineWidth   = w;
-            ctx.lineCap     = 'round';
-            ctx.lineJoin    = 'round';
-            ctx.strokeStyle = 'rgba(20,16,12,' + (alpha * (0.6 + Math.random() * 0.4)).toFixed(3) + ')';
-            ctx.stroke();
-        }
-
-        // Körnung: kleine unregelmäßige Punkte entlang des Pfades
-        if (weight > 4) {
-            const grainCount = Math.round(weight * 1.2);
-            for (let g = 0; g < grainCount; g++) {
-                const t = Math.random();
-                const gx = x1 + (x2 - x1) * t + jitter(weight * 0.6);
-                const gy = y1 + (y2 - y1) * t + jitter(weight * 0.6);
-                const gr = Math.random() * weight * 0.18;
-                ctx.beginPath();
-                ctx.arc(gx, gy, gr, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(20,16,12,' + (alpha * Math.random() * 0.5).toFixed(3) + ')';
-                ctx.fill();
-            }
-        }
-    }
-
-    // ── Custom Leaflet Canvas Layer für Tuschelinie ──
-    const InkLayer = L.Layer.extend({
-        initialize() {
-            this._segments = []; // [{ll1, ll2, weight, opacity}]
-            this._canvas = null;
-            this._ctx    = null;
-        },
-        onAdd(map) {
-            this._map = map;
-            this._canvas = document.createElement('canvas');
-            this._canvas.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;z-index:400;';
-            map.getPanes().overlayPane.appendChild(this._canvas);
-            this._ctx = this._canvas.getContext('2d');
-            map.on('moveend zoomend resize', this._redraw, this);
-            this._resize();
-            this._redraw();
-            return this;
-        },
-        onRemove(map) {
-            map.getPanes().overlayPane.removeChild(this._canvas);
-            map.off('moveend zoomend resize', this._redraw, this);
-        },
-        _resize() {
-            const sz = this._map.getSize();
-            this._canvas.width  = sz.x;
-            this._canvas.height = sz.y;
-        },
-        addSegment(ll1, ll2, weight, opacity) {
-            this._segments.push({ ll1, ll2, weight, opacity });
-            this._drawSegment(ll1, ll2, weight, opacity);
-        },
-        _latLngToCanvas(ll) {
-            const p = this._map.latLngToContainerPoint(ll);
-            return p;
-        },
-        _drawSegment(ll1, ll2, weight, opacity) {
-            if (!this._ctx) return;
-            const p1 = this._latLngToCanvas(ll1);
-            const p2 = this._latLngToCanvas(ll2);
-            drawInkStroke(this._ctx, p1.x, p1.y, p2.x, p2.y, weight, opacity);
-        },
-        _redraw() {
-            if (!this._ctx) return;
-            this._resize();
-            const ctx = this._ctx;
-            ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
-            this._segments.forEach(s => this._drawSegment(s.ll1, s.ll2, s.weight, s.opacity));
-        },
-        clearSegments() {
-            this._segments = [];
-            if (this._ctx) this._ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
-        },
-        getSegments() { return this._segments; }
-    });
-
-    // Aktiver Ink-Layer für laufende Aufnahme
-    let inkLayer = new InkLayer();
-    inkLayer.addTo(state.map);
-    // Speichere Referenz so dass Toggle funktioniert
-    state.inkLayer = inkLayer;
-
-    // Ebenen-Toggle für Route: zeigt/versteckt den Canvas
-    const origRouteToggle = document.querySelectorAll('.layer-toggle-btn');
-    // Handled below in the toggle listener override
-
-    // ── GPS ──
-    // Kalman-ähnlicher Positions-Glätter
-    let smoothLat = null, smoothLng = null;
-    const SMOOTH_FACTOR = 0.25;   // 0=nie updaten, 1=kein Glätten
-    const MIN_DIST_M    = 3;      // Mindestbewegung in Metern bevor ein Segment gezeichnet wird
-    const MIN_ACCURACY  = 30;     // GPS-Punkte mit > 30m Ungenauigkeit ignorieren
-
-    navigator.geolocation.watchPosition(pos => {
-        // ── Schlechte GPS-Qualität verwerfen ──
-        const acc = pos.coords.accuracy;
-        if (acc > MIN_ACCURACY) return;
-
-        const rawLat = pos.coords.latitude;
-        const rawLng = pos.coords.longitude;
-
-        // ── Positions-Glättung (exponentieller Tiefpassfilter) ──
-        if (smoothLat === null) {
-            smoothLat = rawLat;
-            smoothLng = rawLng;
-        } else {
-            smoothLat = smoothLat + SMOOTH_FACTOR * (rawLat - smoothLat);
-            smoothLng = smoothLng + SMOOTH_FACTOR * (rawLng - smoothLng);
-        }
-
-        const ll  = [smoothLat, smoothLng];
-        const now = Date.now();
-
-        // Live-Positionsmarker aktualisieren
-        if (!state.liveMarker) {
-            state.liveMarker = L.circleMarker(ll, {
-                radius: 6, fillColor: '#111', color: '#fff', weight: 2, fillOpacity: 1, zIndexOffset: 1000
-            }).addTo(state.map);
-            state.map.panTo(ll);
-        } else {
-            state.liveMarker.setLatLng(ll);
-        }
-
-        if (state.current) {
-            if (lastPos && lastPosTime) {
-                const dist = haversineDist(lastPos, ll);
-
-                // ── Minimale Bewegungsschwelle — filtert GPS-Rauschen ──
-                if (dist < MIN_DIST_M) return;
-
-                const dt  = (now - lastPosTime) / 1000;
-                const raw = dt > 0 ? dist / dt : 0;
-                smoothedSpeed = smoothedSpeed * 0.7 + raw * 0.3;  // stärker glätten
-
-                const w  = speedToWeight(smoothedSpeed);
-                const op = speedToOpacity(smoothedSpeed);
-
-                state.current.route.push(ll);
-                if (!state.current.segments) state.current.segments = [];
-                state.current.segments.push({ ll1: lastPos, ll2: ll, weight: w, opacity: op });
-
-                if (layerVisibility.route) inkLayer.addSegment(lastPos, ll, w, op);
-
-                const speedEl = document.getElementById('currentSpeed');
-                if (speedEl) speedEl.textContent = (smoothedSpeed * 3.6).toFixed(1) + ' km/h';
-            } else {
-                // Ersten Punkt setzen
-                state.current.route.push(ll);
-            }
-            lastPos     = ll;
-            lastPosTime = now;
-        }
-    }, err => {
-        console.warn('GPS error:', err.code, err.message);
-    }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
-
-    // ── START ──
-    document.getElementById('btnStart').onclick = () => {
-        stepCount = 0; lastStepTime = 0; smoothedSpeed = 0; lastPos = null; lastPosTime = null;
-        const stepEl = document.getElementById('stepCount');
-        if (stepEl) stepEl.textContent = '0';
-        const speedEl = document.getElementById('currentSpeed');
-        if (speedEl) speedEl.textContent = '—';
-        // Ink-Canvas leeren für neue Aufzeichnung
-        inkLayer.clearSegments();
-        state.current = {
-            id: Date.now(),
-            name: new Date().toLocaleString('de-DE'),
-            route: [], segments: [], entries: [], steps: 0,
-            color: walkColors[state.walks.length % walkColors.length],
-            reflection: ""
-        };
-        alert("Walk gestartet!");
-    };
-
-    // ── STOP → Modal → Archiv ──
-    document.getElementById('btnStop').onclick = () => {
-        if (!state.current) return alert("Kein aktiver Walk.");
-        const modal = document.getElementById('stopModal');
-        document.getElementById('walkNameInput').value = '';
-        modal.classList.add('open');
-    };
-
-    document.getElementById('modalCancel').onclick = () => {
-        document.getElementById('stopModal').classList.remove('open');
-    };
-
-    document.getElementById('modalSave').onclick = () => {
-        const nameVal = document.getElementById('walkNameInput').value.trim();
-        if (nameVal) state.current.name = nameVal;
-        document.getElementById('stopModal').classList.remove('open');
-
-        // Live-Segmente von Karte entfernen
-        inkLayer.clearSegments();
-        // Live-Marker-Ebenen vom Karte entfernen
-        Object.keys(mapLayers).forEach(key => {
-            mapLayers[key].forEach(l => { try { state.map.removeLayer(l); } catch(e){} });
-            mapLayers[key] = [];
-        });
-
-        state.walks.push(state.current);
-        saveWalks();
-        state.current = null;
-        renderArchive();
-        openPanel('archiv');
-    };
-
-    function saveWalks() {
-        // Audio-Blob-URLs können nicht serialisiert werden – wir speichern nur Metadaten
-        const toSave = state.walks.map(w => ({
-            ...w,
-            entries: w.entries.map(e => {
-                const copy = { ...e };
-                delete copy.audioUrl; // object URL nicht serialisierbar
-                return copy;
-            })
-        }));
-        localStorage.setItem('psychogeo_walks', JSON.stringify(toSave));
-    }
-
-    // ── Marker platzieren ──
-    function placeMarker(type, latLng, popupHTML) {
-        mapLayers[type] = mapLayers[type] || [];
-        const marker = L.marker(latLng).bindPopup(popupHTML);
-        mapLayers[type].push(marker);
-        if (layerVisibility[type] !== false) { marker.addTo(state.map); marker.openPopup(); }
-        return marker;
-    }
-
-    // getPos() replaces currentLatLng() — see above
-
-    function requireWalk() {
-        if (!state.current) { alert("Erst START drücken!"); return false; }
-        return true;
-    }
-
-    // GPS-Position oder Kartenmitte als Fallback
-    function getPos() {
-        if (state.liveMarker) return state.liveMarker.getLatLng();
-        const c = state.map.getCenter();
-        return { lat: c.lat, lng: c.lng };
-    }
-
-    // ══ 📸 FOTO ══
-    const cameraModal = document.getElementById('cameraModal');
-    const cameraPreview = document.getElementById('cameraPreview');
-    const photoCanvas = document.getElementById('photoCanvas');
-    let cameraStream = null;
-
-    async function openCamera() {
-        try {
-            cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
-            cameraPreview.srcObject = cameraStream;
-            cameraModal.classList.add('open');
-        } catch(e) { document.getElementById('photoInput').click(); }
-    }
-    function closeCamera() {
-        if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
-        cameraModal.classList.remove('open');
-    }
-    document.getElementById('closeCamera').onclick = closeCamera;
-
-    function placePhotoMarker(dataUrl, pos) {
-        const ts = new Date().toLocaleTimeString();
-        // Dezenter Punkt mit kleinem Foto-Thumbnail als Ring
-        const icon = L.divIcon({
-            html: '<div style="width:26px;height:26px;border-radius:50%;border:2.5px solid #fff;overflow:hidden;box-shadow:0 1px 5px rgba(0,0,0,0.4);background:#555;">' +
-                  '<img src="' + dataUrl + '" style="width:100%;height:100%;object-fit:cover;opacity:0.85;"/></div>',
-            iconSize:[26,26], iconAnchor:[13,13], popupAnchor:[0,-16]
-        });
-        const popup = '<img src="' + dataUrl + '" style="width:200px;border-radius:8px;"/><br><small>' + ts + '</small>';
-        const m = placeMarker('photo', pos, popup);
-        m.setIcon(icon);
-        return ts;
-    }
-
-    document.getElementById('captureBtn').onclick = () => {
-        if (!requireWalk()) { closeCamera(); return; }
-        const pos = getPos();
-        photoCanvas.width = cameraPreview.videoWidth;
-        photoCanvas.height = cameraPreview.videoHeight;
-        photoCanvas.getContext('2d').drawImage(cameraPreview, 0, 0);
-        const dataUrl = photoCanvas.toDataURL('image/jpeg', 0.7);
-        const ts = placePhotoMarker(dataUrl, pos);
-        state.current.entries.push({ type:'photo', location:{ lat:pos.lat, lng:pos.lng }, timestamp: ts, dataUrl });
-        closeCamera();
-    };
-
-    document.getElementById('photoInput').onchange = function() {
-        if (!this.files || !this.files[0] || !requireWalk()) return;
-        const pos = getPos();
-        const reader = new FileReader();
-        reader.onload = e => {
-            const dataUrl = e.target.result;
-            const ts = placePhotoMarker(dataUrl, pos);
-            state.current.entries.push({ type:'photo', location:{ lat:pos.lat, lng:pos.lng }, timestamp: ts, dataUrl });
-        };
-        reader.readAsDataURL(this.files[0]);
-        this.value = '';
-    };
-    document.getElementById('fabPhoto').onclick = () => openCamera();
-
-    // ══ 🎙 AUDIO ══
-    const audioModal = document.getElementById('audioModal');
-    const audioStatus = document.getElementById('audioStatus');
-    const audioTimerEl = document.getElementById('audioTimer');
-    const bars = document.querySelectorAll('.bar');
-    let mediaRecorder = null, audioChunks = [], audioType = 'voice';
-    let timerInterval = null, timerSec = 0;
-    let audioContext = null, analyser = null, vizRaf = null;
-
-    function formatTime(s) { return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0'); }
-
-    function startViz(stream) {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        analyser = audioContext.createAnalyser();
-        analyser.fftSize = 64;
-        audioContext.createMediaStreamSource(stream).connect(analyser);
-        const data = new Uint8Array(analyser.frequencyBinCount);
-        function draw() {
-            vizRaf = requestAnimationFrame(draw);
-            analyser.getByteFrequencyData(data);
-            bars.forEach((b,i) => { const v = data[i*2]||0; b.style.height = Math.max(4, v*48/255) + 'px'; });
-        }
-        draw();
-    }
-    function stopViz() {
-        if (vizRaf) cancelAnimationFrame(vizRaf);
-        if (audioContext) { audioContext.close(); audioContext = null; }
-        bars.forEach(b => b.style.height = '8px');
-    }
-
-    async function openAudioModal(type) {
-        if (!requireWalk()) return;
-        audioType = type;
-        audioStatus.textContent = type === 'voice' ? '🎙 Sprachnachricht aufnehmen...' : '🔊 Umgebungssound aufnehmen...';
-        audioChunks = []; timerSec = 0; audioTimerEl.textContent = '0:00';
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(stream);
-            mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-            mediaRecorder.onstop = () => finishRecording(stream);
-            mediaRecorder.start();
-            startViz(stream);
-            timerInterval = setInterval(() => { timerSec++; audioTimerEl.textContent = formatTime(timerSec); }, 1000);
-            audioModal.classList.add('open');
-        } catch(e) { alert("Mikrofon-Zugriff verweigert."); }
-    }
-
-    function finishRecording(stream) {
-        stream.getTracks().forEach(t => t.stop());
-        stopViz(); clearInterval(timerInterval);
-        audioModal.classList.remove('open');
-        const blob = new Blob(audioChunks, { type: MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : 'audio/webm' });
-        const url  = URL.createObjectURL(blob);
-        const pos  = getPos();
-        const ts   = new Date().toLocaleTimeString();
-        const dur  = formatTime(timerSec);
-        const entryId = 'audio_' + Date.now();
-        audioBlobs[entryId] = blob;  // store blob for export
-        state.current.entries.push({ type:audioType, location:{lat:pos.lat,lng:pos.lng}, timestamp:ts, audioDuration:dur, audioUrl:url, entryId });
-        const color = audioType === 'voice' ? '#7c3aed' : '#f97316';
-        // Dezenter Punkt: kleiner Kreis mit Symbol-Linie innen
-        const svgInner = audioType === 'voice'
-            ? '<line x1="8" y1="5" x2="8" y2="11" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/><line x1="5" y1="8" x2="11" y2="8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>'
-            : '<circle cx="8" cy="8" r="3" fill="none" stroke="#fff" stroke-width="1.8"/><line x1="8" y1="2" x2="8" y2="5" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>';
-        const icon = L.divIcon({
-            html: '<div style="width:22px;height:22px;border-radius:50%;background:' + color + ';border:2.5px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;">' +
-                  '<svg width="16" height="16" viewBox="0 0 16 16">' + svgInner + '</svg></div>',
-            iconSize:[22,22], iconAnchor:[11,11], popupAnchor:[0,-14]
-        });
-        const popupHTML = '<b>' + (audioType==='voice'?'Sprachnachricht':'Umgebungssound') + '</b><br><small>' + ts + ' · ' + dur + '</small><br><audio controls src="' + url + '" style="margin-top:6px;width:180px;"></audio>';
-        const m = placeMarker(audioType, pos, popupHTML);
-        m.setIcon(icon);
-    }
-
-    document.getElementById('stopAudioBtn').onclick = () => { if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); };
-    document.getElementById('closeAudio').onclick   = () => { if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); };
-    document.getElementById('fabSound').onclick = () => openAudioModal('sound');
-    document.getElementById('fabMsg').onclick   = () => openAudioModal('voice');
-
-    // ══ Individuelle Marker-Icons ══
-    function makePinIcon(emoji, bgColor, size) {
-        size = size || 40;
-        return L.divIcon({
-            html: '<div style="width:' + size + 'px;height:' + size + 'px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:' + bgColor + ';border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;">' +
-                  '<span style="transform:rotate(45deg);font-size:' + Math.round(size*0.42) + 'px;line-height:1;">' + emoji + '</span></div>',
-            iconSize:[size,size], iconAnchor:[size/2, size], popupAnchor:[0,-(size+4)]
-        });
-    }
-
-    function makeDotIcon(color, size) {
-        size = size || 20;
-        return L.divIcon({
-            className: '',  // kein Leaflet-Default-Styling
-            html: '<div style="width:' + size + 'px;height:' + size + 'px;border-radius:50%;background:' + color + ';border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,0.4);"></div>',
-            iconSize: [size, size],
-            iconAnchor: [size/2, size/2],
-            popupAnchor: [0, -(size/2 + 6)]
-        });
-    }
-
-    function moodColor(val) {
-        // 0=blau, 50=grün-gelb, 100=rot
-        if (val < 25)  return '#3b82f6';
-        if (val < 50)  return '#22c55e';
-        if (val < 75)  return '#facc15';
-        if (val < 90)  return '#f97316';
-        return '#ef4444';
-    }
-
-    // ── Stimmungs-Modal ──
-    const moodModal  = document.getElementById('moodModal');
-    const moodSlider = document.getElementById('moodSlider');
-    const moodValEl  = document.getElementById('moodVal');
-    const moodThumb  = document.getElementById('moodThumb');
-    const moodSaveBtn = document.getElementById('moodSave');
-
-    function updateMoodUI(v) {
-        const col = moodColor(v);
-        moodValEl.textContent = v;
-        moodValEl.style.color = col;
-        moodThumb.style.borderColor = col;
-        moodThumb.style.left = v + '%';
-        moodSaveBtn.style.background = col;
-    }
-
-    updateMoodUI(50);
-
-    moodSlider.addEventListener('input', () => {
-        updateMoodUI(parseInt(moodSlider.value));
-    });
-
-    document.getElementById('moodCancel').addEventListener('click', () => {
-        moodModal.style.display = 'none';
-    });
-
-    document.getElementById('moodSave').addEventListener('click', () => {
-        if (!requireWalk()) return;
-        const val = parseInt(moodSlider.value);
-        const col = moodColor(val);
-        const note = document.getElementById('moodText').value.trim();
-        const pos  = getPos();
-        const ts   = new Date().toLocaleTimeString();
-
-        // Eintrag speichern
-        state.current.entries.push({
-            type:'mood', location:{lat:pos.lat, lng:pos.lng},
-            timestamp:ts, moodValue:val, markerColor:col, text:note
-        });
-
-        // Farbiger Kreis-Marker auf Karte
-        const icon = L.divIcon({
-            className: '',
-            html: '<div style="width:22px;height:22px;border-radius:50%;background:' + col + ';border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,0.45);"></div>',
-            iconSize: [22, 22],
-            iconAnchor: [11, 11],
-            popupAnchor: [0, -16]
-        });
-
-        const popup =
-            '<div style="min-width:150px;padding:4px;">' +
-            '<b style="font-size:13px;color:#111;">Stimmung</b><br>' +
-            '<div style="margin:8px 0 4px;background:#eee;border-radius:6px;height:10px;overflow:hidden;">' +
-              '<div style="height:100%;width:' + val + '%;background:' + col + ';border-radius:6px;"></div>' +
-            '</div>' +
-            '<span style="font-size:22px;font-weight:bold;color:' + col + ';">' + val + '</span>' +
-            '<span style="font-size:12px;color:#aaa;"> / 100</span>' +
-            (note ? '<br><span style="font-size:11px;color:#555;margin-top:4px;display:block;">' + note + '</span>' : '') +
-            '<br><span style="font-size:10px;color:#bbb;">' + ts + '</span></div>';
-
-        mapLayers['mood'] = mapLayers['mood'] || [];
-        const m = L.marker([pos.lat, pos.lng], { icon }).bindPopup(popup);
-        mapLayers['mood'].push(m);
-        if (layerVisibility['mood'] !== false) {
-            m.addTo(state.map);
-            setTimeout(() => m.openPopup(), 100);
-        }
-
-        // Reset
-        moodModal.style.display = 'none';
-        document.getElementById('moodText').value = '';
-        moodSlider.value = 50;
-        updateMoodUI(50);
-    });
-
-    document.getElementById('fabMood').addEventListener('click', () => {
-        if (!requireWalk()) return;
-        moodModal.style.display = 'flex';
-    });
-
-    // ── Gedanken-Modal ──
-    const thoughtModal = document.getElementById('thoughtModal');
-    document.getElementById('thoughtCancel').onclick = () => { thoughtModal.style.display = 'none'; };
-    document.getElementById('thoughtSave').onclick = () => {
-        if (!requireWalk()) return;
-        const t = document.getElementById('thoughtText').value.trim();
-        const pos = getPos();
-        const ts = new Date().toLocaleTimeString();
-        state.current.entries.push({ type:'thought', location:{lat:pos.lat,lng:pos.lng}, timestamp:ts, text:t || '(kein Text)' });
-        const icon = makeDotIcon('#22c55e', 16);
-        const popup = '<div style="min-width:140px;"><b>Gedanke</b><br>' +
-            '<p style="margin:4px 0;font-size:12px;color:#333;">' + (t||'—') + '</p>' +
-            '<small style="color:#aaa;">' + ts + '</small></div>';
-        mapLayers['thought'] = mapLayers['thought'] || [];
-        const m = L.marker([pos.lat, pos.lng], { icon }).bindPopup(popup);
-        mapLayers['thought'].push(m);
-        if (layerVisibility['thought'] !== false) { m.addTo(state.map); m.openPopup(); }
-        thoughtModal.style.display = 'none';
-        document.getElementById('thoughtText').value = '';
-    };
-    document.getElementById('fabThought').onclick = () => {
-        if (!requireWalk()) return;
-        thoughtModal.style.display = 'flex';
-    };
-
-    // ── Wahrnehmungs-Modal ──
-    const senseModal = document.getElementById('senseModal');
-    document.getElementById('senseCancel').onclick = () => { senseModal.style.display = 'none'; };
-    document.getElementById('senseSave').onclick = () => {
-        if (!requireWalk()) return;
-        const t = document.getElementById('senseText').value.trim();
-        const pos = getPos();
-        const ts = new Date().toLocaleTimeString();
-        state.current.entries.push({ type:'sense', location:{lat:pos.lat,lng:pos.lng}, timestamp:ts, text:t||'(keine Eingabe)' });
-        const icon = makeDotIcon('#f97316', 16);
-        const popup = '<div style="min-width:140px;"><b>Wahrnehmung</b><br>' +
-            (t ? '<p style="margin:4px 0;font-size:12px;color:#333;">' + t + '</p>' : '') +
-            '<small style="color:#aaa;">' + ts + '</small></div>';
-        mapLayers['sense'] = mapLayers['sense'] || [];
-        const m = L.marker([pos.lat, pos.lng], { icon }).bindPopup(popup);
-        mapLayers['sense'].push(m);
-        if (layerVisibility['sense'] !== false) { m.addTo(state.map); m.openPopup(); }
-        senseModal.style.display = 'none';
-        document.getElementById('senseText').value = '';
-    };
-    document.getElementById('fabSense').onclick = () => {
-        if (!requireWalk()) return;
-        senseModal.style.display = 'flex';
-    };
-
-    // ══ ARCHIV ══
-    function toggleWalk(id) {
-        const walk = state.walks.find(w => w.id == id);
-        if (!walk) return;
-        const header = document.querySelector('.walk-header[data-id="' + id + '"]');
-        const actions = document.querySelector('.walk-actions[data-id="' + id + '"]');
-
-        if (state.activeLayers[id]) {
-            state.map.removeLayer(state.activeLayers[id]);
-            delete state.activeLayers[id];
-            // Auch Archive-InkLayer entfernen
-            if (state.archiveInkLayers && state.archiveInkLayers[id]) {
-                state.map.removeLayer(state.archiveInkLayers[id]);
-                delete state.archiveInkLayers[id];
-            }
-            if (header) header.classList.remove('shown');
-            if (actions) actions.classList.remove('open');
-            if (Object.keys(state.activeLayers).length === 0) document.getElementById('reflexionPanel').style.display = 'none';
-        } else {
-            const group = L.layerGroup();
-            // Ink-Layer für archivierte Route
-            if (!state.archiveInkLayers) state.archiveInkLayers = {};
-            // Alten Layer entfernen falls vorhanden
-            if (state.archiveInkLayers[id]) {
-                state.map.removeLayer(state.archiveInkLayers[id]);
-                delete state.archiveInkLayers[id];
-            }
-            if (walk.segments && walk.segments.length > 0) {
-                // Benutze gespeicherte Segmente mit originaler Stärke/Opazität
-                const archiveInk = new InkLayer();
-                archiveInk.addTo(state.map);
-                walk.segments.forEach(s => archiveInk.addSegment(s.ll1, s.ll2, s.weight, s.opacity));
-                state.archiveInkLayers[id] = archiveInk;
-                if (!layerVisibility.route) archiveInk._canvas.style.display = 'none';
-            } else if (walk.route && walk.route.length > 1) {
-                // Fallback für ältere Walks ohne segments
-                const archiveInk = new InkLayer();
-                archiveInk.addTo(state.map);
-                for (let i = 1; i < walk.route.length; i++) {
-                    archiveInk.addSegment(walk.route[i-1], walk.route[i], 6, 0.7);
-                }
-                state.archiveInkLayers[id] = archiveInk;
-                if (!layerVisibility.route) archiveInk._canvas.style.display = 'none';
-            }
-            walk.entries.forEach(e => {
-                let popup = '<b>' + (e.type||'').toUpperCase() + '</b><br>' + (e.text || e.audioDuration || '');
-                if (e.dataUrl) popup = '<img src="' + e.dataUrl + '" style="width:180px;border-radius:6px;"/><br><small>' + (e.timestamp||'') + '</small>';
-                if (e.audioUrl) popup += '<br><audio controls src="' + e.audioUrl + '" style="width:180px;margin-top:4px;"></audio>';
-                const dotColor = e.type === 'thought' ? '#22c55e'
-                    : e.type === 'sense'  ? '#f97316'
-                    : e.type === 'mood'   ? (e.markerColor || walk.color)
-                    : e.type === 'voice'  ? '#7c3aed'
-                    : e.type === 'sound'  ? '#f97316'
-                    : e.type === 'photo'  ? '#555'
-                    : walk.color;
-                // mood/thought/sense bigger; audio/photo smaller & more transparent
-                const dotRadius  = (e.type==='mood'||e.type==='thought'||e.type==='sense') ? 7 : 5;
-                const dotOpacity = (e.type==='photo'||e.type==='voice'||e.type==='sound')  ? 0.6 : 0.92;
-                L.circleMarker([e.location.lat, e.location.lng], {
-                    color: '#fff', weight: 1.5, fillColor: dotColor, fillOpacity: dotOpacity, radius: dotRadius
-                }).addTo(group).bindPopup(popup);
-            });
-            group.addTo(state.map);
-            state.activeLayers[id] = group;
-            if (header) header.classList.add('shown');
-            if (actions) actions.classList.add('open');
-
-            // Reflexion
-            const panel = document.getElementById('reflexionPanel');
-            panel.style.display = 'block';
-            document.getElementById('refWalkName').innerText = walk.name;
-            document.getElementById('reflexionText').value = walk.reflection || "";
-            document.getElementById('btnSaveRef').onclick = () => {
-                walk.reflection = document.getElementById('reflexionText').value;
-                saveWalks();
-                alert("Reflexion gespeichert.");
-            };
-        }
-    }
-    window.toggleWalk = toggleWalk;
-
-    function renderArchive() {
-        const list = document.getElementById('archiveList');
-        if (!state.walks.length) { list.innerHTML = '<div style="font-size:11px;color:#999;">Noch keine Walks gespeichert.</div>'; return; }
-        list.innerHTML = '';
-        state.walks.forEach(w => {
-            const item = document.createElement('div');
-            item.className = 'walk-item';
-
-            const header = document.createElement('div');
-            header.className = 'walk-header';
-            header.setAttribute('data-id', w.id);
-            header.innerHTML =
-                '<span class="color-dot" style="background:' + w.color + '"></span>' +
-                '<span class="walk-label">' + w.name + (w.steps ? '<br><span style="font-size:9px;color:#9ca3af;font-weight:normal;">👣 ' + (w.steps||0).toLocaleString('de-DE') + ' Schritte</span>' : '') + '</span>' +
-                '<span class="walk-badge">sichtbar</span>';
-            header.addEventListener('click', () => toggleWalk(w.id));
-
-            const actions = document.createElement('div');
-            actions.className = 'walk-actions';
-            actions.setAttribute('data-id', w.id);
-            actions.innerHTML =
-                '<input class="walk-name-input" type="text" placeholder="Name ändern..." value="' + escHtml(w.name) + '"/>' +
-                '<div class="walk-btn-row">' +
-                  '<button class="walk-btn wb-save">✏️ Umbenennen</button>' +
-                  '<button class="walk-btn wb-export">📦 Export</button>' +
-                  '<button class="walk-btn wb-delete">🗑</button>' +
-                '</div>';
-
-            actions.querySelector('.wb-save').onclick = () => {
-                const newName = actions.querySelector('.walk-name-input').value.trim();
-                if (!newName) return;
-                w.name = newName;
-                header.querySelector('.walk-label').textContent = newName;
-                document.getElementById('refWalkName').innerText = newName;
-                saveWalks();
-            };
-            actions.querySelector('.wb-export').onclick = () => exportWalk(w);
-            actions.querySelector('.wb-delete').onclick = () => {
-                if (!confirm('Walk "' + w.name + '" wirklich löschen?')) return;
-                if (state.activeLayers[w.id]) { state.map.removeLayer(state.activeLayers[w.id]); delete state.activeLayers[w.id]; }
-                state.walks = state.walks.filter(x => x.id !== w.id);
-                saveWalks();
-                renderArchive();
-                if (Object.keys(state.activeLayers).length === 0) document.getElementById('reflexionPanel').style.display = 'none';
-            };
-
-            item.appendChild(header);
-            item.appendChild(actions);
-            list.appendChild(item);
-        });
-    }
-
-    function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-    // ══ EXPORT (ZIP) ══
-    async function exportWalk(walk) {
-        if (typeof JSZip === 'undefined') { alert("JSZip nicht geladen."); return; }
-        const overlay = document.getElementById('exportOverlay');
-        const msg = document.getElementById('exportMsg');
-        overlay.classList.add('open');
-
-        try {
-            const zip = new JSZip();
-            const folder = zip.folder(walk.name.replace(/[^a-zA-Z0-9äöüÄÖÜß _-]/g, '_'));
-
-            // 1. JSON Daten
-            msg.textContent = 'Exportiere Daten...';
-            const jsonData = {
-                name: walk.name,
-                date: walk.name,
-                color: walk.color,
-                kartenansicht: currentTileUrl,
-                reflection: walk.reflection || '',
-                route: walk.route,
-                entries: walk.entries.map(e => ({
-                    type: e.type,
-                    timestamp: e.timestamp,
-                    location: e.location,
-                    text: e.text || null,
-                    audioDuration: e.audioDuration || null,
-                    entryId: e.entryId || null
-                }))
-            };
-            folder.file('walk_daten.json', JSON.stringify(jsonData, null, 2));
-
-            // 2. GPX
-            msg.textContent = 'Erstelle GPX...';
-            let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Begleitinstrument PRO">\n  <trk>\n    <name>' + escHtml(walk.name) + '</name>\n    <trkseg>\n';
-            walk.route.forEach(p => { gpx += '      <trkpt lat="' + p[0] + '" lon="' + p[1] + '"></trkpt>\n'; });
-            gpx += '    </trkseg>\n  </trk>\n</gpx>';
-            folder.file('route.gpx', gpx);
-
-            // 3. Fotos
-            msg.textContent = 'Exportiere Fotos...';
-            let photoCount = 0;
-            walk.entries.forEach(e => {
-                if (e.type === 'photo' && e.dataUrl) {
-                    photoCount++;
-                    const base64 = e.dataUrl.split(',')[1];
-                    folder.file('foto_' + photoCount + '_' + (e.timestamp||'').replace(/:/g,'-') + '.jpg', base64, { base64: true });
-                }
-            });
-
-            // 4. Audio-Dateien
-            msg.textContent = 'Exportiere Audio...';
-            let audioCount = 0;
-            walk.entries.forEach(e => {
-                if ((e.type === 'voice' || e.type === 'sound') && e.entryId && audioBlobs[e.entryId]) {
-                    audioCount++;
-                    const prefix = e.type === 'voice' ? 'sprachnachricht' : 'umgebungssound';
-                    folder.file(prefix + '_' + audioCount + '.mp4', audioBlobs[e.entryId]);
-                }
-            });
-
-            // 5. Karten-Screenshot
-            msg.textContent = 'Erstelle Kartenbild...';
-            await takeMapSnapshot(walk, folder);
-
-            // 6. Reflexion als TXT
-            if (walk.reflection) {
-                folder.file('reflexion.txt', walk.reflection);
-            }
-
-            // 7. README
-            const readme =
-                'BEGLEITINSTRUMENT PRO — Export\n' +
-                '==============================\n' +
-                'Walk: ' + walk.name + '\n' +
-                'Einträge: ' + walk.entries.length + '\n' +
-                'Wegpunkte: ' + walk.route.length + '\n' +
-                'Fotos: ' + photoCount + '\n' +
-                'Audioaufnahmen: ' + audioCount + '\n\n' +
-                'Dateien:\n' +
-                '  walk_daten.json  — Alle Daten als JSON\n' +
-                '  route.gpx        — Route als GPX (GPS-Exchange)\n' +
-                '  karte.png        — Kartenausschnitt mit Route\n' +
-                '  foto_*.jpg       — Aufgenommene Fotos\n' +
-                '  sprachnachricht_*.mp4 / umgebungssound_*.mp4 — Aufnahmen\n' +
-                '  reflexion.txt    — Reflexionstext\n';
-            folder.file('README.txt', readme);
-
-            msg.textContent = 'Erstelle ZIP...';
-            const blob = await zip.generateAsync({ type: 'blob' }, meta => {
-                msg.textContent = 'Packe... ' + Math.round(meta.percent) + '%';
-            });
-
-            // Download
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = walk.name.replace(/[^a-zA-Z0-9äöüÄÖÜß _-]/g, '_') + '_export.zip';
-            a.click();
-            setTimeout(() => URL.revokeObjectURL(url), 5000);
-
-        } catch(err) {
-            alert("Export fehlgeschlagen: " + err.message);
-        } finally {
-            overlay.classList.remove('open');
-        }
-    }
-
-    async function takeMapSnapshot(walk, folder) {
-        // ── Reines Canvas-Rendering: keine CORS-Probleme mit Tile-Images ──
-        // Zeichnet Route + Marker auf weißem/hellem Hintergrund, immer zuverlässig
-        try {
-            const EXPORT_W = 1200;
-            const EXPORT_H = 900;
-            const PAD = 80;  // Rand in Pixel
-
-            // Bounds der Route berechnen
-            const route = walk.route || [];
-            if (route.length < 2) { folder.file('karte.png', '', { base64: false }); return; }
-
-            let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
-            route.forEach(([lat, lng]) => {
-                minLat = Math.min(minLat, lat); maxLat = Math.max(maxLat, lat);
-                minLng = Math.min(minLng, lng); maxLng = Math.max(maxLng, lng);
-            });
-
-            // Konvertierung geo → Canvas-Pixel
-            const latSpan = maxLat - minLat || 0.001;
-            const lngSpan = maxLng - minLng || 0.001;
-            const scaleX  = (EXPORT_W - PAD*2) / lngSpan;
-            const scaleY  = (EXPORT_H - PAD*2) / latSpan;
-            const scale   = Math.min(scaleX, scaleY);
-
-            function toXY(lat, lng) {
-                return {
-                    x: PAD + (lng - minLng) * scale,
-                    y: EXPORT_H - PAD - (lat - minLat) * scale
-                };
-            }
-
-            // Canvas aufbauen
-            const canvas = document.createElement('canvas');
-            canvas.width  = EXPORT_W;
-            canvas.height = EXPORT_H;
-            const ctx = canvas.getContext('2d');
-
-            // ── Hintergrund: helles Papier ──
-            ctx.fillStyle = '#f8f6f1';
-            ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
-
-            // Leichtes Gitter für Orientierung
-            ctx.strokeStyle = 'rgba(0,0,0,0.06)';
-            ctx.lineWidth = 1;
-            for (let x = 0; x < EXPORT_W; x += 60) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,EXPORT_H); ctx.stroke(); }
-            for (let y = 0; y < EXPORT_H; y += 60) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(EXPORT_W,y); ctx.stroke(); }
-
-            // ── Tuschelinie ──
-            const segs = walk.segments || [];
-            if (segs.length > 0) {
-                segs.forEach(s => {
-                    const p1 = toXY(s.ll1[0], s.ll1[1]);
-                    const p2 = toXY(s.ll2[0], s.ll2[1]);
-                    drawInkStroke(ctx, p1.x, p1.y, p2.x, p2.y, s.weight, s.opacity);
-                });
-            } else {
-                // Fallback: einfache Linie wenn keine Segmentdaten
-                ctx.beginPath();
-                route.forEach(([lat, lng], i) => {
-                    const {x, y} = toXY(lat, lng);
-                    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-                });
-                ctx.strokeStyle = 'rgba(20,16,12,0.7)';
-                ctx.lineWidth = 5;
-                ctx.lineCap = 'round';
-                ctx.lineJoin = 'round';
-                ctx.stroke();
-            }
-
-            // ── Eintrags-Marker ──
-            const dotColors = { mood: null, thought:'#22c55e', sense:'#f97316', voice:'#7c3aed', sound:'#f97316', photo:'#555' };
-            walk.entries.forEach(e => {
-                if (!e.location) return;
-                const col = e.type === 'mood' ? (e.markerColor || '#facc15') : (dotColors[e.type] || walk.color);
-                const r   = (e.type==='mood'||e.type==='thought'||e.type==='sense') ? 9 : 6;
-                const {x, y} = toXY(e.location.lat, e.location.lng);
-                // Weißer Ring
-                ctx.beginPath(); ctx.arc(x, y, r+2, 0, Math.PI*2);
-                ctx.fillStyle = '#fff'; ctx.fill();
-                // Farbiger Punkt
-                ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2);
-                ctx.fillStyle = col; ctx.fill();
-                // Label
-                if (e.text || e.moodValue !== undefined) {
-                    const label = e.moodValue !== undefined ? String(e.moodValue) : (e.text||'').substring(0,20);
-                    ctx.font = '11px sans-serif';
-                    ctx.fillStyle = 'rgba(0,0,0,0.6)';
-                    ctx.fillText(label, x + r + 3, y + 4);
-                }
-            });
-
-            // ── Start- und Endpunkt ──
-            const startPt = toXY(route[0][0], route[0][1]);
-            const endPt   = toXY(route[route.length-1][0], route[route.length-1][1]);
-            ctx.beginPath(); ctx.arc(startPt.x, startPt.y, 8, 0, Math.PI*2);
-            ctx.fillStyle = '#22c55e'; ctx.fill();
-            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
-            ctx.beginPath(); ctx.arc(endPt.x, endPt.y, 8, 0, Math.PI*2);
-            ctx.fillStyle = '#ef4444'; ctx.fill();
-            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
-
-            // ── Info-Box oben links ──
-            ctx.fillStyle = 'rgba(255,255,255,0.88)';
-            ctx.beginPath(); ctx.roundRect(16, 16, 320, 72, 10); ctx.fill();
-            ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.lineWidth = 1; ctx.stroke();
-            ctx.fillStyle = '#111';
-            ctx.font = 'bold 15px sans-serif';
-            ctx.fillText(walk.name, 28, 40);
-            ctx.font = '11px sans-serif';
-            ctx.fillStyle = '#666';
-            const entryCount = walk.entries.length;
-            const stepTxt = walk.steps ? '  ·  👣 ' + walk.steps.toLocaleString('de-DE') + ' Schritte' : '';
-            ctx.fillText('📍 ' + route.length + ' Punkte  ·  ' + entryCount + ' Einträge' + stepTxt, 28, 58);
-            ctx.fillText('Start ●', 28, 76); ctx.fillStyle = '#22c55e'; ctx.fillText(' ●', 54, 76);
-            ctx.fillStyle = '#666'; ctx.fillText('  Ende ●', 64, 76); ctx.fillStyle = '#ef4444'; ctx.fillText(' ●', 96, 76);
-
-            // ── Legende Marker-Farben ──
-            const legend = [
-                { col:'#22c55e', label:'Gedanke' },
-                { col:'#f97316', label:'Wahrnehmung' },
-                { col:'#facc15', label:'Stimmung' },
-                { col:'#7c3aed', label:'Sprache' },
-                { col:'#555',    label:'Foto' }
-            ];
-            let ly = EXPORT_H - 16 - legend.length * 18;
-            ctx.fillStyle = 'rgba(255,255,255,0.85)';
-            ctx.beginPath(); ctx.roundRect(16, ly - 8, 150, legend.length * 18 + 16, 8); ctx.fill();
-            legend.forEach(item => {
-                ctx.beginPath(); ctx.arc(32, ly + 5, 5, 0, Math.PI*2);
-                ctx.fillStyle = item.col; ctx.fill();
-                ctx.font = '11px sans-serif'; ctx.fillStyle = '#333';
-                ctx.fillText(item.label, 44, ly + 9);
-                ly += 18;
-            });
-
-            const dataUrl = canvas.toDataURL('image/png');
-            const base64  = dataUrl.split(',')[1];
-            if (base64) folder.file('karte.png', base64, { base64: true });
-
-        } catch(err) {
-            console.error('Snapshot error:', err);
-        }
-    }
-
-    // ── Initial ──
-    renderArchive();
+  }
+
+  // EXPORT
+  async function exportWalk(walk){
+    if(typeof JSZip==='undefined'){alert('JSZip nicht geladen.');return;}
+    const overlay=document.getElementById('exportOverlay');const msg=document.getElementById('exportMsg');overlay.classList.add('open');
+    try{
+      const zip=new JSZip();const folder=zip.folder(walk.name.replace(/[^a-zA-Z0-9äöüÄÖÜß _-]/g,'_'));
+      msg.textContent='Exportiere Daten...';
+      const ref=walk.reflection||{};
+      folder.file('walk_daten.json',JSON.stringify({name:walk.name,schritte:walk.steps||0,kartenansicht:currentTileUrl,route:walk.route,reflexion:{frei:ref.frei||'',moodRetro:ref.moodRetro!==undefined?ref.moodRetro:null,moment:ref.moment||'',orte:ref.orte||'',nichtErfasst:ref.nicht||'',ueberraschung:ref.ueber||''},entries:walk.entries.map(e=>({type:e.type,timestamp:e.timestamp,location:e.location,text:e.text||null,moodValue:e.moodValue||null,audioDuration:e.audioDuration||null}))},null,2));
+      let gpx='<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Begleitinstrument PRO">\n  <trk>\n    <n>'+escHtml(walk.name)+'</n>\n    <trkseg>\n';
+      walk.route.forEach(p=>{gpx+='      <trkpt lat="'+p[0]+'" lon="'+p[1]+'"></trkpt>\n';});
+      gpx+='    </trkseg>\n  </trk>\n</gpx>';
+      folder.file('route.gpx',gpx);
+      let pc=0;walk.entries.forEach(e=>{if(e.type==='photo'&&e.dataUrl){pc++;folder.file('foto_'+pc+'.jpg',e.dataUrl.split(',')[1],{base64:true});}});
+      let ac=0;walk.entries.forEach(e=>{if((e.type==='voice'||e.type==='sound')&&e.entryId&&audioBlobs[e.entryId]){ac++;folder.file((e.type==='voice'?'sprache':'sound')+'_'+ac+'.mp4',audioBlobs[e.entryId]);}});
+      if(ref.frei||ref.moment){folder.file('reflexion.txt','REFLEXION: '+walk.name+'\n'+'='.repeat(40)+'\n\nFreie Reflexion:\n'+(ref.frei||'—')+'\n\nStimmung retrospektiv: '+(ref.moodRetro!==undefined?ref.moodRetro+'/100':'—')+'\n\nStärkster Moment:\n'+(ref.moment||'—')+'\n\nOrte:\n'+(ref.orte||'—')+'\n\nNicht Erfasstes:\n'+(ref.nicht||'—')+'\n\nÜberraschung:\n'+(ref.ueber||'—')+'\n');}
+      msg.textContent='Erstelle Kartenbild...';
+      await takeMapSnapshot(walk,folder);
+      msg.textContent='Erstelle ZIP...';
+      const blob=await zip.generateAsync({type:'blob'},m=>{msg.textContent='Packe... '+Math.round(m.percent)+'%';});
+      const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=walk.name.replace(/[^a-zA-Z0-9äöüÄÖÜß _-]/g,'_')+'_export.zip';a.click();setTimeout(()=>URL.revokeObjectURL(url),5000);
+    }catch(err){alert('Export fehlgeschlagen: '+err.message);}finally{overlay.classList.remove('open');}
+  }
+
+  async function takeMapSnapshot(walk,folder){
+    try{
+      const W=1200,H=900,P=80;const route=walk.route||[];if(route.length<2){folder.file('karte.png','');return;}
+      let minLat=Infinity,maxLat=-Infinity,minLng=Infinity,maxLng=-Infinity;
+      route.forEach(([lat,lng])=>{minLat=Math.min(minLat,lat);maxLat=Math.max(maxLat,lat);minLng=Math.min(minLng,lng);maxLng=Math.max(maxLng,lng);});
+      const lS=maxLat-minLat||0.001,lnS=maxLng-minLng||0.001;
+      const sX=(W-P*2)/lnS,sY=(H-P*2)/lS,sc=Math.min(sX,sY);
+      function toXY(lat,lng){return{x:P+(lng-minLng)*sc,y:H-P-(lat-minLat)*sc};}
+      const canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;
+      const ctx=canvas.getContext('2d');ctx.fillStyle='#f8f6f1';ctx.fillRect(0,0,W,H);
+      ctx.strokeStyle='rgba(0,0,0,0.06)';ctx.lineWidth=1;
+      for(let x=0;x<W;x+=60){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+      for(let y=0;y<H;y+=60){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+      const segs=walk.segments||[];
+      if(segs.length>0){segs.forEach(s=>{const p1=toXY(s.ll1[0],s.ll1[1]),p2=toXY(s.ll2[0],s.ll2[1]);drawInkStroke(ctx,p1.x,p1.y,p2.x,p2.y,s.weight,s.opacity);});}
+      else{ctx.beginPath();route.forEach(([lat,lng],i)=>{const{x,y}=toXY(lat,lng);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});ctx.strokeStyle='rgba(20,16,12,0.7)';ctx.lineWidth=5;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();}
+      const dc={mood:null,thought:'#22c55e',sense:'#f97316',voice:'#7c3aed',sound:'#f97316',photo:'#555'};
+      walk.entries.forEach(e=>{if(!e.location)return;const col=e.type==='mood'?(e.markerColor||'#facc15'):(dc[e.type]||walk.color);const r=(e.type==='mood'||e.type==='thought'||e.type==='sense')?9:6;const{x,y}=toXY(e.location.lat,e.location.lng);ctx.beginPath();ctx.arc(x,y,r+2,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();if(e.text||e.moodValue!==undefined){ctx.font='11px sans-serif';ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillText(e.moodValue!==undefined?String(e.moodValue):(e.text||'').substring(0,20),x+r+3,y+4);}});
+      const sp=toXY(route[0][0],route[0][1]),ep=toXY(route[route.length-1][0],route[route.length-1][1]);
+      [sp,ep].forEach((pt,i)=>{ctx.beginPath();ctx.arc(pt.x,pt.y,8,0,Math.PI*2);ctx.fillStyle=i===0?'#22c55e':'#ef4444';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();});
+      const b64=canvas.toDataURL('image/png').split(',')[1];if(b64)folder.file('karte.png',b64,{base64:true});
+    }catch(err){console.error('Snapshot:',err);}
+  }
+
+  renderArchive();
 });
 </script>
 </body>
