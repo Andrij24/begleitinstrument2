@@ -624,12 +624,18 @@ window.addEventListener('load', function () {
         return marker;
     }
 
-    function currentLatLng() { return state.liveMarker ? state.liveMarker.getLatLng() : null; }
+    // getPos() replaces currentLatLng() — see above
 
     function requireWalk() {
         if (!state.current) { alert("Erst START drücken!"); return false; }
-        if (!state.liveMarker) { alert("GPS noch nicht verfügbar."); return false; }
         return true;
+    }
+
+    // GPS-Position oder Kartenmitte als Fallback
+    function getPos() {
+        if (state.liveMarker) return state.liveMarker.getLatLng();
+        const c = state.map.getCenter();
+        return { lat: c.lat, lng: c.lng };
     }
 
     // ══ 📸 FOTO ══
@@ -667,7 +673,7 @@ window.addEventListener('load', function () {
 
     document.getElementById('captureBtn').onclick = () => {
         if (!requireWalk()) { closeCamera(); return; }
-        const pos = currentLatLng();
+        const pos = getPos();
         photoCanvas.width = cameraPreview.videoWidth;
         photoCanvas.height = cameraPreview.videoHeight;
         photoCanvas.getContext('2d').drawImage(cameraPreview, 0, 0);
@@ -679,7 +685,7 @@ window.addEventListener('load', function () {
 
     document.getElementById('photoInput').onchange = function() {
         if (!this.files || !this.files[0] || !requireWalk()) return;
-        const pos = currentLatLng();
+        const pos = getPos();
         const reader = new FileReader();
         reader.onload = e => {
             const dataUrl = e.target.result;
@@ -744,7 +750,7 @@ window.addEventListener('load', function () {
         audioModal.classList.remove('open');
         const blob = new Blob(audioChunks, { type: 'audio/webm' });
         const url  = URL.createObjectURL(blob);
-        const pos  = currentLatLng();
+        const pos  = getPos();
         const ts   = new Date().toLocaleTimeString();
         const dur  = formatTime(timerSec);
         const entryId = 'audio_' + Date.now();
@@ -809,10 +815,10 @@ window.addEventListener('load', function () {
     };
     document.getElementById('moodCancel').onclick = () => { moodModal.style.display = 'none'; };
     document.getElementById('moodSave').onclick = () => {
-        if (!requireWalk()) { moodModal.style.display = 'none'; return; }
+        if (!requireWalk()) return;
         const val = parseInt(moodSlider.value);
         const note = document.getElementById('moodText').value.trim();
-        const pos = currentLatLng();
+        const pos = getPos();
         const ts = new Date().toLocaleTimeString();
         state.current.entries.push({ type:'mood', location:{lat:pos.lat,lng:pos.lng}, timestamp:ts, moodValue:val, markerColor:col, text:note });
         const col = moodColor(val);
@@ -840,9 +846,9 @@ window.addEventListener('load', function () {
     const thoughtModal = document.getElementById('thoughtModal');
     document.getElementById('thoughtCancel').onclick = () => { thoughtModal.style.display = 'none'; };
     document.getElementById('thoughtSave').onclick = () => {
-        if (!requireWalk()) { thoughtModal.style.display = 'none'; return; }
+        if (!requireWalk()) return;
         const t = document.getElementById('thoughtText').value.trim();
-        const pos = currentLatLng();
+        const pos = getPos();
         const ts = new Date().toLocaleTimeString();
         state.current.entries.push({ type:'thought', location:{lat:pos.lat,lng:pos.lng}, timestamp:ts, text:t || '(kein Text)' });
         const icon = makeDotIcon('#22c55e', 16);
@@ -863,9 +869,9 @@ window.addEventListener('load', function () {
     const senseModal = document.getElementById('senseModal');
     document.getElementById('senseCancel').onclick = () => { senseModal.style.display = 'none'; };
     document.getElementById('senseSave').onclick = () => {
-        if (!requireWalk()) { senseModal.style.display = 'none'; return; }
+        if (!requireWalk()) return;
         const t = document.getElementById('senseText').value.trim();
-        const pos = currentLatLng();
+        const pos = getPos();
         const ts = new Date().toLocaleTimeString();
         state.current.entries.push({ type:'sense', location:{lat:pos.lat,lng:pos.lng}, timestamp:ts, text:t||'(keine Eingabe)' });
         const icon = makeDotIcon('#f97316', 16);
