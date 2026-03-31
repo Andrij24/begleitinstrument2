@@ -516,10 +516,33 @@ window.addEventListener('load', function () {
     // Handled below in the toggle listener override
 
     // ── GPS ──
+    // Kalman-ähnlicher Positions-Glätter
+    let smoothLat = null, smoothLng = null;
+    const SMOOTH_FACTOR = 0.25;   // 0=nie updaten, 1=kein Glätten
+    const MIN_DIST_M    = 3;      // Mindestbewegung in Metern bevor ein Segment gezeichnet wird
+    const MIN_ACCURACY  = 30;     // GPS-Punkte mit > 30m Ungenauigkeit ignorieren
+
     navigator.geolocation.watchPosition(pos => {
-        const ll = [pos.coords.latitude, pos.coords.longitude];
+        // ── Schlechte GPS-Qualität verwerfen ──
+        const acc = pos.coords.accuracy;
+        if (acc > MIN_ACCURACY) return;
+
+        const rawLat = pos.coords.latitude;
+        const rawLng = pos.coords.longitude;
+
+        // ── Positions-Glättung (exponentieller Tiefpassfilter) ──
+        if (smoothLat === null) {
+            smoothLat = rawLat;
+            smoothLng = rawLng;
+        } else {
+            smoothLat = smoothLat + SMOOTH_FACTOR * (rawLat - smoothLat);
+            smoothLng = smoothLng + SMOOTH_FACTOR * (rawLng - smoothLng);
+        }
+
+        const ll  = [smoothLat, smoothLng];
         const now = Date.now();
 
+        // Live-Positionsmarker aktualisieren
         if (!state.liveMarker) {
             state.liveMarker = L.circleMarker(ll, {
                 radius: 6, fillColor: '#111', color: '#fff', weight: 2, fillOpacity: 1, zIndexOffset: 1000
@@ -530,32 +553,37 @@ window.addEventListener('load', function () {
         }
 
         if (state.current) {
-            state.current.route.push(ll);
-
             if (lastPos && lastPosTime) {
                 const dist = haversineDist(lastPos, ll);
-                const dt   = (now - lastPosTime) / 1000;
-                const raw  = dt > 0 ? dist / dt : 0;
-                smoothedSpeed = smoothedSpeed * 0.55 + raw * 0.45;
+
+                // ── Minimale Bewegungsschwelle — filtert GPS-Rauschen ──
+                if (dist < MIN_DIST_M) return;
+
+                const dt  = (now - lastPosTime) / 1000;
+                const raw = dt > 0 ? dist / dt : 0;
+                smoothedSpeed = smoothedSpeed * 0.7 + raw * 0.3;  // stärker glätten
 
                 const w  = speedToWeight(smoothedSpeed);
                 const op = speedToOpacity(smoothedSpeed);
 
-                // Speichere auch Segmentdaten für Archiv-Darstellung
+                state.current.route.push(ll);
                 if (!state.current.segments) state.current.segments = [];
                 state.current.segments.push({ ll1: lastPos, ll2: ll, weight: w, opacity: op });
 
-                if (layerVisibility.route) {
-                    inkLayer.addSegment(lastPos, ll, w, op);
-                }
+                if (layerVisibility.route) inkLayer.addSegment(lastPos, ll, w, op);
 
                 const speedEl = document.getElementById('currentSpeed');
                 if (speedEl) speedEl.textContent = (smoothedSpeed * 3.6).toFixed(1) + ' km/h';
+            } else {
+                // Ersten Punkt setzen
+                state.current.route.push(ll);
             }
-            lastPos = ll;
+            lastPos     = ll;
             lastPosTime = now;
         }
-    }, null, { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
+    }, err => {
+        console.warn('GPS error:', err.code, err.message);
+    }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
 
     // ── START ──
     document.getElementById('btnStart').onclick = () => {
@@ -1185,123 +1213,148 @@ window.addEventListener('load', function () {
     }
 
     async function takeMapSnapshot(walk, folder) {
-        return new Promise(resolve => {
-            try {
-                const mapEl = document.getElementById('map');
-                const W = mapEl.offsetWidth;
-                const H = mapEl.offsetHeight;
+        // ── Reines Canvas-Rendering: keine CORS-Probleme mit Tile-Images ──
+        // Zeichnet Route + Marker auf weißem/hellem Hintergrund, immer zuverlässig
+        try {
+            const EXPORT_W = 1200;
+            const EXPORT_H = 900;
+            const PAD = 80;  // Rand in Pixel
 
-                // Karte auf Route zentrieren
-                if (walk.route && walk.route.length > 1) {
-                    state.map.fitBounds(
-                        L.polyline(walk.route).getBounds(),
-                        { padding: [60, 60], animate: false, maxZoom: 18 }
-                    );
-                }
+            // Bounds der Route berechnen
+            const route = walk.route || [];
+            if (route.length < 2) { folder.file('karte.png', '', { base64: false }); return; }
 
-                // ── Temporären InkLayer aufbauen ──
-                const snapInk = new InkLayer();
-                snapInk.addTo(state.map);
-                if (walk.segments && walk.segments.length > 0) {
-                    walk.segments.forEach(s => snapInk.addSegment(s.ll1, s.ll2, s.weight, s.opacity));
-                } else if (walk.route && walk.route.length > 1) {
-                    for (let i = 1; i < walk.route.length; i++) {
-                        snapInk.addSegment(walk.route[i-1], walk.route[i], 7, 0.75);
-                    }
-                }
+            let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+            route.forEach(([lat, lng]) => {
+                minLat = Math.min(minLat, lat); maxLat = Math.max(maxLat, lat);
+                minLng = Math.min(minLng, lng); maxLng = Math.max(maxLng, lng);
+            });
 
-                // ── Marker-Punkte für alle Einträge ──
-                const dotColors = { thought:'#22c55e', sense:'#f97316', voice:'#7c3aed', sound:'#f97316', photo:'#555' };
-                const markerGroup = L.layerGroup();
-                walk.entries.forEach(e => {
-                    if (!e.location) return;
-                    const col = e.type === 'mood' ? (e.markerColor || '#facc15') : (dotColors[e.type] || walk.color);
-                    const r = (e.type==='mood'||e.type==='thought'||e.type==='sense') ? 6 : 4;
-                    L.circleMarker([e.location.lat, e.location.lng], {
-                        color: '#fff', weight: 1.5, fillColor: col, fillOpacity: 0.9, radius: r
-                    }).addTo(markerGroup);
+            // Konvertierung geo → Canvas-Pixel
+            const latSpan = maxLat - minLat || 0.001;
+            const lngSpan = maxLng - minLng || 0.001;
+            const scaleX  = (EXPORT_W - PAD*2) / lngSpan;
+            const scaleY  = (EXPORT_H - PAD*2) / latSpan;
+            const scale   = Math.min(scaleX, scaleY);
+
+            function toXY(lat, lng) {
+                return {
+                    x: PAD + (lng - minLng) * scale,
+                    y: EXPORT_H - PAD - (lat - minLat) * scale
+                };
+            }
+
+            // Canvas aufbauen
+            const canvas = document.createElement('canvas');
+            canvas.width  = EXPORT_W;
+            canvas.height = EXPORT_H;
+            const ctx = canvas.getContext('2d');
+
+            // ── Hintergrund: helles Papier ──
+            ctx.fillStyle = '#f8f6f1';
+            ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
+
+            // Leichtes Gitter für Orientierung
+            ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < EXPORT_W; x += 60) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,EXPORT_H); ctx.stroke(); }
+            for (let y = 0; y < EXPORT_H; y += 60) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(EXPORT_W,y); ctx.stroke(); }
+
+            // ── Tuschelinie ──
+            const segs = walk.segments || [];
+            if (segs.length > 0) {
+                segs.forEach(s => {
+                    const p1 = toXY(s.ll1[0], s.ll1[1]);
+                    const p2 = toXY(s.ll2[0], s.ll2[1]);
+                    drawInkStroke(ctx, p1.x, p1.y, p2.x, p2.y, s.weight, s.opacity);
                 });
-                markerGroup.addTo(state.map);
+            } else {
+                // Fallback: einfache Linie wenn keine Segmentdaten
+                ctx.beginPath();
+                route.forEach(([lat, lng], i) => {
+                    const {x, y} = toXY(lat, lng);
+                    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                });
+                ctx.strokeStyle = 'rgba(20,16,12,0.7)';
+                ctx.lineWidth = 5;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.stroke();
+            }
 
-                // Warten auf Tile-Laden + InkLayer-Render
-                setTimeout(async () => {
-                    try {
-                        // ── Exportcanvas: weißer Hintergrund ──
-                        const canvas = document.createElement('canvas');
-                        canvas.width  = W;
-                        canvas.height = H;
-                        const ctx = canvas.getContext('2d');
-                        ctx.fillStyle = '#f5f5f0';
-                        ctx.fillRect(0, 0, W, H);
-                        const mapRect = mapEl.getBoundingClientRect();
+            // ── Eintrags-Marker ──
+            const dotColors = { mood: null, thought:'#22c55e', sense:'#f97316', voice:'#7c3aed', sound:'#f97316', photo:'#555' };
+            walk.entries.forEach(e => {
+                if (!e.location) return;
+                const col = e.type === 'mood' ? (e.markerColor || '#facc15') : (dotColors[e.type] || walk.color);
+                const r   = (e.type==='mood'||e.type==='thought'||e.type==='sense') ? 9 : 6;
+                const {x, y} = toXY(e.location.lat, e.location.lng);
+                // Weißer Ring
+                ctx.beginPath(); ctx.arc(x, y, r+2, 0, Math.PI*2);
+                ctx.fillStyle = '#fff'; ctx.fill();
+                // Farbiger Punkt
+                ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2);
+                ctx.fillStyle = col; ctx.fill();
+                // Label
+                if (e.text || e.moodValue !== undefined) {
+                    const label = e.moodValue !== undefined ? String(e.moodValue) : (e.text||'').substring(0,20);
+                    ctx.font = '11px sans-serif';
+                    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                    ctx.fillText(label, x + r + 3, y + 4);
+                }
+            });
 
-                        // ── 1. Tile-Kacheln (crossOrigin bereits gesetzt) ──
-                        const tilePromises = [];
-                        mapEl.querySelectorAll('.leaflet-tile-pane img').forEach(img => {
-                            const r = img.getBoundingClientRect();
-                            const dx = r.left - mapRect.left;
-                            const dy = r.top  - mapRect.top;
-                            const dw = r.width, dh = r.height;
-                            if (img.complete && img.naturalWidth > 0) {
-                                try { ctx.drawImage(img, dx, dy, dw, dh); } catch(e) {}
-                            } else {
-                                // Kachel neu laden mit crossOrigin für Canvas
-                                tilePromises.push(new Promise(res => {
-                                    const tmp = new Image();
-                                    tmp.crossOrigin = 'anonymous';
-                                    tmp.onload  = () => { try { ctx.drawImage(tmp, dx, dy, dw, dh); } catch(e) {} res(); };
-                                    tmp.onerror = () => res();
-                                    tmp.src = img.src + (img.src.includes('?') ? '&' : '?') + '_nc=' + Date.now();
-                                }));
-                            }
-                        });
-                        await Promise.all(tilePromises);
+            // ── Start- und Endpunkt ──
+            const startPt = toXY(route[0][0], route[0][1]);
+            const endPt   = toXY(route[route.length-1][0], route[route.length-1][1]);
+            ctx.beginPath(); ctx.arc(startPt.x, startPt.y, 8, 0, Math.PI*2);
+            ctx.fillStyle = '#22c55e'; ctx.fill();
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+            ctx.beginPath(); ctx.arc(endPt.x, endPt.y, 8, 0, Math.PI*2);
+            ctx.fillStyle = '#ef4444'; ctx.fill();
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
 
-                        // ── 2. InkLayer-Canvas direkt übertragen ──
-                        mapEl.querySelectorAll('.leaflet-overlay-pane canvas').forEach(c => {
-                            if (c.width > 0 && c.height > 0) {
-                                try { ctx.drawImage(c, 0, 0); } catch(e) {}
-                            }
-                        });
+            // ── Info-Box oben links ──
+            ctx.fillStyle = 'rgba(255,255,255,0.88)';
+            ctx.beginPath(); ctx.roundRect(16, 16, 320, 72, 10); ctx.fill();
+            ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.lineWidth = 1; ctx.stroke();
+            ctx.fillStyle = '#111';
+            ctx.font = 'bold 15px sans-serif';
+            ctx.fillText(walk.name, 28, 40);
+            ctx.font = '11px sans-serif';
+            ctx.fillStyle = '#666';
+            const entryCount = walk.entries.length;
+            const stepTxt = walk.steps ? '  ·  👣 ' + walk.steps.toLocaleString('de-DE') + ' Schritte' : '';
+            ctx.fillText('📍 ' + route.length + ' Punkte  ·  ' + entryCount + ' Einträge' + stepTxt, 28, 58);
+            ctx.fillText('Start ●', 28, 76); ctx.fillStyle = '#22c55e'; ctx.fillText(' ●', 54, 76);
+            ctx.fillStyle = '#666'; ctx.fillText('  Ende ●', 64, 76); ctx.fillStyle = '#ef4444'; ctx.fillText(' ●', 96, 76);
 
-                        // ── 3. SVG-Overlay (Leaflet circleMarkers) — async ──
-                        const svgList = mapEl.querySelectorAll('.leaflet-overlay-pane svg');
-                        const svgPromises = Array.from(svgList).map(svg => new Promise(res => {
-                            try {
-                                const xml = new XMLSerializer().serializeToString(svg);
-                                const blob = new Blob([xml], { type: 'image/svg+xml' });
-                                const url  = URL.createObjectURL(blob);
-                                const img  = new Image();
-                                img.onload  = () => { try { ctx.drawImage(img, 0, 0, W, H); } catch(e) {} URL.revokeObjectURL(url); res(); };
-                                img.onerror = () => { URL.revokeObjectURL(url); res(); };
-                                img.src = url;
-                            } catch(e) { res(); }
-                        }));
-                        await Promise.all(svgPromises);
+            // ── Legende Marker-Farben ──
+            const legend = [
+                { col:'#22c55e', label:'Gedanke' },
+                { col:'#f97316', label:'Wahrnehmung' },
+                { col:'#facc15', label:'Stimmung' },
+                { col:'#7c3aed', label:'Sprache' },
+                { col:'#555',    label:'Foto' }
+            ];
+            let ly = EXPORT_H - 16 - legend.length * 18;
+            ctx.fillStyle = 'rgba(255,255,255,0.85)';
+            ctx.beginPath(); ctx.roundRect(16, ly - 8, 150, legend.length * 18 + 16, 8); ctx.fill();
+            legend.forEach(item => {
+                ctx.beginPath(); ctx.arc(32, ly + 5, 5, 0, Math.PI*2);
+                ctx.fillStyle = item.col; ctx.fill();
+                ctx.font = '11px sans-serif'; ctx.fillStyle = '#333';
+                ctx.fillText(item.label, 44, ly + 9);
+                ly += 18;
+            });
 
-                        // ── 4. Koordinaten-Label unten links ──
-                        if (walk.route && walk.route.length > 0) {
-                            const mid = walk.route[Math.floor(walk.route.length / 2)];
-                            ctx.fillStyle = 'rgba(0,0,0,0.45)';
-                            ctx.fillRect(8, H - 26, 220, 20);
-                            ctx.fillStyle = '#fff';
-                            ctx.font = '11px monospace';
-                            ctx.fillText(walk.name + '  |  ' + mid[0].toFixed(5) + ', ' + mid[1].toFixed(5), 14, H - 11);
-                        }
+            const dataUrl = canvas.toDataURL('image/png');
+            const base64  = dataUrl.split(',')[1];
+            if (base64) folder.file('karte.png', base64, { base64: true });
 
-                        const dataUrl = canvas.toDataURL('image/png');
-                        const base64  = dataUrl.split(',')[1];
-                        if (base64) folder.file('karte.png', base64, { base64: true });
-
-                    } catch(err) { console.error('Snapshot draw error:', err); }
-
-                    state.map.removeLayer(snapInk);
-                    state.map.removeLayer(markerGroup);
-                    resolve();
-                }, 1800);
-
-            } catch(err) { console.error('Snapshot error:', err); resolve(); }
-        });
+        } catch(err) {
+            console.error('Snapshot error:', err);
+        }
     }
 
     // ── Initial ──
