@@ -334,8 +334,18 @@ window.addEventListener('load', function () {
             const key = btn.getAttribute('data-layer');
             const isActive = btn.classList.toggle('active');
             layerVisibility[key] = isActive;
-            // route segments are all in mapLayers.route; no single liveRouteLayer needed
-            mapLayers[key].forEach(l => isActive ? state.map.addLayer(l) : state.map.removeLayer(l));
+            if (key === 'route') {
+                // Toggle InkLayer canvas visibility
+                if (state.inkLayer && state.inkLayer._canvas) {
+                    state.inkLayer._canvas.style.display = isActive ? '' : 'none';
+                }
+                // Also toggle archive ink layers
+                Object.values(state.archiveInkLayers || {}).forEach(al => {
+                    if (al._canvas) al._canvas.style.display = isActive ? '' : 'none';
+                });
+            } else {
+                mapLayers[key].forEach(l => isActive ? state.map.addLayer(l) : state.map.removeLayer(l));
+            }
         });
     });
 
@@ -360,10 +370,11 @@ window.addEventListener('load', function () {
         });
     }
 
-    // ── GPS mit Geschwindigkeits-Linienbreite ──
-    // Jedes Segment bekommt eine eigene Dicke je nach Tempo
-    // Langsam/stehen = sehr dick + opak (wie Tintenklecks)
-    // Schnell = dünn + fast transparent
+    // ══════════════════════════════════════════════════════════════
+    //  ORGANISCHE TUSCHELINIE — Canvas-basierter Leaflet Layer
+    //  Langsam = dick & opak (Tintenklecks), schnell = dünn & transparent
+    // ══════════════════════════════════════════════════════════════
+
     let lastPos = null, lastPosTime = null, smoothedSpeed = 0;
 
     function haversineDist(a, b) {
@@ -373,24 +384,139 @@ window.addEventListener('load', function () {
         return 2 * R * Math.asin(Math.sqrt(h));
     }
 
+    // Geschwindigkeit → Breite: 0 m/s=26px, 1.4 m/s=9px, 3.5+ m/s=1px
     function speedToWeight(mps) {
-        // 0 m/s (stehen) → 22px,  1.4 m/s (Schrittempo) → 7px,  3+ m/s (laufen) → 1px
-        const clamped = Math.min(mps, 3.5);
-        return Math.max(1, 22 - (clamped / 3.5) * 21);
+        const t = Math.min(mps / 3.5, 1);
+        return Math.max(1, 26 * Math.pow(1 - t, 1.6));
     }
-
+    // Geschwindigkeit → Opacity: stehen=0.92, schnell=0.04
     function speedToOpacity(mps) {
-        // stehen → 0.95,  schnell gehen → 0.4,  laufen → 0.06
-        return Math.max(0.06, 0.95 - (Math.min(mps, 3.5) / 3.5) * 0.89);
+        const t = Math.min(mps / 3.5, 1);
+        return Math.max(0.04, 0.92 * Math.pow(1 - t, 1.4));
     }
 
+    // Zufälliger Versatz für organische Textur (Seed aus Position)
+    function jitter(scale) { return (Math.random() - 0.5) * scale; }
+
+    // Zeichnet einen organischen Pinselstrich zwischen zwei Punkten auf dem Canvas
+    function drawInkStroke(ctx, x1, y1, x2, y2, weight, opacity) {
+        if (weight < 0.5) return;
+        const alpha = Math.min(opacity, 1);
+        const strokes = Math.max(1, Math.round(weight * 0.7)); // mehrere Substriche für Textur
+
+        for (let s = 0; s < strokes; s++) {
+            // Leichte zufällige Verschiebung pro Substrich
+            const spread = weight * 0.3;
+            const ox1 = jitter(spread), oy1 = jitter(spread);
+            const ox2 = jitter(spread), oy2 = jitter(spread);
+
+            // Kontrollpunkte für Kurve (organisch, nicht gerade)
+            const mx = (x1 + x2) / 2 + jitter(weight * 0.4);
+            const my = (y1 + y2) / 2 + jitter(weight * 0.4);
+
+            // Breite variiert leicht entlang des Strichs
+            const w = weight * (0.75 + Math.random() * 0.5) / strokes;
+
+            ctx.beginPath();
+            ctx.moveTo(x1 + ox1, y1 + oy1);
+            ctx.quadraticCurveTo(mx, my, x2 + ox2, y2 + oy2);
+
+            ctx.lineWidth   = w;
+            ctx.lineCap     = 'round';
+            ctx.lineJoin    = 'round';
+            ctx.strokeStyle = 'rgba(20,16,12,' + (alpha * (0.6 + Math.random() * 0.4)).toFixed(3) + ')';
+            ctx.stroke();
+        }
+
+        // Körnung: kleine unregelmäßige Punkte entlang des Pfades
+        if (weight > 4) {
+            const grainCount = Math.round(weight * 1.2);
+            for (let g = 0; g < grainCount; g++) {
+                const t = Math.random();
+                const gx = x1 + (x2 - x1) * t + jitter(weight * 0.6);
+                const gy = y1 + (y2 - y1) * t + jitter(weight * 0.6);
+                const gr = Math.random() * weight * 0.18;
+                ctx.beginPath();
+                ctx.arc(gx, gy, gr, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(20,16,12,' + (alpha * Math.random() * 0.5).toFixed(3) + ')';
+                ctx.fill();
+            }
+        }
+    }
+
+    // ── Custom Leaflet Canvas Layer für Tuschelinie ──
+    const InkLayer = L.Layer.extend({
+        initialize() {
+            this._segments = []; // [{ll1, ll2, weight, opacity}]
+            this._canvas = null;
+            this._ctx    = null;
+        },
+        onAdd(map) {
+            this._map = map;
+            this._canvas = document.createElement('canvas');
+            this._canvas.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;z-index:400;';
+            map.getPanes().overlayPane.appendChild(this._canvas);
+            this._ctx = this._canvas.getContext('2d');
+            map.on('moveend zoomend resize', this._redraw, this);
+            this._resize();
+            this._redraw();
+            return this;
+        },
+        onRemove(map) {
+            map.getPanes().overlayPane.removeChild(this._canvas);
+            map.off('moveend zoomend resize', this._redraw, this);
+        },
+        _resize() {
+            const sz = this._map.getSize();
+            this._canvas.width  = sz.x;
+            this._canvas.height = sz.y;
+        },
+        addSegment(ll1, ll2, weight, opacity) {
+            this._segments.push({ ll1, ll2, weight, opacity });
+            this._drawSegment(ll1, ll2, weight, opacity);
+        },
+        _latLngToCanvas(ll) {
+            const p = this._map.latLngToContainerPoint(ll);
+            return p;
+        },
+        _drawSegment(ll1, ll2, weight, opacity) {
+            if (!this._ctx) return;
+            const p1 = this._latLngToCanvas(ll1);
+            const p2 = this._latLngToCanvas(ll2);
+            drawInkStroke(this._ctx, p1.x, p1.y, p2.x, p2.y, weight, opacity);
+        },
+        _redraw() {
+            if (!this._ctx) return;
+            this._resize();
+            const ctx = this._ctx;
+            ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
+            this._segments.forEach(s => this._drawSegment(s.ll1, s.ll2, s.weight, s.opacity));
+        },
+        clearSegments() {
+            this._segments = [];
+            if (this._ctx) this._ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
+        },
+        getSegments() { return this._segments; }
+    });
+
+    // Aktiver Ink-Layer für laufende Aufnahme
+    let inkLayer = new InkLayer();
+    inkLayer.addTo(state.map);
+    // Speichere Referenz so dass Toggle funktioniert
+    state.inkLayer = inkLayer;
+
+    // Ebenen-Toggle für Route: zeigt/versteckt den Canvas
+    const origRouteToggle = document.querySelectorAll('.layer-toggle-btn');
+    // Handled below in the toggle listener override
+
+    // ── GPS ──
     navigator.geolocation.watchPosition(pos => {
         const ll = [pos.coords.latitude, pos.coords.longitude];
         const now = Date.now();
 
         if (!state.liveMarker) {
             state.liveMarker = L.circleMarker(ll, {
-                radius: 7, fillColor: '#111', color: '#fff', weight: 2, fillOpacity: 1
+                radius: 6, fillColor: '#111', color: '#fff', weight: 2, fillOpacity: 1, zIndexOffset: 1000
             }).addTo(state.map);
             state.map.panTo(ll);
         } else {
@@ -402,21 +528,21 @@ window.addEventListener('load', function () {
 
             if (lastPos && lastPosTime) {
                 const dist = haversineDist(lastPos, ll);
-                const dt = (now - lastPosTime) / 1000;
-                const raw = dt > 0 ? dist / dt : 0;
+                const dt   = (now - lastPosTime) / 1000;
+                const raw  = dt > 0 ? dist / dt : 0;
                 smoothedSpeed = smoothedSpeed * 0.55 + raw * 0.45;
 
                 const w  = speedToWeight(smoothedSpeed);
                 const op = speedToOpacity(smoothedSpeed);
 
-                const seg = L.polyline([lastPos, ll], {
-                    color: '#1a1a1a', weight: w, opacity: op,
-                    lineCap: 'round', lineJoin: 'round'
-                });
-                if (layerVisibility.route) seg.addTo(state.map);
-                mapLayers.route.push(seg);
+                // Speichere auch Segmentdaten für Archiv-Darstellung
+                if (!state.current.segments) state.current.segments = [];
+                state.current.segments.push({ ll1: lastPos, ll2: ll, weight: w, opacity: op });
 
-                // Geschwindigkeit im Panel
+                if (layerVisibility.route) {
+                    inkLayer.addSegment(lastPos, ll, w, op);
+                }
+
                 const speedEl = document.getElementById('currentSpeed');
                 if (speedEl) speedEl.textContent = (smoothedSpeed * 3.6).toFixed(1) + ' km/h';
             }
@@ -432,10 +558,12 @@ window.addEventListener('load', function () {
         if (stepEl) stepEl.textContent = '0';
         const speedEl = document.getElementById('currentSpeed');
         if (speedEl) speedEl.textContent = '—';
+        // Ink-Canvas leeren für neue Aufzeichnung
+        inkLayer.clearSegments();
         state.current = {
             id: Date.now(),
             name: new Date().toLocaleString('de-DE'),
-            route: [], entries: [], steps: 0,
+            route: [], segments: [], entries: [], steps: 0,
             color: walkColors[state.walks.length % walkColors.length],
             reflection: ""
         };
@@ -459,7 +587,8 @@ window.addEventListener('load', function () {
         if (nameVal) state.current.name = nameVal;
         document.getElementById('stopModal').classList.remove('open');
 
-        // Live-Segmente von Karte entfernen (alle in mapLayers.route)
+        // Live-Segmente von Karte entfernen
+        inkLayer.clearSegments();
         // Live-Marker-Ebenen vom Karte entfernen
         Object.keys(mapLayers).forEach(key => {
             mapLayers[key].forEach(l => { try { state.map.removeLayer(l); } catch(e){} });
@@ -763,12 +892,40 @@ window.addEventListener('load', function () {
         if (state.activeLayers[id]) {
             state.map.removeLayer(state.activeLayers[id]);
             delete state.activeLayers[id];
+            // Auch Archive-InkLayer entfernen
+            if (state.archiveInkLayers && state.archiveInkLayers[id]) {
+                state.map.removeLayer(state.archiveInkLayers[id]);
+                delete state.archiveInkLayers[id];
+            }
             if (header) header.classList.remove('shown');
             if (actions) actions.classList.remove('open');
             if (Object.keys(state.activeLayers).length === 0) document.getElementById('reflexionPanel').style.display = 'none';
         } else {
             const group = L.layerGroup();
-            if (walk.route && walk.route.length > 1) L.polyline(walk.route, { color: walk.color, weight: 4 }).addTo(group);
+            // Ink-Layer für archivierte Route
+            if (!state.archiveInkLayers) state.archiveInkLayers = {};
+            // Alten Layer entfernen falls vorhanden
+            if (state.archiveInkLayers[id]) {
+                state.map.removeLayer(state.archiveInkLayers[id]);
+                delete state.archiveInkLayers[id];
+            }
+            if (walk.segments && walk.segments.length > 0) {
+                // Benutze gespeicherte Segmente mit originaler Stärke/Opazität
+                const archiveInk = new InkLayer();
+                archiveInk.addTo(state.map);
+                walk.segments.forEach(s => archiveInk.addSegment(s.ll1, s.ll2, s.weight, s.opacity));
+                state.archiveInkLayers[id] = archiveInk;
+                if (!layerVisibility.route) archiveInk._canvas.style.display = 'none';
+            } else if (walk.route && walk.route.length > 1) {
+                // Fallback für ältere Walks ohne segments
+                const archiveInk = new InkLayer();
+                archiveInk.addTo(state.map);
+                for (let i = 1; i < walk.route.length; i++) {
+                    archiveInk.addSegment(walk.route[i-1], walk.route[i], 6, 0.7);
+                }
+                state.archiveInkLayers[id] = archiveInk;
+                if (!layerVisibility.route) archiveInk._canvas.style.display = 'none';
+            }
             walk.entries.forEach(e => {
                 let popup = '<b>' + (e.type||'').toUpperCase() + '</b><br>' + (e.text || e.audioDuration || '');
                 if (e.dataUrl) popup = '<img src="' + e.dataUrl + '" style="width:180px;border-radius:6px;"/><br><small>' + (e.timestamp||'') + '</small>';
@@ -970,48 +1127,120 @@ window.addEventListener('load', function () {
     async function takeMapSnapshot(walk, folder) {
         return new Promise(resolve => {
             try {
-                // Zeige Walk kurz an für Screenshot
-                const group = L.layerGroup();
-                if (walk.route && walk.route.length > 1) {
-                    L.polyline(walk.route, { color: walk.color, weight: 5 }).addTo(group);
-                    // Karte auf Route zentrieren
-                    state.map.fitBounds(L.polyline(walk.route).getBounds(), { padding: [40,40] });
-                }
-                walk.entries.forEach(e => {
-                    L.circleMarker([e.location.lat, e.location.lng], { color: walk.color, radius: 5, fillOpacity: 0.9 }).addTo(group);
-                });
-                group.addTo(state.map);
+                const mapEl = document.getElementById('map');
+                const W = mapEl.offsetWidth;
+                const H = mapEl.offsetHeight;
 
-                setTimeout(() => {
-                    const mapEl = document.getElementById('map');
-                    // Leaflet tiles als Canvas
-                    const canvas = document.createElement('canvas');
-                    canvas.width = mapEl.offsetWidth;
-                    canvas.height = mapEl.offsetHeight;
-                    const ctx = canvas.getContext('2d');
-                    // Draw tiles
-                    mapEl.querySelectorAll('.leaflet-tile-pane img').forEach(img => {
-                        try {
-                            const rect = img.getBoundingClientRect();
-                            const mapRect = mapEl.getBoundingClientRect();
-                            ctx.drawImage(img, rect.left - mapRect.left, rect.top - mapRect.top, rect.width, rect.height);
-                        } catch(e) {}
-                    });
-                    // Draw route overlay
-                    mapEl.querySelectorAll('.leaflet-overlay-pane canvas, .leaflet-overlay-pane svg').forEach(el => {
-                        try {
-                            if (el.tagName === 'CANVAS') {
-                                ctx.drawImage(el, 0, 0);
+                // Karte auf Route zentrieren
+                if (walk.route && walk.route.length > 1) {
+                    state.map.fitBounds(
+                        L.polyline(walk.route).getBounds(),
+                        { padding: [60, 60], animate: false, maxZoom: 18 }
+                    );
+                }
+
+                // ── Temporären InkLayer aufbauen ──
+                const snapInk = new InkLayer();
+                snapInk.addTo(state.map);
+                if (walk.segments && walk.segments.length > 0) {
+                    walk.segments.forEach(s => snapInk.addSegment(s.ll1, s.ll2, s.weight, s.opacity));
+                } else if (walk.route && walk.route.length > 1) {
+                    for (let i = 1; i < walk.route.length; i++) {
+                        snapInk.addSegment(walk.route[i-1], walk.route[i], 7, 0.75);
+                    }
+                }
+
+                // ── Marker-Punkte für alle Einträge ──
+                const dotColors = { thought:'#22c55e', sense:'#f97316', voice:'#7c3aed', sound:'#f97316', photo:'#555' };
+                const markerGroup = L.layerGroup();
+                walk.entries.forEach(e => {
+                    if (!e.location) return;
+                    const col = e.type === 'mood' ? (e.markerColor || '#facc15') : (dotColors[e.type] || walk.color);
+                    const r = (e.type==='mood'||e.type==='thought'||e.type==='sense') ? 6 : 4;
+                    L.circleMarker([e.location.lat, e.location.lng], {
+                        color: '#fff', weight: 1.5, fillColor: col, fillOpacity: 0.9, radius: r
+                    }).addTo(markerGroup);
+                });
+                markerGroup.addTo(state.map);
+
+                // Warten auf Tile-Laden + InkLayer-Render
+                setTimeout(async () => {
+                    try {
+                        // ── Exportcanvas: weißer Hintergrund ──
+                        const canvas = document.createElement('canvas');
+                        canvas.width  = W;
+                        canvas.height = H;
+                        const ctx = canvas.getContext('2d');
+                        ctx.fillStyle = '#f5f5f0';
+                        ctx.fillRect(0, 0, W, H);
+                        const mapRect = mapEl.getBoundingClientRect();
+
+                        // ── 1. Tile-Kacheln (crossOrigin bereits gesetzt) ──
+                        const tilePromises = [];
+                        mapEl.querySelectorAll('.leaflet-tile-pane img').forEach(img => {
+                            const r = img.getBoundingClientRect();
+                            const dx = r.left - mapRect.left;
+                            const dy = r.top  - mapRect.top;
+                            const dw = r.width, dh = r.height;
+                            if (img.complete && img.naturalWidth > 0) {
+                                try { ctx.drawImage(img, dx, dy, dw, dh); } catch(e) {}
+                            } else {
+                                // Kachel neu laden mit crossOrigin für Canvas
+                                tilePromises.push(new Promise(res => {
+                                    const tmp = new Image();
+                                    tmp.crossOrigin = 'anonymous';
+                                    tmp.onload  = () => { try { ctx.drawImage(tmp, dx, dy, dw, dh); } catch(e) {} res(); };
+                                    tmp.onerror = () => res();
+                                    tmp.src = img.src + (img.src.includes('?') ? '&' : '?') + '_nc=' + Date.now();
+                                }));
                             }
-                        } catch(e) {}
-                    });
-                    const dataUrl = canvas.toDataURL('image/png');
-                    const base64 = dataUrl.split(',')[1];
-                    if (base64) folder.file('karte.png', base64, { base64: true });
-                    state.map.removeLayer(group);
+                        });
+                        await Promise.all(tilePromises);
+
+                        // ── 2. InkLayer-Canvas direkt übertragen ──
+                        mapEl.querySelectorAll('.leaflet-overlay-pane canvas').forEach(c => {
+                            if (c.width > 0 && c.height > 0) {
+                                try { ctx.drawImage(c, 0, 0); } catch(e) {}
+                            }
+                        });
+
+                        // ── 3. SVG-Overlay (Leaflet circleMarkers) — async ──
+                        const svgList = mapEl.querySelectorAll('.leaflet-overlay-pane svg');
+                        const svgPromises = Array.from(svgList).map(svg => new Promise(res => {
+                            try {
+                                const xml = new XMLSerializer().serializeToString(svg);
+                                const blob = new Blob([xml], { type: 'image/svg+xml' });
+                                const url  = URL.createObjectURL(blob);
+                                const img  = new Image();
+                                img.onload  = () => { try { ctx.drawImage(img, 0, 0, W, H); } catch(e) {} URL.revokeObjectURL(url); res(); };
+                                img.onerror = () => { URL.revokeObjectURL(url); res(); };
+                                img.src = url;
+                            } catch(e) { res(); }
+                        }));
+                        await Promise.all(svgPromises);
+
+                        // ── 4. Koordinaten-Label unten links ──
+                        if (walk.route && walk.route.length > 0) {
+                            const mid = walk.route[Math.floor(walk.route.length / 2)];
+                            ctx.fillStyle = 'rgba(0,0,0,0.45)';
+                            ctx.fillRect(8, H - 26, 220, 20);
+                            ctx.fillStyle = '#fff';
+                            ctx.font = '11px monospace';
+                            ctx.fillText(walk.name + '  |  ' + mid[0].toFixed(5) + ', ' + mid[1].toFixed(5), 14, H - 11);
+                        }
+
+                        const dataUrl = canvas.toDataURL('image/png');
+                        const base64  = dataUrl.split(',')[1];
+                        if (base64) folder.file('karte.png', base64, { base64: true });
+
+                    } catch(err) { console.error('Snapshot draw error:', err); }
+
+                    state.map.removeLayer(snapInk);
+                    state.map.removeLayer(markerGroup);
                     resolve();
-                }, 1200);
-            } catch(e) { resolve(); }
+                }, 1800);
+
+            } catch(err) { console.error('Snapshot error:', err); resolve(); }
         });
     }
 
