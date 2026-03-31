@@ -782,7 +782,7 @@ window.addEventListener('load', function () {
         stream.getTracks().forEach(t => t.stop());
         stopViz(); clearInterval(timerInterval);
         audioModal.classList.remove('open');
-        const blob = new Blob(audioChunks, { type: 'audio/webm' });
+        const blob = new Blob(audioChunks, { type: MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : 'audio/webm' });
         const url  = URL.createObjectURL(blob);
         const pos  = getPos();
         const ts   = new Date().toLocaleTimeString();
@@ -1161,7 +1161,7 @@ window.addEventListener('load', function () {
                 if ((e.type === 'voice' || e.type === 'sound') && e.entryId && audioBlobs[e.entryId]) {
                     audioCount++;
                     const prefix = e.type === 'voice' ? 'sprachnachricht' : 'umgebungssound';
-                    folder.file(prefix + '_' + audioCount + '.webm', audioBlobs[e.entryId]);
+                    folder.file(prefix + '_' + audioCount + '.mp4', audioBlobs[e.entryId]);
                 }
             });
 
@@ -1188,7 +1188,7 @@ window.addEventListener('load', function () {
                 '  route.gpx        — Route als GPX (GPS-Exchange)\n' +
                 '  karte.png        — Kartenausschnitt mit Route\n' +
                 '  foto_*.jpg       — Aufgenommene Fotos\n' +
-                '  sprachnachricht_*.webm / umgebungssound_*.webm — Aufnahmen\n' +
+                '  sprachnachricht_*.mp4 / umgebungssound_*.mp4 — Aufnahmen\n' +
                 '  reflexion.txt    — Reflexionstext\n';
             folder.file('README.txt', readme);
 
