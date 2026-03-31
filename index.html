@@ -130,7 +130,18 @@
         </div>
         <!-- Ebenen -->
         <div class="section" id="sec-ebenen" style="display:none;">
-            <div class="section-label">Ebenen ein-/ausblenden</div>
+            <!-- Live Stats -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+                <div style="background:#f0f4ff;border-radius:10px;padding:10px 12px;text-align:center;">
+                    <div style="font-size:9px;font-weight:bold;color:#6b7280;text-transform:uppercase;margin-bottom:4px;">Schritte</div>
+                    <div id="stepCount" style="font-size:22px;font-weight:bold;color:#1a1a1a;">0</div>
+                </div>
+                <div style="background:#f0f4ff;border-radius:10px;padding:10px 12px;text-align:center;">
+                    <div style="font-size:9px;font-weight:bold;color:#6b7280;text-transform:uppercase;margin-bottom:4px;">Tempo</div>
+                    <div id="currentSpeed" style="font-size:18px;font-weight:bold;color:#1a1a1a;">—</div>
+                </div>
+            </div>
+            <div style="font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;border-bottom:1px solid #f0f0f0;padding-bottom:4px;margin-bottom:10px;">Ebenen ein-/ausblenden</div>
             <button class="layer-toggle-btn active" data-layer="route"><span class="dot"></span> Route</button>
             <button class="layer-toggle-btn active" data-layer="mood"><span class="dot"></span> Stimmung</button>
             <button class="layer-toggle-btn active" data-layer="thought"><span class="dot"></span> Gedanken</button>
@@ -269,32 +280,108 @@ window.addEventListener('load', function () {
             const key = btn.getAttribute('data-layer');
             const isActive = btn.classList.toggle('active');
             layerVisibility[key] = isActive;
-            if (key === 'route' && state.liveRouteLayer) isActive ? state.map.addLayer(state.liveRouteLayer) : state.map.removeLayer(state.liveRouteLayer);
+            // route segments are all in mapLayers.route; no single liveRouteLayer needed
             mapLayers[key].forEach(l => isActive ? state.map.addLayer(l) : state.map.removeLayer(l));
         });
     });
 
-    // ── GPS ──
+    // ── Schrittzähler (DeviceMotion) ──
+    let stepCount = 0, lastStepTime = 0;
+    const STEP_THRESHOLD = 13.5, STEP_MIN_MS = 550;
+
+    if (window.DeviceMotionEvent) {
+        window.addEventListener('devicemotion', e => {
+            if (!state.current) return;
+            const a = e.accelerationIncludingGravity;
+            if (!a) return;
+            const mag = Math.sqrt(a.x*a.x + a.y*a.y + a.z*a.z);
+            const now = Date.now();
+            if (mag > STEP_THRESHOLD && (now - lastStepTime) > STEP_MIN_MS) {
+                stepCount++;
+                lastStepTime = now;
+                if (state.current) state.current.steps = stepCount;
+                const el = document.getElementById('stepCount');
+                if (el) el.textContent = stepCount.toLocaleString('de-DE');
+            }
+        });
+    }
+
+    // ── GPS mit Geschwindigkeits-Linienbreite ──
+    // Jedes Segment bekommt eine eigene Dicke je nach Tempo
+    // Langsam/stehen = sehr dick + opak (wie Tintenklecks)
+    // Schnell = dünn + fast transparent
+    let lastPos = null, lastPosTime = null, smoothedSpeed = 0;
+
+    function haversineDist(a, b) {
+        const R = 6371000, toRad = x => x * Math.PI / 180;
+        const dLat = toRad(b[0]-a[0]), dLon = toRad(b[1]-a[1]);
+        const h = Math.sin(dLat/2)**2 + Math.cos(toRad(a[0]))*Math.cos(toRad(b[0]))*Math.sin(dLon/2)**2;
+        return 2 * R * Math.asin(Math.sqrt(h));
+    }
+
+    function speedToWeight(mps) {
+        // 0 m/s (stehen) → 22px,  1.4 m/s (Schrittempo) → 7px,  3+ m/s (laufen) → 1px
+        const clamped = Math.min(mps, 3.5);
+        return Math.max(1, 22 - (clamped / 3.5) * 21);
+    }
+
+    function speedToOpacity(mps) {
+        // stehen → 0.95,  schnell gehen → 0.4,  laufen → 0.06
+        return Math.max(0.06, 0.95 - (Math.min(mps, 3.5) / 3.5) * 0.89);
+    }
+
     navigator.geolocation.watchPosition(pos => {
         const ll = [pos.coords.latitude, pos.coords.longitude];
+        const now = Date.now();
+
         if (!state.liveMarker) {
-            state.liveMarker = L.circleMarker(ll, { radius: 8, fillColor: '#2563eb', color: '#fff', weight: 2, fillOpacity: 1 }).addTo(state.map);
+            state.liveMarker = L.circleMarker(ll, {
+                radius: 7, fillColor: '#111', color: '#fff', weight: 2, fillOpacity: 1
+            }).addTo(state.map);
             state.map.panTo(ll);
-        } else { state.liveMarker.setLatLng(ll); }
+        } else {
+            state.liveMarker.setLatLng(ll);
+        }
+
         if (state.current) {
             state.current.route.push(ll);
-            if (state.liveRouteLayer) state.map.removeLayer(state.liveRouteLayer);
-            state.liveRouteLayer = L.polyline(state.current.route, { color: '#2563eb', weight: 3, dashArray: '5,10' });
-            if (layerVisibility.route) state.liveRouteLayer.addTo(state.map);
+
+            if (lastPos && lastPosTime) {
+                const dist = haversineDist(lastPos, ll);
+                const dt = (now - lastPosTime) / 1000;
+                const raw = dt > 0 ? dist / dt : 0;
+                smoothedSpeed = smoothedSpeed * 0.55 + raw * 0.45;
+
+                const w  = speedToWeight(smoothedSpeed);
+                const op = speedToOpacity(smoothedSpeed);
+
+                const seg = L.polyline([lastPos, ll], {
+                    color: '#1a1a1a', weight: w, opacity: op,
+                    lineCap: 'round', lineJoin: 'round'
+                });
+                if (layerVisibility.route) seg.addTo(state.map);
+                mapLayers.route.push(seg);
+
+                // Geschwindigkeit im Panel
+                const speedEl = document.getElementById('currentSpeed');
+                if (speedEl) speedEl.textContent = (smoothedSpeed * 3.6).toFixed(1) + ' km/h';
+            }
+            lastPos = ll;
+            lastPosTime = now;
         }
-    }, null, { enableHighAccuracy: true });
+    }, null, { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
 
     // ── START ──
     document.getElementById('btnStart').onclick = () => {
+        stepCount = 0; lastStepTime = 0; smoothedSpeed = 0; lastPos = null; lastPosTime = null;
+        const stepEl = document.getElementById('stepCount');
+        if (stepEl) stepEl.textContent = '0';
+        const speedEl = document.getElementById('currentSpeed');
+        if (speedEl) speedEl.textContent = '—';
         state.current = {
             id: Date.now(),
             name: new Date().toLocaleString('de-DE'),
-            route: [], entries: [],
+            route: [], entries: [], steps: 0,
             color: walkColors[state.walks.length % walkColors.length],
             reflection: ""
         };
@@ -318,8 +405,7 @@ window.addEventListener('load', function () {
         if (nameVal) state.current.name = nameVal;
         document.getElementById('stopModal').classList.remove('open');
 
-        // Live-Route von Karte entfernen
-        if (state.liveRouteLayer) { state.map.removeLayer(state.liveRouteLayer); state.liveRouteLayer = null; }
+        // Live-Segmente von Karte entfernen (alle in mapLayers.route)
         // Live-Marker-Ebenen vom Karte entfernen
         Object.keys(mapLayers).forEach(key => {
             mapLayers[key].forEach(l => { try { state.map.removeLayer(l); } catch(e){} });
@@ -569,7 +655,7 @@ window.addEventListener('load', function () {
             header.setAttribute('data-id', w.id);
             header.innerHTML =
                 '<span class="color-dot" style="background:' + w.color + '"></span>' +
-                '<span class="walk-label">' + w.name + '</span>' +
+                '<span class="walk-label">' + w.name + (w.steps ? '<br><span style="font-size:9px;color:#9ca3af;font-weight:normal;">👣 ' + (w.steps||0).toLocaleString('de-DE') + ' Schritte</span>' : '') + '</span>' +
                 '<span class="walk-badge">sichtbar</span>';
             header.addEventListener('click', () => toggleWalk(w.id));
 
