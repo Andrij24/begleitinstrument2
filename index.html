@@ -220,6 +220,54 @@
 
 <input type="file" id="photoInput" accept="image/*" capture="environment"/>
 
+<!-- Stimmungs-Modal -->
+<div id="moodModal" style="position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;padding:24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:14px;">
+    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">🔋 Stimmung</div>
+    <!-- Farbiger Balken -->
+    <div style="position:relative;">
+      <input type="range" id="moodSlider" min="0" max="100" value="50"
+        style="width:100%;height:28px;-webkit-appearance:none;appearance:none;border-radius:14px;outline:none;cursor:pointer;background:linear-gradient(to right,#3b82f6,#22c55e,#facc15,#f97316,#ef4444);"/>
+      <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:10px;color:#888;">
+        <span>0 tief</span><span>50 neutral</span><span>100 hoch</span>
+      </div>
+      <div style="text-align:center;margin-top:6px;">
+        <span id="moodVal" style="font-size:28px;font-weight:bold;color:#111;">50</span>
+        <span style="font-size:12px;color:#888;">/100</span>
+      </div>
+    </div>
+    <textarea id="moodText" placeholder="Notiz (optional)..." style="width:100%;height:60px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:12px;resize:none;font-family:sans-serif;"></textarea>
+    <div style="display:flex;gap:8px;">
+      <button id="moodCancel" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;text-transform:uppercase;">Abbrechen</button>
+      <button id="moodSave"   style="flex:1;padding:12px;border-radius:10px;border:none;background:#111;color:#fff;font-weight:bold;font-size:11px;cursor:pointer;text-transform:uppercase;">Marker setzen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Gedanken-Modal -->
+<div id="thoughtModal" style="position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;padding:24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:14px;">
+    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">💭 Gedanke</div>
+    <textarea id="thoughtText" placeholder="Was denkst du gerade?" style="width:100%;height:100px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
+    <div style="display:flex;gap:8px;">
+      <button id="thoughtCancel" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;text-transform:uppercase;">Abbrechen</button>
+      <button id="thoughtSave"   style="flex:1;padding:12px;border-radius:10px;border:none;background:#12345f;color:#fff;font-weight:bold;font-size:11px;cursor:pointer;text-transform:uppercase;">Marker setzen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Wahrnehmung-Modal -->
+<div id="senseModal" style="position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;padding:24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:14px;">
+    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">👁 Wahrnehmung</div>
+    <textarea id="senseText" placeholder="Was nimmst du wahr?" style="width:100%;height:100px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
+    <div style="display:flex;gap:8px;">
+      <button id="senseCancel" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;text-transform:uppercase;">Abbrechen</button>
+      <button id="senseSave"   style="flex:1;padding:12px;border-radius:10px;border:none;background:#3d633d;color:#fff;font-weight:bold;font-size:11px;cursor:pointer;text-transform:uppercase;">Marker setzen</button>
+    </div>
+  </div>
+</div>
+
 <script>
 window.addEventListener('load', function () {
 
@@ -238,8 +286,8 @@ window.addEventListener('load', function () {
     const audioBlobs = {};
 
     // ── Karte ──
-    state.map = L.map('map', { zoomControl: false }).setView([47.23, 9.61], 15);
-    state.currentTile = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { crossOrigin: true }).addTo(state.map);
+    state.map = L.map('map', { zoomControl: false, maxZoom: 22 }).setView([47.23, 9.61], 17);
+    state.currentTile = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { crossOrigin: true, maxZoom: 22, maxNativeZoom: 19 }).addTo(state.map);
 
     // ── Drawer ──
     const drawer = document.getElementById('drawer');
@@ -268,7 +316,7 @@ window.addEventListener('load', function () {
     document.querySelectorAll('.layer-opt').forEach(btn => {
         btn.onclick = () => {
             state.map.removeLayer(state.currentTile);
-            state.currentTile = L.tileLayer(btn.getAttribute('data-url'), { crossOrigin: true }).addTo(state.map);
+            state.currentTile = L.tileLayer(btn.getAttribute('data-url'), { crossOrigin: true, maxZoom: 22, maxNativeZoom: 19 }).addTo(state.map);
             document.querySelectorAll('.layer-opt').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
         };
@@ -581,25 +629,108 @@ window.addEventListener('load', function () {
     document.getElementById('fabSound').onclick = () => openAudioModal('sound');
     document.getElementById('fabMsg').onclick   = () => openAudioModal('voice');
 
-    // ══ Text FABs ══
-    function addTextEntry(type, promptText) {
-        if (!requireWalk()) return;
-        const pos = currentLatLng();
-        const t = prompt(promptText);
-        if (!t) return;
-        state.current.entries.push({ type, location:{lat:pos.lat,lng:pos.lng}, timestamp:new Date().toLocaleTimeString(), text:t });
-        const colors = { mood:'#ff6600', thought:'#12345f', sense:'#3d633d' };
-        const emojis = { mood:'🔋', thought:'💭', sense:'👁' };
-        const icon = L.divIcon({
-            html: '<div style="width:34px;height:34px;border-radius:50%;background:' + (colors[type]||'#555') + ';border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.3);">' + (emojis[type]||'•') + '</div>',
-            iconSize:[34,34], iconAnchor:[17,17], popupAnchor:[0,-20]
+    // ══ Individuelle Marker-Icons ══
+    function makePinIcon(emoji, bgColor, size) {
+        size = size || 40;
+        return L.divIcon({
+            html: '<div style="width:' + size + 'px;height:' + size + 'px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:' + bgColor + ';border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;">' +
+                  '<span style="transform:rotate(45deg);font-size:' + Math.round(size*0.42) + 'px;line-height:1;">' + emoji + '</span></div>',
+            iconSize:[size,size], iconAnchor:[size/2, size], popupAnchor:[0,-(size+4)]
         });
-        const m = placeMarker(type, pos, '<b>' + type.toUpperCase() + '</b><br>' + t);
-        m.setIcon(icon);
     }
-    document.getElementById('fabMood').onclick    = () => addTextEntry('mood',    'Stimmung (0–100)?');
-    document.getElementById('fabThought').onclick = () => addTextEntry('thought', 'Gedanke?');
-    document.getElementById('fabSense').onclick   = () => addTextEntry('sense',   'Wahrnehmung?');
+
+    function moodColor(val) {
+        // 0=blau, 50=grün-gelb, 100=rot
+        if (val < 25)  return '#3b82f6';
+        if (val < 50)  return '#22c55e';
+        if (val < 75)  return '#facc15';
+        if (val < 90)  return '#f97316';
+        return '#ef4444';
+    }
+
+    // ── Stimmungs-Modal ──
+    const moodModal = document.getElementById('moodModal');
+    const moodSlider = document.getElementById('moodSlider');
+    const moodValEl = document.getElementById('moodVal');
+    moodSlider.oninput = () => {
+        const v = parseInt(moodSlider.value);
+        moodValEl.textContent = v;
+        moodValEl.style.color = moodColor(v);
+    };
+    document.getElementById('moodCancel').onclick = () => { moodModal.style.display = 'none'; };
+    document.getElementById('moodSave').onclick = () => {
+        if (!requireWalk()) { moodModal.style.display = 'none'; return; }
+        const val = parseInt(moodSlider.value);
+        const note = document.getElementById('moodText').value.trim();
+        const pos = currentLatLng();
+        const ts = new Date().toLocaleTimeString();
+        state.current.entries.push({ type:'mood', location:{lat:pos.lat,lng:pos.lng}, timestamp:ts, moodValue:val, text:note });
+        const col = moodColor(val);
+        const icon = makePinIcon('🔋', col, 42);
+        const popup = '<div style="min-width:140px;">' +
+            '<b style="font-size:13px;">Stimmung</b><br>' +
+            '<div style="margin:6px 0;background:#f0f0f0;border-radius:6px;height:12px;overflow:hidden;">' +
+              '<div style="height:100%;width:' + val + '%;background:' + col + ';border-radius:6px;"></div>' +
+            '</div>' +
+            '<span style="font-size:18px;font-weight:bold;color:' + col + ';">' + val + '</span><span style="color:#888;">/100</span>' +
+            (note ? '<br><small style="color:#555;">' + note + '</small>' : '') +
+            '<br><small style="color:#aaa;">' + ts + '</small></div>';
+        const m = placeMarker('mood', pos, popup);
+        m.setIcon(icon);
+        moodModal.style.display = 'none';
+        document.getElementById('moodText').value = '';
+        moodSlider.value = 50; moodValEl.textContent = 50; moodValEl.style.color = '#111';
+    };
+    document.getElementById('fabMood').onclick = () => {
+        if (!requireWalk()) return;
+        moodModal.style.display = 'flex';
+    };
+
+    // ── Gedanken-Modal ──
+    const thoughtModal = document.getElementById('thoughtModal');
+    document.getElementById('thoughtCancel').onclick = () => { thoughtModal.style.display = 'none'; };
+    document.getElementById('thoughtSave').onclick = () => {
+        if (!requireWalk()) { thoughtModal.style.display = 'none'; return; }
+        const t = document.getElementById('thoughtText').value.trim();
+        const pos = currentLatLng();
+        const ts = new Date().toLocaleTimeString();
+        state.current.entries.push({ type:'thought', location:{lat:pos.lat,lng:pos.lng}, timestamp:ts, text:t || '(kein Text)' });
+        const icon = makePinIcon('💭', '#12345f', 40);
+        const popup = '<div style="min-width:140px;"><b>Gedanke</b><br>' +
+            '<p style="margin:4px 0;font-size:12px;color:#333;">' + (t||'—') + '</p>' +
+            '<small style="color:#aaa;">' + ts + '</small></div>';
+        const m = placeMarker('thought', pos, popup);
+        m.setIcon(icon);
+        thoughtModal.style.display = 'none';
+        document.getElementById('thoughtText').value = '';
+    };
+    document.getElementById('fabThought').onclick = () => {
+        if (!requireWalk()) return;
+        thoughtModal.style.display = 'flex';
+    };
+
+    // ── Wahrnehmungs-Modal ──
+    const senseModal = document.getElementById('senseModal');
+    document.getElementById('senseCancel').onclick = () => { senseModal.style.display = 'none'; };
+    document.getElementById('senseSave').onclick = () => {
+        if (!requireWalk()) { senseModal.style.display = 'none'; return; }
+        const t = document.getElementById('senseText').value.trim();
+        const pos = currentLatLng();
+        const ts = new Date().toLocaleTimeString();
+        state.current.entries.push({ type:'sense', location:{lat:pos.lat,lng:pos.lng}, timestamp:ts, text:t||'(keine Eingabe)' });
+        const icon = makePinIcon('👁', '#3d633d', 40);
+        const popup = '<div style="min-width:140px;"><b>Wahrnehmung</b><br>' +
+            (t ? '<p style="margin:4px 0;font-size:12px;color:#333;">' + t + '</p>' : '') +
+            '<small style="color:#aaa;">' + ts + '</small></div>';
+        const m = placeMarker('sense', pos, popup);
+        m.setIcon(icon);
+        senseModal.style.display = 'none';
+        document.getElementById('senseText').value = '';
+    };
+    document.getElementById('fabSense').onclick = () => {
+        if (!requireWalk()) return;
+        senseModal.style.display = 'flex';
+    };
 
     // ══ ARCHIV ══
     function toggleWalk(id) {
