@@ -322,9 +322,8 @@ window.addEventListener('load', function () {
             iconSize: [44, 44], iconAnchor: [22, 22], popupAnchor: [0, -24]
         });
         const popup = '<img src="' + dataUrl + '" style="width:200px;border-radius:8px;"/><br><small>' + new Date().toLocaleTimeString() + '</small>';
-        placeMarker('photo', pos, popup);
-        // Override icon
-        mapLayers['photo'][mapLayers['photo'].length - 1].setIcon(icon);
+        const m = placeMarker('photo', pos, popup);
+        m.setIcon(icon);
 
         closeCamera();
     };
