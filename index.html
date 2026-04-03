@@ -51,23 +51,20 @@
     .wb-export{background:#16a34a;color:#fff;}
     .wb-analyse{background:#7c3aed;color:#fff;}
     .wb-delete{background:#fee2e2;color:#dc2626;}
-    /* Reflexion */
     .ref-question{font-size:11px;font-weight:bold;color:#374151;margin-bottom:4px;margin-top:10px;}
     .ref-question:first-of-type{margin-top:0;}
     textarea.ref-input{width:100%;font-size:11px;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;font-family:sans-serif;background:#fafafa;}
     .mood-retro-wrap{display:flex;align-items:center;gap:8px;margin:4px 0;}
     .mood-retro-wrap input[type=range]{flex:1;}
     .mood-retro-val{font-size:14px;font-weight:bold;min-width:28px;text-align:right;}
-    /* Auswertungs-Modal */
+
+    /* Auswertungs-Modal — ohne Dritte-Sicht */
     #analyseModal{position:fixed;inset:0;z-index:3500;background:rgba(0,0,0,0.82);display:none;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;}
     #analyseModal.open{display:flex;}
     #analyseBox{background:#f8f8f8;border-radius:20px;width:min(96vw,560px);padding:20px;display:flex;flex-direction:column;gap:14px;margin:auto;}
     .analyse-header{display:flex;align-items:center;justify-content:space-between;}
     .analyse-title{font-size:14px;font-weight:bold;color:#111;}
     .analyse-close{width:28px;height:28px;border-radius:50%;border:none;background:#eee;cursor:pointer;font-size:14px;}
-    .view-toggle{display:flex;gap:6px;}
-    .vt-btn{padding:6px 14px;border-radius:16px;border:1px solid #ddd;background:#fff;font-size:11px;font-weight:bold;cursor:pointer;color:#555;}
-    .vt-btn.active{background:#2563eb;color:#fff;border-color:#2563eb;}
     .a-card{background:#fff;border-radius:12px;padding:12px;border:1px solid #e5e5e5;}
     .a-label{font-size:9px;font-weight:bold;text-transform:uppercase;color:#9ca3af;margin-bottom:8px;}
     .stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
@@ -77,7 +74,7 @@
     .disk-row{display:flex;align-items:center;gap:8px;margin:5px 0;}
     .disk-bar-bg{flex:1;height:7px;border-radius:4px;background:#f0f0f0;overflow:hidden;}
     .disk-bar-fill{height:100%;border-radius:4px;}
-    .anon-banner{background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:8px 10px;font-size:10px;color:#92400e;}
+
     /* Modals */
     #cameraModal,#audioModal,#stopModal{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,0.88);display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
     #cameraModal.open,#audioModal.open,#stopModal.open{display:flex;}
@@ -102,9 +99,71 @@
     #exportOverlay.open{display:flex;}
     #exportBox{background:#fff;border-radius:14px;padding:24px 28px;text-align:center;min-width:200px;}
     #exportMsg{font-size:13px;color:#333;margin-top:8px;}
-    #fabGrid{position:fixed;bottom:18px;left:12px;z-index:1001;display:flex;flex-direction:column;gap:10px;}
-    .fab{width:52px;height:52px;border-radius:50%;border:none;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.22);color:white;transition:transform 0.1s;}
-    .fab:active{transform:scale(0.92);}
+
+    /* ── MODERNES FAB-PANEL ── */
+    #fabGrid {
+      position: fixed;
+      bottom: 24px;
+      left: 16px;
+      z-index: 1001;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      background: rgba(255,255,255,0.78);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-radius: 26px;
+      border: 1px solid rgba(255,255,255,0.95);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.13), 0 1px 0 rgba(255,255,255,0.85) inset, 0 0 0 0.5px rgba(0,0,0,0.06);
+      padding: 10px 8px;
+    }
+    .fab {
+      position: relative;
+      width: 46px;
+      height: 46px;
+      border-radius: 15px;
+      border: none;
+      cursor: pointer;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      color: #1a1a1a;
+      transition: background 0.13s ease, transform 0.1s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .fab:hover { background: rgba(0,0,0,0.06); transform: scale(1.1); }
+    .fab:active { transform: scale(0.91); background: rgba(0,0,0,0.1); }
+    .fab::after {
+      content: attr(data-label);
+      position: absolute;
+      left: calc(100% + 12px);
+      top: 50%;
+      transform: translateY(-50%) translateX(-4px);
+      background: rgba(14,14,14,0.88);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1px;
+      padding: 5px 11px;
+      border-radius: 9px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.18s ease, transform 0.18s ease;
+    }
+    .fab:hover::after { opacity: 1; transform: translateY(-50%) translateX(0); }
+    .fab-divider {
+      width: 28px;
+      height: 1px;
+      background: rgba(0,0,0,0.08);
+      border-radius: 1px;
+      margin: 4px 0;
+      flex-shrink: 0;
+    }
+
     #moodModal,#thoughtModal,#senseModal{position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,0.78);display:none;align-items:center;justify-content:center;}
     #thoughtModal,#senseModal{z-index:2000;background:rgba(0,0,0,0.75);}
   </style>
@@ -147,18 +206,17 @@
       </div>
       <div style="font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;border-bottom:1px solid #f0f0f0;padding-bottom:4px;margin-bottom:10px;">Ebenen</div>
       <button class="layer-toggle-btn active" data-layer="route"><span class="dot"></span> Route</button>
-      <button class="layer-toggle-btn active" data-layer="mood"><span class="dot"></span> Stimmung</button>
-      <button class="layer-toggle-btn active" data-layer="thought"><span class="dot"></span> Gedanken</button>
-      <button class="layer-toggle-btn active" data-layer="sense"><span class="dot"></span> Wahrnehmung</button>
+      <button class="layer-toggle-btn active" data-layer="photo"><span class="dot"></span> Fotos</button>
       <button class="layer-toggle-btn active" data-layer="sound"><span class="dot"></span> Umgebungssound</button>
       <button class="layer-toggle-btn active" data-layer="voice"><span class="dot"></span> Sprachnachricht</button>
-      <button class="layer-toggle-btn active" data-layer="photo"><span class="dot"></span> Fotos</button>
+      <button class="layer-toggle-btn active" data-layer="sense"><span class="dot"></span> Wahrnehmung</button>
+      <button class="layer-toggle-btn active" data-layer="thought"><span class="dot"></span> Gedanken</button>
+      <button class="layer-toggle-btn active" data-layer="mood"><span class="dot"></span> Stimmung</button>
     </div>
     <div class="section" id="sec-archiv" style="display:none;">
       <div class="section-label">Walks</div>
       <div id="archiveList"><div style="font-size:11px;color:#999;">Noch keine Walks gespeichert.</div></div>
     </div>
-    <!-- REFLEXION (strukturiert) -->
     <div class="section" id="reflexionPanel" style="display:none;">
       <div class="section-label">Reflexion: <span id="refWalkName"></span></div>
       <div class="ref-question">Wie erinnerst du den Walk insgesamt?</div>
@@ -181,13 +239,16 @@
   </div>
 </div>
 
+<!-- MODERNES FAB-PANEL — Reihenfolge: Foto, Sound, Sprache, Wahrnehmung, Gedanke, Stimmung -->
 <div id="fabGrid">
-  <button id="fabPhoto" class="fab" style="background:#555;">📸</button>
-  <button id="fabSound" class="fab" style="background:#f97316;">🎙</button>
-  <button id="fabSense" class="fab" style="background:#3d633d;">👁️</button>
-  <button id="fabThought" class="fab" style="background:#12345f;">💭</button>
-  <button id="fabMsg" class="fab" style="background:#7c3aed;">💬</button>
-  <button id="fabMood" class="fab" style="background:#ff6600;">🔋</button>
+  <button id="fabPhoto"   class="fab" data-label="Foto aufnehmen">📸</button>
+  <button id="fabSound"   class="fab" data-label="Umgebungssound">🎙</button>
+  <button id="fabMsg"     class="fab" data-label="Sprachnachricht">💬</button>
+  <div class="fab-divider"></div>
+  <button id="fabSense"   class="fab" data-label="Wahrnehmung">👁</button>
+  <button id="fabThought" class="fab" data-label="Gedanke">💭</button>
+  <div class="fab-divider"></div>
+  <button id="fabMood"    class="fab" data-label="Stimmung">🔋</button>
 </div>
 
 <div id="cameraModal">
@@ -223,67 +284,35 @@
 <div id="exportOverlay"><div id="exportBox"><div style="font-size:24px;">📦</div><div id="exportMsg">Exportiere...</div></div></div>
 <input type="file" id="photoInput" accept="image/*" capture="environment"/>
 
-<!-- AUSWERTUNGS-MODAL -->
+<!-- AUSWERTUNGS-MODAL — nur Ich-Sicht -->
 <div id="analyseModal">
   <div id="analyseBox">
     <div class="analyse-header">
       <div class="analyse-title" id="analyseWalkName">Auswertung</div>
       <button class="analyse-close" id="analyseClose">✕</button>
     </div>
-    <div class="view-toggle">
-      <button class="vt-btn active" id="vtIch" onclick="setAnalyseView('ich')">Ich-Sicht</button>
-      <button class="vt-btn" id="vtDritte" onclick="setAnalyseView('dritte')">Dritte-Sicht</button>
+    <div class="stat-row" style="margin-bottom:12px;">
+      <div class="stat-box"><div class="stat-val" id="aStat1">—</div><div class="stat-lbl">Ø aufgez.</div></div>
+      <div class="stat-box"><div class="stat-val" id="aStat2" style="color:#7c3aed;">—</div><div class="stat-lbl">Erinnert</div></div>
+      <div class="stat-box"><div class="stat-val" id="aStat3">—</div><div class="stat-lbl">Diskrepanz</div></div>
     </div>
-    <!-- ICH-SICHT -->
-    <div id="analyseIch">
-      <div class="stat-row" style="margin-bottom:12px;">
-        <div class="stat-box"><div class="stat-val" id="aStat1">—</div><div class="stat-lbl">Ø aufgez.</div></div>
-        <div class="stat-box"><div class="stat-val" id="aStat2" style="color:#7c3aed;">—</div><div class="stat-lbl">Erinnert</div></div>
-        <div class="stat-box"><div class="stat-val" id="aStat3">—</div><div class="stat-lbl">Diskrepanz</div></div>
-      </div>
-      <div class="a-card" style="margin-bottom:10px;">
-        <div class="a-label" style="color:#0F6E56;">Schicht 1 — Aufgezeichnete Stimmung</div>
-        <div style="position:relative;height:120px;"><canvas id="chartAufz"></canvas></div>
-      </div>
-      <div class="a-card" style="margin-bottom:10px;">
-        <div class="a-label" style="color:#534AB7;">Schicht 2 — Selbstreflexion</div>
-        <div style="position:relative;height:120px;"><canvas id="chartErin"></canvas></div>
-        <div style="background:#f5f3ff;border-radius:8px;padding:8px 10px;margin-top:8px;font-size:11px;color:#374151;font-style:italic;" id="refFreiDisplay">—</div>
-      </div>
-      <div class="a-card" style="margin-bottom:10px;">
-        <div class="a-label" style="color:#854F0B;">Diskrepanz pro Abschnitt</div>
-        <div id="diskBars"></div>
-        <div style="font-size:10px;color:#9ca3af;margin-top:6px;">Grün = Erinnerung positiver als Aufzeichnung · Rot = negativer</div>
-      </div>
-      <div class="a-card">
-        <div class="a-label">Reflexionsantworten</div>
-        <div id="refAnswersDisplay" style="display:flex;flex-direction:column;gap:8px;"></div>
-      </div>
+    <div class="a-card" style="margin-bottom:10px;">
+      <div class="a-label" style="color:#0F6E56;">Schicht 1 — Aufgezeichnete Stimmung</div>
+      <div style="position:relative;height:120px;"><canvas id="chartAufz"></canvas></div>
     </div>
-    <!-- DRITTE-SICHT -->
-    <div id="analyseDritte" style="display:none;">
-      <div class="anon-banner" style="margin-bottom:10px;">Kein Name, keine Adresse, keine Identifikationsmerkmale — freigegeben im Rahmen eines Projekts.</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
-        <div class="stat-box"><div class="stat-val" id="dStat1">—</div><div class="stat-lbl">Diskrepanz Ø</div></div>
-        <div class="stat-box"><div class="stat-val" id="dStat2">—</div><div class="stat-lbl">Einträge gesamt</div></div>
-      </div>
-      <div class="a-card" style="margin-bottom:10px;">
-        <div class="a-label">Aufgezeichnet vs. erinnert</div>
-        <div style="position:relative;height:150px;"><canvas id="chartDritte"></canvas></div>
-        <div style="display:flex;gap:14px;margin-top:8px;font-size:10px;color:#6b7280;">
-          <span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:2px;background:#1D9E75;display:inline-block;"></span>Aufgezeichnet</span>
-          <span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:2px;background:#534AB7;display:inline-block;"></span>Erinnert (gesch.)</span>
-        </div>
-      </div>
-      <div class="a-card" style="margin-bottom:10px;">
-        <div class="a-label">Reflexion (anonymisiert)</div>
-        <div style="font-size:12px;color:#374151;line-height:1.6;font-style:italic;" id="dRefDisplay">—</div>
-        <div id="dTags" style="margin-top:8px;"></div>
-      </div>
-      <div class="a-card">
-        <div class="a-label">Erhobene Datenebenen</div>
-        <div id="dEbenen" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;"></div>
-      </div>
+    <div class="a-card" style="margin-bottom:10px;">
+      <div class="a-label" style="color:#534AB7;">Schicht 2 — Selbstreflexion</div>
+      <div style="position:relative;height:120px;"><canvas id="chartErin"></canvas></div>
+      <div style="background:#f5f3ff;border-radius:8px;padding:8px 10px;margin-top:8px;font-size:11px;color:#374151;font-style:italic;" id="refFreiDisplay">—</div>
+    </div>
+    <div class="a-card" style="margin-bottom:10px;">
+      <div class="a-label" style="color:#854F0B;">Diskrepanz pro Abschnitt</div>
+      <div id="diskBars"></div>
+      <div style="font-size:10px;color:#9ca3af;margin-top:6px;">Grün = Erinnerung positiver als Aufzeichnung · Rot = negativer</div>
+    </div>
+    <div class="a-card">
+      <div class="a-label">Reflexionsantworten</div>
+      <div id="refAnswersDisplay" style="display:flex;flex-direction:column;gap:8px;"></div>
     </div>
   </div>
 </div>
@@ -341,7 +370,6 @@ window.addEventListener('load', function() {
   state.map=L.map('map',{zoomControl:false,maxZoom:22}).setView([47.23,9.61],17);
   state.currentTile=L.tileLayer(currentTileUrl,{crossOrigin:true,maxZoom:22,maxNativeZoom:19}).addTo(state.map);
 
-  // Drawer
   const drawer=document.getElementById('drawer');
   const drawerTitle=document.getElementById('drawerTitle');
   const panelNames={ansicht:'🗺 Ansicht',ebenen:'☰ Ebenen',archiv:'📂 Archiv'};
@@ -381,7 +409,6 @@ window.addEventListener('load', function() {
     });
   });
 
-  // Schrittzähler
   let stepCount=0,lastStepTime=0;
   if(window.DeviceMotionEvent){
     window.addEventListener('devicemotion',e=>{
@@ -392,7 +419,6 @@ window.addEventListener('load', function() {
     });
   }
 
-  // Tuschelinie
   let lastPos=null,lastPosTime=null,smoothedSpeed=0;
   function haversineDist(a,b){const R=6371000,tr=x=>x*Math.PI/180;const dLat=tr(b[0]-a[0]),dLon=tr(b[1]-a[1]);const h=Math.sin(dLat/2)**2+Math.cos(tr(a[0]))*Math.cos(tr(b[0]))*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
   function speedToWeight(s){const t=Math.min(s/3.5,1);return Math.max(1,26*Math.pow(1-t,1.6));}
@@ -427,7 +453,6 @@ window.addEventListener('load', function() {
 
   let inkLayer=new InkLayer();inkLayer.addTo(state.map);state.inkLayer=inkLayer;
 
-  // GPS
   let smoothLat=null,smoothLng=null;
   navigator.geolocation.watchPosition(pos=>{
     if(pos.coords.accuracy>30)return;
@@ -453,7 +478,6 @@ window.addEventListener('load', function() {
     }
   },err=>console.warn('GPS:',err.code),{enableHighAccuracy:true,maximumAge:2000,timeout:20000});
 
-  // START
   document.getElementById('btnStart').onclick=()=>{
     stepCount=0;lastStepTime=0;smoothedSpeed=0;lastPos=null;lastPosTime=null;
     document.getElementById('stepCount').textContent='0';
@@ -463,7 +487,6 @@ window.addEventListener('load', function() {
     alert('Walk gestartet!');
   };
 
-  // STOP
   document.getElementById('btnStop').onclick=()=>{if(!state.current)return alert('Kein aktiver Walk.');document.getElementById('walkNameInput').value='';document.getElementById('stopModal').classList.add('open');};
   document.getElementById('modalCancel').onclick=()=>document.getElementById('stopModal').classList.remove('open');
   document.getElementById('modalSave').onclick=()=>{
@@ -480,7 +503,6 @@ window.addEventListener('load', function() {
     localStorage.setItem('psychogeo_walks',JSON.stringify(ts));
   }
 
-  // Reflexion speichern
   document.getElementById('btnSaveRef').onclick=()=>{
     const walk=state.walks.find(w=>w.id==currentRefId);if(!walk)return;
     if(!walk.reflection)walk.reflection={};
@@ -498,7 +520,6 @@ window.addEventListener('load', function() {
     document.getElementById('refMoodVal').style.color=col;
   });
 
-  // Marker Hilfsfunktionen
   function placeMarker(type,latLng,popupHTML){
     mapLayers[type]=mapLayers[type]||[];
     const m=L.marker(latLng).bindPopup(popupHTML);
@@ -512,7 +533,6 @@ window.addEventListener('load', function() {
   function makeDotIcon(color,size){size=size||20;return L.divIcon({className:'',html:'<div style="width:'+size+'px;height:'+size+'px;border-radius:50%;background:'+color+';border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,0.4);"></div>',iconSize:[size,size],iconAnchor:[size/2,size/2],popupAnchor:[0,-(size/2+6)]});}
   function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
-  // Foto
   const cameraModal=document.getElementById('cameraModal');
   const cameraPreview=document.getElementById('cameraPreview');
   const photoCanvas=document.getElementById('photoCanvas');
@@ -530,7 +550,6 @@ window.addEventListener('load', function() {
   document.getElementById('photoInput').onchange=function(){if(!this.files||!this.files[0]||!requireWalk())return;const pos=getPos();const reader=new FileReader();reader.onload=e=>{const dataUrl=e.target.result;const ts=placePhotoMarker(dataUrl,pos);state.current.entries.push({type:'photo',location:{lat:pos.lat,lng:pos.lng},timestamp:ts,dataUrl});};reader.readAsDataURL(this.files[0]);this.value='';};
   document.getElementById('fabPhoto').onclick=()=>openCamera();
 
-  // Audio
   const audioModal=document.getElementById('audioModal');
   const bars=document.querySelectorAll('.bar');
   let mediaRecorder=null,audioChunks=[],audioType='voice',timerInterval=null,timerSec=0,audioContext=null,analyser=null,vizRaf=null;
@@ -561,7 +580,6 @@ window.addEventListener('load', function() {
   document.getElementById('fabSound').onclick=()=>openAudioModal('sound');
   document.getElementById('fabMsg').onclick=()=>openAudioModal('voice');
 
-  // Stimmung
   const moodModal=document.getElementById('moodModal');
   const moodSlider=document.getElementById('moodSlider');
   const moodValEl=document.getElementById('moodVal');
@@ -584,7 +602,6 @@ window.addEventListener('load', function() {
   });
   document.getElementById('fabMood').addEventListener('click',()=>{if(!requireWalk())return;moodModal.style.display='flex';});
 
-  // Gedanke
   const thoughtModal=document.getElementById('thoughtModal');
   document.getElementById('thoughtCancel').onclick=()=>{thoughtModal.style.display='none';};
   document.getElementById('thoughtSave').onclick=()=>{
@@ -597,7 +614,6 @@ window.addEventListener('load', function() {
   };
   document.getElementById('fabThought').onclick=()=>{if(!requireWalk())return;thoughtModal.style.display='flex';};
 
-  // Wahrnehmung
   const senseModal=document.getElementById('senseModal');
   document.getElementById('senseCancel').onclick=()=>{senseModal.style.display='none';};
   document.getElementById('senseSave').onclick=()=>{
@@ -610,7 +626,6 @@ window.addEventListener('load', function() {
   };
   document.getElementById('fabSense').onclick=()=>{if(!requireWalk())return;senseModal.style.display='flex';};
 
-  // ARCHIV
   function toggleWalk(id){
     const walk=state.walks.find(w=>w.id==id);if(!walk)return;
     const header=document.querySelector('.walk-header[data-id="'+id+'"]');
@@ -638,7 +653,6 @@ window.addEventListener('load', function() {
       });
       group.addTo(state.map);state.activeLayers[id]=group;
       if(header)header.classList.add('shown');if(actions)actions.classList.add('open');
-      // Reflexionspanel befüllen
       currentRefId=id;
       document.getElementById('reflexionPanel').style.display='block';
       document.getElementById('refWalkName').innerText=walk.name;
@@ -656,21 +670,13 @@ window.addEventListener('load', function() {
   }
   window.toggleWalk=toggleWalk;
 
-  // AUSWERTUNG
+  // AUSWERTUNG — nur Ich-Sicht
   let analyseCharts={};
   function destroyAnalyseCharts(){Object.values(analyseCharts).forEach(c=>{try{c.destroy();}catch(e){}});analyseCharts={};}
-
-  window.setAnalyseView=function(v){
-    document.getElementById('analyseIch').style.display=v==='ich'?'block':'none';
-    document.getElementById('analyseDritte').style.display=v==='dritte'?'block':'none';
-    document.getElementById('vtIch').classList.toggle('active',v==='ich');
-    document.getElementById('vtDritte').classList.toggle('active',v==='dritte');
-  };
 
   function openAnalyse(walk){
     destroyAnalyseCharts();
     document.getElementById('analyseWalkName').textContent='Auswertung: '+walk.name;
-    setAnalyseView('ich');
 
     const moodEntries=walk.entries.filter(e=>e.type==='mood'&&e.moodValue!==undefined);
     const aufgezWerte=moodEntries.map(e=>e.moodValue);
@@ -683,20 +689,15 @@ window.addEventListener('load', function() {
     document.getElementById('aStat2').textContent=moodRetro!==null?moodRetro:'—';
     document.getElementById('aStat3').textContent=diskrepanz!==null?(diskrepanz>=0?'+':'')+diskrepanz:'—';
     document.getElementById('aStat3').style.color=diskrepanz>5?'#7c3aed':diskrepanz<-5?'#dc2626':'#374151';
-    document.getElementById('dStat1').textContent=diskrepanz!==null?(diskrepanz>=0?'+':'')+diskrepanz+' Pkt':'—';
-    document.getElementById('dStat2').textContent=walk.entries.length;
 
     const chartLabels=moodEntries.length>0?moodEntries.map((e,i)=>e.timestamp||(i+1)+'.'):['—'];
     const chartData=aufgezWerte.length>0?aufgezWerte:[0];
     const erinData=chartData.map(v=>moodRetro!==null?Math.round(v*0.4+moodRetro*0.6):v);
-
     const chartOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:100,ticks:{color:'#888',font:{size:10}},grid:{color:'rgba(0,0,0,0.04)'}},x:{ticks:{color:'#888',font:{size:10}},grid:{display:false}}}};
 
     analyseCharts.aufz=new Chart(document.getElementById('chartAufz').getContext('2d'),{type:'line',data:{labels:chartLabels,datasets:[{data:chartData,borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.08)',borderWidth:2,pointRadius:4,pointBackgroundColor:'#1D9E75',tension:0.4,fill:true}]},options:chartOpts});
     analyseCharts.erin=new Chart(document.getElementById('chartErin').getContext('2d'),{type:'line',data:{labels:chartLabels,datasets:[{data:erinData,borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,0.08)',borderWidth:2,pointRadius:4,pointBackgroundColor:'#534AB7',tension:0.4,fill:true}]},options:chartOpts});
-    analyseCharts.dritte=new Chart(document.getElementById('chartDritte').getContext('2d'),{type:'line',data:{labels:chartLabels,datasets:[{data:chartData,borderColor:'#1D9E75',borderWidth:2.5,pointRadius:3,tension:0.4,fill:false},{data:erinData,borderColor:'#534AB7',borderWidth:2,borderDash:[5,4],pointRadius:3,tension:0.4,fill:false}]},options:chartOpts});
 
-    // Diskrepanz-Balken
     const db=document.getElementById('diskBars');db.innerHTML='';
     if(chartData.length>=2){
       const ss=Math.ceil(chartData.length/4);
@@ -711,27 +712,15 @@ window.addEventListener('load', function() {
     }
 
     document.getElementById('refFreiDisplay').textContent=ref.frei||'(keine freie Reflexion)';
-    document.getElementById('dRefDisplay').textContent=ref.frei||'(keine Reflexion)';
-
     const rA=document.getElementById('refAnswersDisplay');
     const fragen=[{l:'Stärkster Moment',v:ref.moment},{l:'Orte & Einflüsse',v:ref.orte},{l:'Nicht Aufgezeichnetes',v:ref.nicht},{l:'Überraschung',v:ref.ueber}];
     rA.innerHTML=fragen.map(f=>f.v?'<div style="border-left:3px solid #e5e5e5;padding-left:8px;"><div style="font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;margin-bottom:2px;">'+f.l+'</div><div style="font-size:11px;color:#374151;">'+escHtml(f.v)+'</div></div>':'').join('');
-
-    const typen=[...new Set(walk.entries.map(e=>e.type))];
-    const typL={mood:'Stimmung',thought:'Gedanken',sense:'Wahrnehmung',voice:'Sprache',sound:'Umgebungssound',photo:'Fotos'};
-    document.getElementById('dTags').innerHTML=typen.map(t=>'<span style="display:inline-block;font-size:10px;padding:3px 8px;border-radius:10px;background:#f0f4ff;color:#3730a3;margin:2px;">'+(typL[t]||t)+'</span>').join('');
-
-    const ebFarben={route:'#1D9E75',mood:'#facc15',thought:'#22c55e',sense:'#f97316',voice:'#7c3aed',sound:'#f97316',photo:'#555'};
-    const alleEb=['route','mood','thought','sense','voice','sound','photo'];
-    const vorh=new Set(['route',...typen]);
-    document.getElementById('dEbenen').innerHTML=alleEb.map(e=>{const ak=vorh.has(e);return'<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:3px 8px;border-radius:10px;background:'+(ak?ebFarben[e]+'22':'#f0f0f0')+';color:'+(ak?ebFarben[e]:'#bbb')+';border:1px solid '+(ak?ebFarben[e]+'44':'#e5e5e5')+';margin:2px;">'+(ak?'●':'○')+' '+(typL[e]||e)+'</span>';}).join('');
 
     document.getElementById('analyseModal').classList.add('open');
   }
 
   document.getElementById('analyseClose').onclick=()=>{document.getElementById('analyseModal').classList.remove('open');destroyAnalyseCharts();};
 
-  // ARCHIV rendern
   function renderArchive(){
     const list=document.getElementById('archiveList');
     if(!state.walks.length){list.innerHTML='<div style="font-size:11px;color:#999;">Noch keine Walks gespeichert.</div>';return;}
@@ -752,7 +741,6 @@ window.addEventListener('load', function() {
     });
   }
 
-  // EXPORT
   async function exportWalk(walk){
     if(typeof JSZip==='undefined'){alert('JSZip nicht geladen.');return;}
     const overlay=document.getElementById('exportOverlay');const msg=document.getElementById('exportMsg');overlay.classList.add('open');
