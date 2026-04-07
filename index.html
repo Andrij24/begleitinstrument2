@@ -438,16 +438,63 @@ window.addEventListener('load', function() {
     if(weight>4){const gc=Math.round(weight*1.2);for(let g=0;g<gc;g++){const t=Math.random(),gx=x1+(x2-x1)*t+jitter(weight*0.6),gy=y1+(y2-y1)*t+jitter(weight*0.6),gr=Math.random()*weight*0.18;ctx.beginPath();ctx.arc(gx,gy,gr,0,Math.PI*2);ctx.fillStyle='rgba(20,16,12,'+(alpha*Math.random()*0.5).toFixed(3)+')';ctx.fill();}}
   }
 
+  // ── InkLayer: korrekte Leaflet-Canvas-Synchronisation ──
+  // Verwendet latLngToLayerPoint + CSS-Transform damit die Route beim
+  // Zoomen/Panning nie verschoben wird (gleiche Methode wie L.Canvas intern)
   const InkLayer=L.Layer.extend({
     initialize(){this._segments=[];this._canvas=null;this._ctx=null;},
-    onAdd(map){this._map=map;this._canvas=document.createElement('canvas');this._canvas.style.cssText='position:absolute;top:0;left:0;pointer-events:none;z-index:400;';map.getPanes().overlayPane.appendChild(this._canvas);this._ctx=this._canvas.getContext('2d');map.on('moveend zoomend resize',this._redraw,this);this._resize();this._redraw();return this;},
-    onRemove(map){map.getPanes().overlayPane.removeChild(this._canvas);map.off('moveend zoomend resize',this._redraw,this);},
-    _resize(){const sz=this._map.getSize();this._canvas.width=sz.x;this._canvas.height=sz.y;},
-    addSegment(ll1,ll2,w,op){this._segments.push({ll1,ll2,weight:w,opacity:op});this._drawSegment(ll1,ll2,w,op);},
-    _latLngToCanvas(ll){return this._map.latLngToContainerPoint(ll);},
-    _drawSegment(ll1,ll2,w,op){if(!this._ctx)return;const p1=this._latLngToCanvas(ll1),p2=this._latLngToCanvas(ll2);drawInkStroke(this._ctx,p1.x,p1.y,p2.x,p2.y,w,op);},
-    _redraw(){if(!this._ctx)return;this._resize();this._ctx.clearRect(0,0,this._canvas.width,this._canvas.height);this._segments.forEach(s=>this._drawSegment(s.ll1,s.ll2,s.weight,s.opacity));},
-    clearSegments(){this._segments=[];if(this._ctx)this._ctx.clearRect(0,0,this._canvas.width,this._canvas.height);},
+    onAdd(map){
+      this._map=map;
+      const c=document.createElement('canvas');
+      c.style.cssText='position:absolute;top:0;left:0;pointer-events:none;z-index:400;';
+      map.getPanes().overlayPane.appendChild(c);
+      this._canvas=c; this._ctx=c.getContext('2d');
+      // Auf alle Karten-Events reagieren — auch während Zoom-Animation
+      map.on('movestart move moveend zoomstart zoom zoomend viewreset resize',this._onMapMove,this);
+      this._reset();
+      return this;
+    },
+    onRemove(map){
+      map.getPanes().overlayPane.removeChild(this._canvas);
+      map.off('movestart move moveend zoomstart zoom zoomend viewreset resize',this._onMapMove,this);
+    },
+    _onMapMove(){this._reset();},
+    _reset(){
+      // Canvas-Größe auf gesamte Karte setzen
+      const sz=this._map.getSize();
+      const topLeft=this._map.containerPointToLayerPoint([0,0]);
+      // Canvas im overlayPane positionieren
+      L.DomUtil.setPosition(this._canvas, topLeft);
+      this._canvas.width=sz.x;
+      this._canvas.height=sz.y;
+      this._redraw();
+    },
+    // Leaflet-Koordinaten → Canvas-Pixel (korrekt über layerPoint)
+    _ll2px(ll){
+      const lp=this._map.latLngToLayerPoint(ll);
+      const origin=this._map.containerPointToLayerPoint([0,0]);
+      return {x: lp.x - origin.x, y: lp.y - origin.y};
+    },
+    addSegment(ll1,ll2,w,op){
+      this._segments.push({ll1,ll2,weight:w,opacity:op});
+      // Sofort zeichnen ohne alles neu zu rendern (Performance)
+      if(this._ctx){
+        const p1=this._ll2px(ll1),p2=this._ll2px(ll2);
+        drawInkStroke(this._ctx,p1.x,p1.y,p2.x,p2.y,w,op);
+      }
+    },
+    _redraw(){
+      if(!this._ctx)return;
+      this._ctx.clearRect(0,0,this._canvas.width,this._canvas.height);
+      this._segments.forEach(s=>{
+        const p1=this._ll2px(s.ll1),p2=this._ll2px(s.ll2);
+        drawInkStroke(this._ctx,p1.x,p1.y,p2.x,p2.y,s.weight,s.opacity);
+      });
+    },
+    clearSegments(){
+      this._segments=[];
+      if(this._ctx)this._ctx.clearRect(0,0,this._canvas.width,this._canvas.height);
+    },
     getSegments(){return this._segments;}
   });
 
@@ -460,8 +507,12 @@ window.addEventListener('load', function() {
     if(smoothLat===null){smoothLat=rawLat;smoothLng=rawLng;}
     else{smoothLat+=0.25*(rawLat-smoothLat);smoothLng+=0.25*(rawLng-smoothLng);}
     const ll=[smoothLat,smoothLng],now=Date.now();
-    if(!state.liveMarker){state.liveMarker=L.circleMarker(ll,{radius:6,fillColor:'#111',color:'#fff',weight:2,fillOpacity:1,zIndexOffset:1000}).addTo(state.map);state.map.panTo(ll);}
-    else state.liveMarker.setLatLng(ll);
+    if(!state.liveMarker){
+      state.liveMarker=L.circleMarker(ll,{radius:6,fillColor:'#111',color:'#fff',weight:2,fillOpacity:1,zIndexOffset:1000}).addTo(state.map);
+      state.map.setView(ll,17);
+    } else {
+      state.liveMarker.setLatLng(ll);
+    }
     if(state.current){
       if(lastPos&&lastPosTime){
         const dist=haversineDist(lastPos,ll);if(dist<3)return;
@@ -476,7 +527,21 @@ window.addEventListener('load', function() {
       } else state.current.route.push(ll);
       lastPos=ll;lastPosTime=now;
     }
-  },err=>console.warn('GPS:',err.code),{enableHighAccuracy:true,maximumAge:2000,timeout:20000});
+  },err=>console.warn('GPS:',err.code),{enableHighAccuracy:true,maximumAge:0,timeout:30000});
+
+  // Screen WakeLock: verhindert dass GPS abbricht wenn Bildschirm dunkel wird
+  let wakeLock=null;
+  async function requestWakeLock(){
+    try{if('wakeLock' in navigator){wakeLock=await navigator.wakeLock.request('screen');}}
+    catch(e){console.log('WakeLock nicht verfügbar:',e);}
+  }
+  async function releaseWakeLock(){
+    if(wakeLock){try{await wakeLock.release();}catch(e){}wakeLock=null;}
+  }
+  // WakeLock nach Tab-Wechsel neu anfordern
+  document.addEventListener('visibilitychange',async()=>{
+    if(document.visibilityState==='visible'&&state.current){await requestWakeLock();}
+  });
 
   document.getElementById('btnStart').onclick=()=>{
     stepCount=0;lastStepTime=0;smoothedSpeed=0;lastPos=null;lastPosTime=null;
@@ -484,6 +549,7 @@ window.addEventListener('load', function() {
     document.getElementById('currentSpeed').textContent='—';
     inkLayer.clearSegments();
     state.current={id:Date.now(),name:new Date().toLocaleString('de-DE'),route:[],segments:[],entries:[],steps:0,color:walkColors[state.walks.length%walkColors.length],reflection:{frei:'',moodRetro:50,moment:'',orte:'',nicht:'',ueber:''}};
+    requestWakeLock();
     alert('Walk gestartet!');
   };
 
@@ -495,7 +561,7 @@ window.addEventListener('load', function() {
     inkLayer.clearSegments();
     Object.keys(mapLayers).forEach(k=>{mapLayers[k].forEach(l=>{try{state.map.removeLayer(l);}catch(e){}});mapLayers[k]=[];});
     if(!state.current.reflection)state.current.reflection={frei:'',moodRetro:50,moment:'',orte:'',nicht:'',ueber:''};
-    state.walks.push(state.current);saveWalks();state.current=null;renderArchive();openPanel('archiv');
+    releaseWakeLock();    state.walks.push(state.current);saveWalks();state.current=null;renderArchive();openPanel('archiv');
   };
 
   function saveWalks(){
@@ -653,6 +719,12 @@ window.addEventListener('load', function() {
       });
       group.addTo(state.map);state.activeLayers[id]=group;
       if(header)header.classList.add('shown');if(actions)actions.classList.add('open');
+      // Auto-Zoom: gesamte Route + Marker in den Blick nehmen
+      if(walk.route&&walk.route.length>1){
+        const bounds=L.latLngBounds(walk.route);
+        walk.entries.forEach(e=>{if(e.location)bounds.extend([e.location.lat,e.location.lng]);});
+        state.map.fitBounds(bounds,{padding:[60,60],maxZoom:17,animate:true,duration:0.8});
+      }
       currentRefId=id;
       document.getElementById('reflexionPanel').style.display='block';
       document.getElementById('refWalkName').innerText=walk.name;
