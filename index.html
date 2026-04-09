@@ -8,8 +8,6 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" defer></script>
-  <link rel="stylesheet" href="https://cdn.maptiler.com/maptiler-sdk-js/v2.0.1/maptiler-sdk.css"/>
-  <script src="https://cdn.maptiler.com/maptiler-sdk-js/v2.0.1/maptiler-sdk.umd.min.js"></script>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
     html,body{height:100%;overflow:hidden;font-family:sans-serif;}
@@ -406,214 +404,21 @@ window.addEventListener('load', function() {
     };
   });
 
-  // ── 3D Ansicht mit MapTiler SDK ──
-  // Graustufen-Karte + Route auf Grundebene + Eintrags-Marker
-  // API-Key eintragen: https://cloud.maptiler.com (kostenlos)
+  // ── 3D Ansicht ──
   const MAPTILER_3D_KEY = 'DEIN_MAPTILER_KEY';
-
   let map3dInstance = null;
-
   function open3DView(){
-    const center = state.liveMarker
-      ? state.liveMarker.getLatLng()
-      : state.map.getCenter();
-    const zoom = Math.min(state.map.getZoom(), 16);
-
-    document.getElementById('map3d').style.display = 'block';
-    document.getElementById('exit3d').style.display = 'block';
-    document.getElementById('map').style.display = 'none';
-
-    if(map3dInstance){ map3dInstance.remove(); map3dInstance = null; }
-
-    if(MAPTILER_3D_KEY === 'DEIN_MAPTILER_KEY'){
-      document.getElementById('map3d').innerHTML =
-        '<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#1a1a1a;">' +
-        '<div style="background:#222;border-radius:14px;padding:28px 32px;text-align:center;max-width:320px;">' +
-        '<div style="font-size:28px;margin-bottom:12px;">🏔</div>' +
-        '<div style="color:#fff;font-size:14px;font-weight:bold;margin-bottom:8px;">3D Ansicht</div>' +
-        '<div style="color:#aaa;font-size:12px;line-height:1.6;">Für die 3D-Ansicht wird ein kostenloser MapTiler API-Key benötigt.<br><br>' +
-        'Registrieren auf <b style="color:#fff;">cloud.maptiler.com</b> und den Key im Code bei <b style="color:#fff;">MAPTILER_3D_KEY</b> eintragen.</div>' +
-        '</div></div>';
-      return;
-    }
-
-    maptilersdk.config.apiKey = MAPTILER_3D_KEY;
-
-    map3dInstance = new maptilersdk.Map({
-      container: 'map3d',
-      // Graustufen-Stil
-      style: {
-        version: 8,
-        sources: {
-          'osm': {
-            type: 'raster',
-            tiles: ['https://api.maptiler.com/maps/streets-v2-light/{z}/{x}/{y}.png?key=' + MAPTILER_3D_KEY],
-            tileSize: 256,
-            attribution: '© MapTiler © OpenStreetMap'
-          },
-          'terrain': {
-            type: 'raster-dem',
-            url: 'https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=' + MAPTILER_3D_KEY,
-            tileSize: 256
-          }
-        },
-        layers: [{
-          id: 'base',
-          type: 'raster',
-          source: 'osm',
-          // Graustufen via Raster-Filter
-          paint: {
-            'raster-saturation': -1,    // -1 = vollständig Graustufen
-            'raster-brightness-min': 0.05,
-            'raster-brightness-max': 0.9,
-            'raster-contrast': 0.1
-          }
-        }],
-        terrain: { source: 'terrain', exaggeration: 1.4 },
-        sky: { 'sky-color': '#d8d8d8', 'sky-horizon-blend': 0.5,
-               'horizon-color': '#f0eeea', 'horizon-fog-blend': 0.5,
-               'fog-color': '#e8e6e2', 'fog-ground-blend': 0.5 }
-      },
-      center: [center.lng, center.lat],
-      zoom: zoom,
-      pitch: 55,
-      bearing: -15,
-      maxZoom: 18,
-    });
-
-    // Navigations-Controls
-    map3dInstance.addControl(new maptilersdk.NavigationControl({ visualizePitch: true }), 'top-right');
-
-    map3dInstance.on('load', () => {
-
-      // ── Alle aktiven Walk-Routen auf Grundebene ──
-      const walksToShow = [];
-      Object.keys(state.activeLayers).forEach(id => {
-        const walk = state.walks.find(w => w.id == id);
-        if(walk) walksToShow.push(walk);
-      });
-      if(state.current && state.current.route && state.current.route.length > 1){
-        walksToShow.push({ ...state.current, isLive: true });
-      }
-
-      walksToShow.forEach(walk => {
-        if(!walk.route || walk.route.length < 2) return;
-        const coords = walk.route.map(ll => [ll[1], ll[0]]);
-        const sid = 'route-' + walk.id;
-
-        // Route als dicke schwarze Linie auf Grundebene
-        map3dInstance.addSource(sid, {
-          type: 'geojson',
-          data: { type: 'Feature', geometry: { type: 'LineString', coordinates: coords } }
-        });
-        // Schatten-Layer (leicht versetzt für Tiefe)
-        map3dInstance.addLayer({
-          id: sid + '-shadow', type: 'line', source: sid,
-          paint: { 'line-color': '#000', 'line-width': 7, 'line-opacity': 0.15,
-                   'line-translate': [2, 2] }
-        });
-        // Hauptroute
-        map3dInstance.addLayer({
-          id: sid + '-line', type: 'line', source: sid,
-          paint: { 'line-color': walk.isLive ? '#2563eb' : '#1a1410',
-                   'line-width': 4, 'line-opacity': 0.9,
-                   'line-cap': 'round', 'line-join': 'round' }
-        });
-      });
-
-      // ── Eintrags-Marker als Punkte auf der Karte ──
-      const typeColor = {
-        mood:'#facc15', thought:'#22c55e', sense:'#f97316',
-        voice:'#7c3aed', sound:'#f58231', photo:'#555555'
-      };
-
-      // Alle Einträge aus aktiven Walks + laufendem Walk sammeln
-      const allEntries = [];
-      walksToShow.forEach(walk => {
-        (walk.entries || []).forEach(e => {
-          if(e.location) allEntries.push({ ...e, walkColor: walk.color });
-        });
-      });
-
-      if(allEntries.length > 0){
-        const geojson = {
-          type: 'FeatureCollection',
-          features: allEntries.map(e => ({
-            type: 'Feature',
-            geometry: { type: 'Point', coordinates: [e.location.lng, e.location.lat] },
-            properties: {
-              color: typeColor[e.type] || e.walkColor || '#888',
-              type: e.type,
-              text: e.text || (e.type === 'mood' ? String(e.moodValue || '') : ''),
-              moodValue: e.moodValue || null
-            }
-          }))
-        };
-
-        map3dInstance.addSource('entries', { type: 'geojson', data: geojson });
-
-        // Weißer Ring
-        map3dInstance.addLayer({
-          id: 'entries-ring', type: 'circle', source: 'entries',
-          paint: { 'circle-radius': 10, 'circle-color': '#ffffff',
-                   'circle-stroke-width': 0, 'circle-opacity': 0.9 }
-        });
-        // Farbiger Punkt
-        map3dInstance.addLayer({
-          id: 'entries-dot', type: 'circle', source: 'entries',
-          paint: { 'circle-radius': 7,
-                   'circle-color': ['get', 'color'],
-                   'circle-stroke-width': 2, 'circle-stroke-color': '#fff',
-                   'circle-opacity': 0.95 }
-        });
-        // Stimmungswert als Label
-        map3dInstance.addLayer({
-          id: 'entries-label', type: 'symbol', source: 'entries',
-          filter: ['==', ['get', 'type'], 'mood'],
-          layout: {
-            'text-field': ['get', 'text'],
-            'text-size': 10,
-            'text-offset': [0, -1.8],
-            'text-anchor': 'bottom',
-            'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold']
-          },
-          paint: { 'text-color': ['get', 'color'], 'text-halo-color': '#fff', 'text-halo-width': 1.5 }
-        });
-
-        // Popup bei Klick auf Marker
-        map3dInstance.on('click', 'entries-dot', e => {
-          const props = e.features[0].properties;
-          const coords = e.features[0].geometry.coordinates;
-          const typeNames = { mood:'Stimmung', thought:'Gedanke', sense:'Wahrnehmung', voice:'Sprache', sound:'Sound', photo:'Foto' };
-          const label = typeNames[props.type] || props.type;
-          const val = props.moodValue ? ` · ${props.moodValue}/100` : (props.text ? ` · ${props.text.substring(0,30)}` : '');
-          new maptilersdk.Popup()
-            .setLngLat(coords)
-            .setHTML(`<b style="font-size:12px;">${label}</b><span style="font-size:11px;color:#555;">${val}</span>`)
-            .addTo(map3dInstance);
-        });
-        map3dInstance.on('mouseenter', 'entries-dot', () => { map3dInstance.getCanvas().style.cursor = 'pointer'; });
-        map3dInstance.on('mouseleave', 'entries-dot', () => { map3dInstance.getCanvas().style.cursor = ''; });
-      }
-
-      // Kamera auf Route ausrichten wenn Walks aktiv
-      if(walksToShow.length > 0 && walksToShow[0].route && walksToShow[0].route.length > 1){
-        const allCoords = walksToShow.flatMap(w => (w.route || []).map(ll => [ll[1], ll[0]]));
-        const lngs = allCoords.map(c => c[0]);
-        const lats = allCoords.map(c => c[1]);
-        map3dInstance.fitBounds(
-          [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
-          { padding: 80, pitch: 55, bearing: -15, duration: 1200 }
-        );
-      }
-    });
+    const mapDiv=document.getElementById('map3d');
+    if(!mapDiv)return;
+    mapDiv.style.display='block';
+    document.getElementById('exit3d').style.display='block';
+    document.getElementById('map').style.display='none';
+    mapDiv.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#1a1a1a;color:#fff;font-size:13px;text-align:center;padding:20px;">🏔 3D Ansicht benötigt MapTiler API-Key.<br><br>Bitte MAPTILER_3D_KEY im Code eintragen.</div>';
   }
-
   document.getElementById('exit3d').onclick = () => {
-    document.getElementById('map3d').style.display = 'none';
-    document.getElementById('exit3d').style.display = 'none';
-    document.getElementById('map').style.display = 'block';
-    if(map3dInstance){ map3dInstance.remove(); map3dInstance = null; }
+    document.getElementById('map3d').style.display='none';
+    document.getElementById('exit3d').style.display='none';
+    document.getElementById('map').style.display='block';
     document.querySelectorAll('.layer-opt').forEach(b=>b.classList.remove('active'));
     document.querySelector('.layer-opt[data-url="'+currentTileUrl+'"]')?.classList.add('active');
   };
