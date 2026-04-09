@@ -1036,7 +1036,7 @@ window.addEventListener('load', function() {
       cbWrap.querySelector('input').onchange=()=>toggleVergleichSelect(w.id);
       item.appendChild(cbWrap);
 
-      header.innerHTML='<span class="color-dot" style="background:'+w.color+'">'</span><span class="walk-label">'+escHtml(w.name)+(w.steps?'<br><span style="font-size:9px;color:#9ca3af;font-weight:normal;">👣 '+(w.steps||0).toLocaleString('de-DE')+' Schritte'+(hasRef?' · ✍️':'')+'</span>':'')+'</span><span class="walk-badge">sichtbar</span>';
+      header.innerHTML='<span class="color-dot" style="background:'+w.color+'"></span><span class="walk-label">'+escHtml(w.name)+(w.steps?'<br><span style="font-size:9px;color:#9ca3af;font-weight:normal;">👣 '+(w.steps||0).toLocaleString('de-DE')+' Schritte'+(hasRef?' · ✍️':'')+' · '+walk.entries.length+' Eintr.'+'</span>':'')+' </span><span class="walk-badge">sichtbar</span>';
       header.addEventListener('click',()=>toggleWalk(w.id));
       const actions=document.createElement('div');actions.className='walk-actions';actions.setAttribute('data-id',w.id);
       actions.innerHTML='<input class="walk-name-input" type="text" placeholder="Name ändern..." value="'+escHtml(w.name)+'"/><div class="walk-btn-row"><button class="walk-btn wb-save">✏️ Umbenennen</button><button class="walk-btn wb-verlauf">📋 Reflexion</button><button class="walk-btn wb-analyse">📊 Auswerten</button><button class="walk-btn wb-export">📦 Export</button><button class="walk-btn wb-delete">🗑</button></div>';
