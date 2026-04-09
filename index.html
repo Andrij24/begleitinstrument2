@@ -977,22 +977,22 @@ window.addEventListener('load', function() {
   window.toggleWalk=toggleWalk;
 
 
-  // ── VERLAUF-ANSICHT: Route als 3D-Linie mit anklickbaren Punkten ──
+  // ── VERLAUF-ANSICHT: Echte GPS-Route in 3D mit anklickbaren Punkten ──
   let verlaufRenderer=null, verlaufAnimFrame=null, verlaufScene=null;
-  let verlaufMarkers=[], verlaufPlayInterval=null, verlaufPlayIdx=0;
-  let verlaufIsPlaying=false, verlaufEntries=[];
+  let verlaufMarkers=[], verlaufPlayInterval=null, verlaufIsPlaying=false;
+  let verlaufEntries=[];
 
   function openVerlauf(walk) {
     document.getElementById('verlaufTitle').textContent='Verlauf: '+walk.name;
     document.getElementById('verlaufModal').classList.add('open');
     document.getElementById('verlaufControls').style.display='none';
     document.getElementById('verlaufInfo').textContent='';
-    document.getElementById('verlaufEntryCard').textContent='';
+    document.getElementById('verlaufEntryCard').innerHTML='';
     document.getElementById('verlaufCanvas').innerHTML=
       '<p style="font-size:11px;color:#aaa;padding:12px 0;">⏳ Lade 3D-Ansicht...</p>';
 
-    verlaufEntries = walk.entries.filter(e=>e.location);
-    const route = walk.route||[];
+    verlaufEntries=walk.entries.filter(e=>e.location);
+    const route=walk.route||[];
 
     if(route.length<2){
       document.getElementById('verlaufCanvas').innerHTML=
@@ -1018,28 +1018,59 @@ window.addEventListener('load', function() {
     const container=document.getElementById('verlaufCanvas');
     container.innerHTML='';
     const W=container.clientWidth||540;
-    const H=Math.round(W*0.52);
+    const H=Math.round(W*0.6);
     container.style.height=H+'px';
 
+    // ── GPS → lokale Meter-Koordinaten ──
+    // Referenzpunkt = erster GPS-Punkt
+    const refLat=route[0][0], refLng=route[0][1];
+    const DEG_TO_M_LAT=111320;
+    function latLngToLocal(lat,lng){
+      const x=(lng-refLng)*DEG_TO_M_LAT*Math.cos(refLat*Math.PI/180);
+      const z=-(lat-refLat)*DEG_TO_M_LAT; // negiert: Nord = -Z in 3D
+      return {x,z};
+    }
+
+    // Alle Punkte in lokale Koordinaten umrechnen
+    const localPts=route.map(ll=>latLngToLocal(ll[0],ll[1]));
+
+    // Ausdehnung berechnen für Normalisierung
+    const xs=localPts.map(p=>p.x), zs=localPts.map(p=>p.z);
+    const minX=Math.min(...xs), maxX=Math.max(...xs);
+    const minZ=Math.min(...zs), maxZ=Math.max(...zs);
+    const spanX=maxX-minX||1, spanZ=maxZ-minZ||1;
+    const maxSpan=Math.max(spanX,spanZ);
+
+    // Normalisiere auf [-4, 4] Bereich, Proportionen bleiben exakt
+    const SCALE=8/maxSpan;
+    const cx=(minX+maxX)/2, cz=(minZ+maxZ)/2;
+    function toScene(local){
+      return new THREE.Vector3(
+        (local.x-cx)*SCALE,
+        0,
+        (local.z-cz)*SCALE
+      );
+    }
+
+    // Eintrags-Position auf Route projizieren
+    function entryToScene(lat,lng){
+      return toScene(latLngToLocal(lat,lng));
+    }
+
+    // ── Haversine für Distanz-Info ──
     function hdist(a,b){const R=6371000,tr=x=>x*Math.PI/180;const dLat=tr(b[0]-a[0]),dLon=tr(b[1]-a[1]);const h=Math.sin(dLat/2)**2+Math.cos(tr(a[0]))*Math.cos(tr(b[0]))*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
+    let totalDist=0;
+    for(let i=1;i<route.length;i++) totalDist+=hdist(route[i-1],route[i]);
 
-    const step=Math.max(1,Math.floor(route.length/120));
-    const samples=route.filter((_,i)=>i%step===0||i===route.length-1);
-    let cumDist=[0];
-    for(let i=1;i<samples.length;i++) cumDist.push(cumDist[i-1]+hdist(samples[i-1],samples[i]));
-    const totalDist=cumDist[cumDist.length-1]||1;
-
-    function nearestIdx(lat,lng){let b=0,bd=Infinity;samples.forEach((s,i)=>{const d=hdist([lat,lng],s);if(d<bd){bd=d;b=i;}});return b;}
-    function xFromDist(d){return(d/totalDist)*10-5;}
-
-    // ── Scene ──
+    // ── Three.js Scene ──
     verlaufScene=new THREE.Scene();
     verlaufScene.background=new THREE.Color(0x111111);
-    verlaufScene.fog=new THREE.Fog(0x111111,20,32);
+    verlaufScene.fog=new THREE.FogExp2(0x111111,0.045);
 
-    const camera=new THREE.PerspectiveCamera(40,W/H,0.01,100);
-    camera.position.set(0,1.8,7);
-    camera.lookAt(0,0.4,0);
+    const camera=new THREE.PerspectiveCamera(44,W/H,0.01,100);
+    // Kamera von schräg oben vorne — zeigt die echte Form der Route
+    camera.position.set(0,5,9);
+    camera.lookAt(0,0,0);
 
     verlaufRenderer=new THREE.WebGLRenderer({antialias:true});
     verlaufRenderer.setSize(W,H);
@@ -1048,93 +1079,119 @@ window.addEventListener('load', function() {
     container.appendChild(verlaufRenderer.domElement);
 
     // Beleuchtung
-    verlaufScene.add(new THREE.AmbientLight(0xffffff,0.5));
-    const dl=new THREE.DirectionalLight(0xffffff,0.8);
-    dl.position.set(2,6,4);dl.castShadow=true;
+    verlaufScene.add(new THREE.AmbientLight(0xffffff,0.45));
+    const dl=new THREE.DirectionalLight(0xffffff,0.85);
+    dl.position.set(3,8,5); dl.castShadow=true;
     verlaufScene.add(dl);
-    verlaufScene.add(Object.assign(new THREE.DirectionalLight(0xc8deff,0.3),{position:{set:(x,y,z)=>({x,y,z})}}) );
+    const bl=new THREE.DirectionalLight(0x8ab4d8,0.3);
+    bl.position.set(-4,3,-3);
+    verlaufScene.add(bl);
 
-    // Boden
-    const grid=new THREE.GridHelper(14,28,0x2a2a2a,0x222222);
+    // Boden-Gitter passend zur Route-Ausdehnung
+    const gridSize=Math.ceil(Math.max(spanX,spanZ)*SCALE)+4;
+    const grid=new THREE.GridHelper(gridSize*2,Math.min(40,gridSize*4),0x2a2a2a,0x1e1e1e);
     grid.position.y=-0.01;
     verlaufScene.add(grid);
 
-    // ── Route als Linie ──
-    const routePts=samples.map((s,i)=>new THREE.Vector3(xFromDist(cumDist[i]),0,0));
-    const routeCurve=new THREE.CatmullRomCurve3(routePts);
-    // Tube (dünne Linie)
-    const tubeGeo=new THREE.TubeGeometry(routeCurve,samples.length*2,0.04,8,false);
-    const tubeMat=new THREE.MeshStandardMaterial({color:0xdddddd,roughness:0.5,metalness:0.05,emissive:0x999999,emissiveIntensity:0.2});
-    verlaufScene.add(new THREE.Mesh(tubeGeo,tubeMat));
+    // ── Echte GPS-Route als Tube ──
+    // Subsampling für Performance, aber genug Punkte für genaue Form
+    const maxPts=200;
+    const skip=Math.max(1,Math.floor(route.length/maxPts));
+    const routeSamples=route.filter((_,i)=>i%skip===0||i===route.length-1);
+    const routeVecs=routeSamples.map(ll=>toScene(latLngToLocal(ll[0],ll[1])));
 
-    // Start/Ende
-    [[0x22c55e,-5],[0xef4444,5]].forEach(([col,xp])=>{
-      const m=new THREE.Mesh(new THREE.SphereGeometry(0.12,12,12),
-        new THREE.MeshStandardMaterial({color:col,emissive:col,emissiveIntensity:0.5}));
-      m.position.set(xp,0.12,0);verlaufScene.add(m);
+    // CatmullRom für weiche Kurve zwischen GPS-Punkten
+    const curve=new THREE.CatmullRomCurve3(routeVecs,false,'catmullrom',0.1);
+    const tubeSegs=Math.min(1000,routeVecs.length*4);
+    const tubeGeo=new THREE.TubeGeometry(curve,tubeSegs,0.05,8,false);
+    const tubeMat=new THREE.MeshStandardMaterial({
+      color:0xe8e8e8,roughness:0.4,metalness:0.05,
+      emissive:0xaaaaaa,emissiveIntensity:0.2
     });
+    const tube=new THREE.Mesh(tubeGeo,tubeMat);
+    tube.castShadow=true;
+    verlaufScene.add(tube);
 
-    // ── Eintrags-Marker als Punkte ──
+    // Start-Punkt (grün)
+    const startPos=toScene(latLngToLocal(route[0][0],route[0][1]));
+    const startM=new THREE.Mesh(
+      new THREE.SphereGeometry(0.15,12,12),
+      new THREE.MeshStandardMaterial({color:0x22c55e,emissive:0x22c55e,emissiveIntensity:0.6})
+    );
+    startM.position.copy(startPos); startM.position.y=0.15;
+    verlaufScene.add(startM);
+
+    // End-Punkt (rot)
+    const endPos=toScene(latLngToLocal(route[route.length-1][0],route[route.length-1][1]));
+    const endM=new THREE.Mesh(
+      new THREE.SphereGeometry(0.15,12,12),
+      new THREE.MeshStandardMaterial({color:0xef4444,emissive:0xef4444,emissiveIntensity:0.6})
+    );
+    endM.position.copy(endPos); endM.position.y=0.15;
+    verlaufScene.add(endM);
+
+    // ── Eintrags-Marker ──
     const typeColor={mood:0xfacc15,thought:0x22c55e,sense:0xf97316,voice:0x7c3aed,sound:0xf58231,photo:0x888888};
-    const typeHex={'mood':'#facc15','thought':'#22c55e','sense':'#f97316','voice':'#7c3aed','sound':'#f58231','photo':'#888888'};
-    const typeLabel={mood:'Stimmung',thought:'Gedanke',sense:'Wahrnehmung',voice:'Sprache',sound:'Sound',photo:'Foto'};
-    const usedX={};
+    const typeHex={mood:'#facc15',thought:'#22c55e',sense:'#f97316',voice:'#7c3aed',sound:'#f58231',photo:'#888888'};
+    const typeLabel={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Wahrnehmung',voice:'💬 Sprache',sound:'🎙 Sound',photo:'📸 Foto'};
+
+    // Kollisions-Tracking: Punkte am selben Ort staffeln
+    const usedPos={};
 
     entries.forEach((e,ei)=>{
       if(!e.location)return;
-      const idx=nearestIdx(e.location.lat,e.location.lng);
-      const xp=xFromDist(cumDist[idx]);
+      const scenePos=entryToScene(e.location.lat,e.location.lng);
       const col=typeColor[e.type]||0x888888;
-      const key=Math.round(xp*5);
-      usedX[key]=(usedX[key]||0)+1;
-      const zOff=(usedX[key]-1)*0.4;
 
-      // Stiel auf die Linie
-      const stielH=0.5;
-      const stielGeo=new THREE.CylinderGeometry(0.015,0.015,stielH,6);
-      const stielMat=new THREE.MeshStandardMaterial({color:col,opacity:0.5,transparent:true});
-      const stiel=new THREE.Mesh(stielGeo,stielMat);
-      stiel.position.set(xp,stielH/2,zOff);
+      // Kollisions-Key (gerundete Position)
+      const key=Math.round(scenePos.x*3)+'_'+Math.round(scenePos.z*3);
+      usedPos[key]=(usedPos[key]||0)+1;
+      const stackH=0.5+(usedPos[key]-1)*0.35;
+
+      const mat=new THREE.MeshStandardMaterial({
+        color:col,roughness:0.25,metalness:0.1,
+        emissive:col,emissiveIntensity:0.45
+      });
+
+      // Dünner Stiel von Route nach oben
+      const stielH=stackH;
+      const stiel=new THREE.Mesh(
+        new THREE.CylinderGeometry(0.018,0.018,stielH,6),
+        new THREE.MeshStandardMaterial({color:col,opacity:0.45,transparent:true})
+      );
+      stiel.position.set(scenePos.x, stielH/2, scenePos.z);
       verlaufScene.add(stiel);
 
-      // Kugel am Ende des Stiels
-      const sphereR=0.13;
-      const sphereGeo=new THREE.SphereGeometry(sphereR,14,14);
-      const sphereMat=new THREE.MeshStandardMaterial({
-        color:col,roughness:0.25,metalness:0.1,
-        emissive:col,emissiveIntensity:0.4
-      });
-      const sphere=new THREE.Mesh(sphereGeo,sphereMat);
-      sphere.position.set(xp,stielH+sphereR,zOff);
+      // Kugel oben
+      const sphere=new THREE.Mesh(new THREE.SphereGeometry(0.12,14,14),mat);
+      sphere.position.set(scenePos.x, stielH+0.12, scenePos.z);
       sphere.castShadow=true;
       verlaufScene.add(sphere);
 
-      // Outline-Ring für Auswahl
-      const ringGeo=new THREE.TorusGeometry(sphereR+0.05,0.02,8,24);
-      const ringMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0});
-      const ring=new THREE.Mesh(ringGeo,ringMat);
+      // Auswahl-Ring (unsichtbar bis hover/click)
+      const ring=new THREE.Mesh(
+        new THREE.TorusGeometry(0.19,0.025,8,24),
+        new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0})
+      );
       ring.position.copy(sphere.position);
       ring.rotation.x=Math.PI/2;
       verlaufScene.add(ring);
 
-      verlaufMarkers.push({
-        sphere, ring, entry:e, entryIdx:ei,
-        hex:typeHex[e.type]||'#888', label:typeLabel[e.type]||e.type
-      });
+      verlaufMarkers.push({sphere,ring,entry:e,entryIdx:ei,
+        hex:typeHex[e.type]||'#888',label:typeLabel[e.type]||e.type});
     });
 
-    // ── Raycaster für Klick/Hover ──
+    // ── Raycaster: Klick & Hover ──
     const raycaster=new THREE.Raycaster();
     const mouse=new THREE.Vector2();
     let hoveredMarker=null;
 
-    function getMarkerAt(mx,my){
+    function getMarkerAt(cx,cy){
       const rect=verlaufRenderer.domElement.getBoundingClientRect();
-      mouse.x=((mx-rect.left)/rect.width)*2-1;
-      mouse.y=-((my-rect.top)/rect.height)*2+1;
+      mouse.x=((cx-rect.left)/rect.width)*2-1;
+      mouse.y=-((cy-rect.top)/rect.height)*2+1;
       raycaster.setFromCamera(mouse,camera);
-      const meshes=verlaufMarkers.map(m=>m.sphere);
-      const hits=raycaster.intersectObjects(meshes);
+      const hits=raycaster.intersectObjects(verlaufMarkers.map(m=>m.sphere));
       if(!hits.length)return null;
       return verlaufMarkers.find(m=>m.sphere===hits[0].object)||null;
     }
@@ -1143,16 +1200,18 @@ window.addEventListener('load', function() {
       const m=getMarkerAt(ev.clientX,ev.clientY);
       if(hoveredMarker&&hoveredMarker!==m){
         hoveredMarker.ring.material.opacity=0;
-        hoveredMarker.sphere.material.emissiveIntensity=0.4;
+        hoveredMarker.sphere.material.emissiveIntensity=0.45;
+        hoveredMarker.sphere.scale.setScalar(1);
         verlaufRenderer.domElement.style.cursor='default';
       }
       if(m){
-        m.ring.material.opacity=0.85;
+        m.ring.material.opacity=0.8;
         m.sphere.material.emissiveIntensity=0.9;
+        m.sphere.scale.setScalar(1.25);
         verlaufRenderer.domElement.style.cursor='pointer';
         showEntryCard(m);
       }
-      hoveredMarker=m;
+      hoveredMarker=m||null;
     });
 
     verlaufRenderer.domElement.addEventListener('click',ev=>{
@@ -1160,68 +1219,86 @@ window.addEventListener('load', function() {
       if(m) showEntryCard(m);
     });
 
-    // ── Sanfte Kamerabewegung ──
-    let t=0;
+    // Touch-Support
+    verlaufRenderer.domElement.addEventListener('touchend',ev=>{
+      if(ev.changedTouches.length){
+        const t=ev.changedTouches[0];
+        const m=getMarkerAt(t.clientX,t.clientY);
+        if(m) showEntryCard(m);
+      }
+    });
+
+    // ── Kamera-Orbit (sanfte Rotation) ──
+    let camAngle=0, camDragging=false, camLastX=0;
+    let camTargetAngle=0, camCurrentAngle=0;
+
+    // Maus-Drag für manuelle Rotation
+    verlaufRenderer.domElement.addEventListener('mousedown',ev=>{camDragging=true;camLastX=ev.clientX;});
+    window.addEventListener('mouseup',()=>{camDragging=false;});
+    verlaufRenderer.domElement.addEventListener('mousemove',ev=>{
+      if(!camDragging)return;
+      const dx=ev.clientX-camLastX;
+      camTargetAngle+=dx*0.008;
+      camLastX=ev.clientX;
+    });
+
+    let animT=0;
     function animate(){
       verlaufAnimFrame=requestAnimationFrame(animate);
-      t+=0.004;
-      camera.position.x=Math.sin(t*0.4)*0.6;
-      camera.position.y=1.8+Math.sin(t*0.25)*0.1;
-      camera.lookAt(0,0.5,0);
+      animT+=0.003;
+      // Sanfte Auto-Rotation wenn kein Drag
+      if(!camDragging) camTargetAngle+=0.003;
+      camCurrentAngle+=(camTargetAngle-camCurrentAngle)*0.05;
+      const r=9;
+      camera.position.x=Math.sin(camCurrentAngle)*r;
+      camera.position.z=Math.cos(camCurrentAngle)*r;
+      camera.position.y=5+Math.sin(animT*0.3)*0.3;
+      camera.lookAt(0,0.2,0);
       verlaufRenderer.render(verlaufScene,camera);
     }
     animate();
 
-    // ── Playback ──
+    // Playback Controls einblenden
     const scrubber=document.getElementById('verlaufScrubber');
     scrubber.max=Math.max(1,verlaufMarkers.length-1);
     scrubber.value=0;
 
-    scrubber.addEventListener('input',function(){
+    scrubber.oninput=function(){
       stopPlayback();
-      const idx=parseInt(this.value);
-      highlightMarker(idx);
-    });
-
+      highlightMarker(parseInt(this.value));
+    };
     document.getElementById('verlaufPlay').onclick=()=>{
-      if(verlaufIsPlaying){stopPlayback();}
-      else{startPlayback();}
+      verlaufIsPlaying?stopPlayback():startPlayback();
     };
     document.getElementById('verlaufReset').onclick=()=>{
-      stopPlayback();
-      resetMarkers();
+      stopPlayback(); resetMarkers();
       scrubber.value=0;
       document.getElementById('verlaufEntryCard').innerHTML='';
     };
 
-    // Controls einblenden
     document.getElementById('verlaufControls').style.display='flex';
-
-    const distKm=(totalDist/1000).toFixed(2);
     document.getElementById('verlaufInfo').textContent=
-      `${distKm} km · ${entries.length} Einträge — Punkte anklicken oder ▶ Abspielen`;
+      `${(totalDist/1000).toFixed(2)} km · ${entries.length} Einträge · Route: echte GPS-Form · Drehen mit Maus`;
   }
 
   function showEntryCard(m){
     const e=m.entry;
-    const typeNames={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Wahrnehmung',
-                      voice:'💬 Sprache',sound:'🎙 Sound',photo:'📸 Foto'};
-    let html=`<span style="font-weight:bold;color:${m.hex};">${typeNames[e.type]||e.type}</span>`;
+    let html=`<span style="font-weight:bold;color:${m.hex};">${m.label}</span>`;
     if(e.type==='mood'&&e.moodValue!==undefined)
       html+=` <span style="font-size:13px;font-weight:bold;color:${m.hex};">${e.moodValue}/100</span>`;
-    if(e.text) html+=` · <span style="color:#555;">${escHtml(e.text.substring(0,40)+(e.text.length>40?'…':''))}</span>`;
+    if(e.text) html+=` · <span style="color:#444;">${escHtml(e.text.substring(0,50)+(e.text.length>50?'…':''))}</span>`;
     if(e.timestamp) html+=` <span style="color:#aaa;font-size:10px;">${e.timestamp}</span>`;
     if(e.audioUrl) html+=`<br><audio controls src="${e.audioUrl}" style="width:100%;margin-top:4px;height:28px;"></audio>`;
-    if(e.dataUrl) html+=`<br><img src="${e.dataUrl}" style="width:60px;border-radius:4px;margin-top:4px;"/>`;
+    if(e.dataUrl) html+=`<br><img src="${e.dataUrl}" style="width:64px;border-radius:4px;margin-top:4px;vertical-align:middle;"/>`;
     document.getElementById('verlaufEntryCard').innerHTML=html;
   }
 
   function highlightMarker(idx){
     verlaufMarkers.forEach((m,i)=>{
-      const active=(i===idx);
-      m.ring.material.opacity=active?0.9:0;
-      m.sphere.material.emissiveIntensity=active?1.0:0.4;
-      m.sphere.scale.setScalar(active?1.3:1.0);
+      const on=(i===idx);
+      m.ring.material.opacity=on?0.9:0;
+      m.sphere.material.emissiveIntensity=on?1.0:0.45;
+      m.sphere.scale.setScalar(on?1.35:1.0);
     });
     if(verlaufMarkers[idx]){
       showEntryCard(verlaufMarkers[idx]);
@@ -1232,7 +1309,7 @@ window.addEventListener('load', function() {
   function resetMarkers(){
     verlaufMarkers.forEach(m=>{
       m.ring.material.opacity=0;
-      m.sphere.material.emissiveIntensity=0.4;
+      m.sphere.material.emissiveIntensity=0.45;
       m.sphere.scale.setScalar(1.0);
     });
   }
@@ -1241,12 +1318,11 @@ window.addEventListener('load', function() {
     if(!verlaufMarkers.length)return;
     verlaufIsPlaying=true;
     document.getElementById('verlaufPlay').textContent='⏸ Pause';
-    verlaufPlayIdx=parseInt(document.getElementById('verlaufScrubber').value)||0;
+    let idx=parseInt(document.getElementById('verlaufScrubber').value)||0;
     verlaufPlayInterval=setInterval(()=>{
-      highlightMarker(verlaufPlayIdx);
-      verlaufPlayIdx++;
-      if(verlaufPlayIdx>=verlaufMarkers.length){stopPlayback();}
-    },1200);
+      highlightMarker(idx++);
+      if(idx>=verlaufMarkers.length) stopPlayback();
+    },1400);
   }
 
   function stopPlayback(){
