@@ -1026,26 +1026,72 @@ window.addEventListener('load', function() {
     list.innerHTML='';
     state.walks.forEach(w=>{
       const item=document.createElement('div');item.className='walk-item';
-      const header=document.createElement('div');header.className='walk-header';header.setAttribute('data-id',w.id);
       const hasRef=w.reflection&&(w.reflection.frei||w.reflection.moment);
-      // Vergleich-Checkbox
-      const cbWrap=document.createElement('label');
-      cbWrap.style.cssText='display:flex;align-items:center;padding:4px 10px 0;gap:6px;cursor:pointer;font-size:10px;color:#9ca3af;';
-      cbWrap.innerHTML=`<input type="checkbox" class="vgl-cb" data-id="${w.id}" style="cursor:pointer;"> Vergleich`;
-      cbWrap.querySelector('input').checked=selectedForVergleich.has(w.id);
-      cbWrap.querySelector('input').onchange=()=>toggleVergleichSelect(w.id);
-      item.appendChild(cbWrap);
 
-      header.innerHTML='<span class="color-dot" style="background:'+w.color+'"></span><span class="walk-label">'+escHtml(w.name)+(w.steps?'<br><span style="font-size:9px;color:#9ca3af;font-weight:normal;">👣 '+(w.steps||0).toLocaleString('de-DE')+' Schritte'+(hasRef?' · ✍️':'')+' · '+w.entries.length+' Eintr.'+'</span>':'')+' </span><span class="walk-badge">sichtbar</span>';
+      // Vergleich-Checkbox — als eigenes Input-Element erstellen
+      const cbRow=document.createElement('div');
+      cbRow.style.cssText='display:flex;align-items:center;padding:4px 10px 0;gap:6px;font-size:10px;color:#9ca3af;';
+      const cb=document.createElement('input');
+      cb.type='checkbox'; cb.style.cursor='pointer';
+      cb.checked=selectedForVergleich.has(w.id);
+      cb.addEventListener('change',()=>toggleVergleichSelect(w.id));
+      cbRow.appendChild(cb);
+      cbRow.appendChild(document.createTextNode(' Vergleich'));
+      item.appendChild(cbRow);
+
+      // Walk-Header
+      const header=document.createElement('div');
+      header.className='walk-header';
+      header.setAttribute('data-id',w.id);
+      header.innerHTML='<span class="color-dot" style="background:'+w.color+'"></span>'
+        +'<span class="walk-label">'+escHtml(w.name)
+        +(w.steps?'<br><span style="font-size:9px;color:#9ca3af;font-weight:normal;">👣 '
+          +(w.steps||0).toLocaleString('de-DE')+' Schritte'+(hasRef?' · ✍️':'')+' · '
+          +w.entries.length+' Eintr.</span>':'')
+        +'</span><span class="walk-badge">sichtbar</span>';
       header.addEventListener('click',()=>toggleWalk(w.id));
-      const actions=document.createElement('div');actions.className='walk-actions';actions.setAttribute('data-id',w.id);
-      actions.innerHTML='<input class="walk-name-input" type="text" placeholder="Name ändern..." value="'+escHtml(w.name)+'"/><div class="walk-btn-row"><button class="walk-btn wb-save">✏️ Umbenennen</button><button class="walk-btn wb-verlauf">📋 Reflexion</button><button class="walk-btn wb-analyse">📊 Auswerten</button><button class="walk-btn wb-export">📦 Export</button><button class="walk-btn wb-delete">🗑</button></div>';
-      actions.querySelector('.wb-save').onclick=()=>{const n=actions.querySelector('.walk-name-input').value.trim();if(!n)return;w.name=n;header.querySelector('.walk-label').firstChild.textContent=n;saveWalks();};
+      item.appendChild(header);
+
+      // Aktions-Buttons
+      const actions=document.createElement('div');
+      actions.className='walk-actions';
+      actions.setAttribute('data-id',w.id);
+      const nameInput=document.createElement('input');
+      nameInput.className='walk-name-input'; nameInput.type='text';
+      nameInput.placeholder='Name ändern...'; nameInput.value=escHtml(w.name);
+      actions.appendChild(nameInput);
+      const btnRow=document.createElement('div');
+      btnRow.className='walk-btn-row';
+      [
+        {cls:'wb-save',  label:'✏️ Umbenennen'},
+        {cls:'wb-verlauf',label:'📋 Reflexion'},
+        {cls:'wb-analyse',label:'📊 Auswerten'},
+        {cls:'wb-export', label:'📦 Export'},
+        {cls:'wb-delete', label:'🗑'},
+      ].forEach(({cls,label})=>{
+        const btn=document.createElement('button');
+        btn.className='walk-btn '+cls; btn.textContent=label;
+        btnRow.appendChild(btn);
+      });
+      actions.appendChild(btnRow);
+      item.appendChild(actions);
+
+      // Button-Handler
+      actions.querySelector('.wb-save').onclick=()=>{
+        const n=nameInput.value.trim();if(!n)return;
+        w.name=n;header.querySelector('.walk-label').firstChild.textContent=n;saveWalks();
+      };
       actions.querySelector('.wb-analyse').onclick=()=>openAnalyse(w);
       actions.querySelector('.wb-verlauf').onclick=()=>openVerlauf(w);
       actions.querySelector('.wb-export').onclick=()=>exportWalk(w);
-      actions.querySelector('.wb-delete').onclick=()=>{if(!confirm('Walk "'+w.name+'" wirklich löschen?'))return;if(state.activeLayers[w.id]){state.map.removeLayer(state.activeLayers[w.id]);delete state.activeLayers[w.id];}if(state.archiveInkLayers[w.id]){state.map.removeLayer(state.archiveInkLayers[w.id]);delete state.archiveInkLayers[w.id];}state.walks=state.walks.filter(x=>x.id!==w.id);saveWalks();renderArchive();};
-      item.appendChild(header);item.appendChild(actions);list.appendChild(item);
+      actions.querySelector('.wb-delete').onclick=()=>{
+        if(!confirm('Walk "'+w.name+'" wirklich löschen?'))return;
+        if(state.activeLayers[w.id]){state.map.removeLayer(state.activeLayers[w.id]);delete state.activeLayers[w.id];}
+        if(state.archiveInkLayers[w.id]){state.map.removeLayer(state.archiveInkLayers[w.id]);delete state.archiveInkLayers[w.id];}
+        state.walks=state.walks.filter(x=>x.id!==w.id);saveWalks();renderArchive();
+      };
+
+      list.appendChild(item);
     });
   }
 
