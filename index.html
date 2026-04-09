@@ -783,14 +783,17 @@ window.addEventListener('load', function() {
       zoomControl:true,
       attributionControl:false,
       dragging:true,
-      scrollWheelZoom:false,  // Verhindert Konflikt mit Seiten-Scroll
-      touchZoom:true,         // Pinch-to-Zoom mit 2 Fingern
-      doubleClickZoom:true,   // Doppeltipp zum Zoomen
-      tap:false,              // Tap via touchend (eigene Handler)
-      tapTolerance:15,
+      scrollWheelZoom:false,
+      touchZoom:true,
+      doubleClickZoom:true,
+      tap:false,
+      tapTolerance:20,
       bounceAtZoomLimits:false,
-      zoomSnap:0.5
+      zoomSnap:0.25,
+      zoomDelta:0.25
     });
+    // Touch-Events direkt auf Map-Container erlauben
+    verlaufMap.getContainer().style.touchAction='none';
 
     // Graustufen-Karte
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
@@ -1008,11 +1011,17 @@ window.addEventListener('load', function() {
       container.appendChild(row);
 
       // Szene nach kleinem Delay zeichnen (DOM muss sichtbar sein)
-      setTimeout(()=>{
-        // clientWidth kann 0 sein wenn Modal gerade öffnet — Fallback auf Bildschirmbreite
-        const fallbackW = sceneWrap.clientWidth || window.innerWidth - 40 || 320;
-        drawVglScene(cv,walk,sceneWrap,fallbackW);
-      }, 150+wi*80);
+      // Mehrfach-rAF: warten bis DOM-Layout fertig ist
+      (function tryDraw(attempts){
+        const fw = sceneWrap.getBoundingClientRect().width || 
+                   document.getElementById('vergleichContent').getBoundingClientRect().width ||
+                   window.innerWidth - 64;
+        if(fw > 10 || attempts <= 0){
+          drawVglScene(cv, walk, sceneWrap, fw);
+        } else {
+          requestAnimationFrame(()=>tryDraw(attempts-1));
+        }
+      })(20);
     });
   }
 
@@ -1045,7 +1054,7 @@ window.addEventListener('load', function() {
     let cum = [0];
     for(let i=1;i<pts.length;i++) cum.push(cum[i-1]+hdist(pts[i-1],pts[i]));
     const totalDist = cum[cum.length-1]||1;
-const W_CSS = Math.max(wrap.clientWidth||320, 800, Math.round(totalDist*0.4)+PAD*2);
+    const W_CSS = Math.max(fallbackW||wrap.clientWidth||320, 800, Math.round(totalDist*0.4)+PAD*2);
 
     function nearestIdx(lat,lng){let b=0,bd=Infinity;pts.forEach((p,i)=>{const d=hdist([lat,lng],p);if(d<bd){bd=d;b=i;}});return b;}
 
@@ -1374,12 +1383,12 @@ const W_CSS = Math.max(wrap.clientWidth||320, 800, Math.round(totalDist*0.4)+PAD
 </script>
 <!-- REFLEXIONS-MODAL -->
 <div id="verlaufModal">
-  <div id="verlaufBox" style="max-height:94vh;display:flex;flex-direction:column;overflow:hidden;">
+  <div id="verlaufBox" style="max-height:94vh;display:flex;flex-direction:column;overflow:hidden;touch-action:auto;">
     <div class="verlauf-header">
       <div class="verlauf-title" id="verlaufTitle">Reflexion</div>
       <button class="verlauf-close" id="verlaufClose">✕</button>
     </div>
-    <div id="verlaufMapDiv" style="width:100%;height:240px;border-radius:10px;overflow:hidden;flex-shrink:0;"></div>
+    <div id="verlaufMapDiv" style="width:100%;height:260px;border-radius:10px;overflow:hidden;flex-shrink:0;touch-action:none;"></div>
     <div id="verlaufEntryCard" style="background:#f5f5f5;border-radius:10px;padding:10px 12px;font-size:11px;color:#333;display:none;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
     <div id="verlaufInfo" style="font-size:10px;color:#9ca3af;margin-top:4px;margin-bottom:8px;"></div>
     <div id="reflexionQPanel" style="overflow-y:auto;display:none;flex-direction:column;gap:10px;padding-bottom:8px;">
