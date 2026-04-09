@@ -922,7 +922,7 @@ window.addEventListener('load', function() {
   window.toggleWalk=toggleWalk;
 
 
-  // ── REFLEXION: Skizzen-Stil, Höhenprofil aus echten GPS-Daten ──
+  // ── REFLEXION: Skizzen-Szene ──
   let rqCurrentWalkId=null;
 
   function openVerlauf(walk){
@@ -931,8 +931,9 @@ window.addEventListener('load', function() {
     document.getElementById('verlaufModal').classList.add('open');
     document.getElementById('verlaufEntryCard').style.display='none';
     document.getElementById('verlaufEntryCard').innerHTML='';
-    document.getElementById('verlaufInfo').textContent='Lade Höhendaten...';
+    document.getElementById('verlaufInfo').textContent='';
 
+    // Reflexion laden
     const ref=walk.reflection||{};
     document.getElementById('rqFrei').value=ref.frei||'';
     document.getElementById('rqMoment').value=ref.moment||'';
@@ -947,339 +948,248 @@ window.addEventListener('load', function() {
 
     const entries=walk.entries.filter(e=>e.location);
     const route=walk.route||[];
-
     if(route.length<2){
-      document.getElementById('verlaufSceneWrap').innerHTML=
-        '<p style="font-size:11px;color:#9ca3af;padding:20px;text-align:center;">Keine Route aufgezeichnet.</p>';
-      document.getElementById('verlaufInfo').textContent='';
+      document.getElementById('verlaufInfo').textContent='Keine Route aufgezeichnet.';
       return;
     }
 
-    // Höhendaten laden (max 80 Punkte für Open-Elevation)
-    const step=Math.max(1,Math.floor(route.length/80));
-    const samples=route.filter((_,i)=>i%step===0||i===route.length-1);
-
-    fetch('https://api.open-elevation.com/api/v1/lookup',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({locations:samples.map(ll=>({latitude:ll[0],longitude:ll[1]}))})
-    })
-    .then(r=>r.json())
-    .then(data=>{
-      const elevations=data.results?data.results.map(r=>r.elevation):samples.map(()=>0);
-      waitAndBuild(walk,route,entries,samples,elevations);
-    })
-    .catch(()=>{
-      waitAndBuild(walk,route,entries,samples,samples.map(()=>0));
-    });
+    // Szene nach kurzem Delay zeichnen (Modal muss sichtbar sein)
+    // requestAnimationFrame + 2 Frames Verzögerung
+    requestAnimationFrame(()=>requestAnimationFrame(()=>buildScene(walk,route,entries)));
   }
 
-  // Warte bis Canvas wirklich sichtbar und hat Breite > 0
-  function waitAndBuild(walk,route,entries,samples,elevations){
-    const canvas=document.getElementById('verlaufCanvas2D');
+  function buildScene(walk,route,entries){
     const wrap=document.getElementById('verlaufSceneWrap');
-    // Sofort versuchen
-    if(wrap.clientWidth>10){
-      buildScene2D(walk,route,entries,samples,elevations);
-      return;
-    }
-    // Sonst auf ResizeObserver warten
-    const ro=new ResizeObserver(_obs=>{
-      if(wrap.clientWidth>10){
-        ro.disconnect();
-        buildScene2D(walk,route,entries,samples,elevations);
-      }
-    });
-    ro.observe(wrap);
-    // Fallback nach 300ms
-    setTimeout(()=>{ro.disconnect();buildScene2D(walk,route,entries,samples,elevations);},300);
-  }
-
-  function buildScene2D(walk,route,entries,samples,elevations){
     const canvas=document.getElementById('verlaufCanvas2D');
-    const ctx=canvas.getContext('2d');
 
-    const H=260;
-    const PAD_L=60, PAD_R=60, PAD_T=30, PAD_B=20;
+    // Container-Breite lesen (nach Modal-Animation)
+    const W=Math.max(wrap.clientWidth||320, 320);
+    const H=220;
+    const SCALE=window.devicePixelRatio||1;
 
-    // ── Haversine ──
-    function hdist(a,b){const R=6371000,tr=x=>x*Math.PI/180;const dLat=tr(b[0]-a[0]),dLon=tr(b[1]-a[1]);const h=Math.sin(dLat/2)**2+Math.cos(tr(a[0]))*Math.cos(tr(b[0]))*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
-
-    // Kumulative Distanz entlang samples
-    let cum=[0];
-    for(let i=1;i<samples.length;i++) cum.push(cum[i-1]+hdist(samples[i-1],samples[i]));
-    const totalDist=cum[cum.length-1]||1;
-
-    // Canvas-Breite: mind. wrap-Breite oder Distanz-basiert
-    const wrapW=document.getElementById('verlaufSceneWrap').clientWidth||320;
-    const sceneW=Math.max(wrapW,Math.round(totalDist*0.38)+PAD_L+PAD_R);
-    canvas.width=sceneW;
-    canvas.height=H;
-    canvas.style.width=sceneW+'px';
+    canvas.width=W*SCALE;
+    canvas.height=H*SCALE;
+    canvas.style.width=W+'px';
     canvas.style.height=H+'px';
 
-    // Höhen-Bereich
-    const elMin=Math.min(...elevations);
-    const elMax=Math.max(...elevations);
-    const elSpan=Math.max(elMax-elMin,10); // mind. 10m Spanne
+    const ctx=canvas.getContext('2d');
+    ctx.scale(SCALE,SCALE);
 
-    // Boden-Level: unteres Drittel des Canvas
-    const GROUND_Y=H-PAD_B;
-    const PROFILE_H=H*0.45; // Höhe des nutzbaren Profil-Bereichs
+    // ── Haversine ──
+    function hdist(a,b){
+      const R=6371000,tr=x=>x*Math.PI/180;
+      const dLat=tr(b[0]-a[0]),dLon=tr(b[1]-a[1]);
+      const h=Math.sin(dLat/2)**2+Math.cos(tr(a[0]))*Math.cos(tr(b[0]))*Math.sin(dLon/2)**2;
+      return 2*R*Math.asin(Math.sqrt(h));
+    }
 
-    // Distanz → X
-    function dx(d){return PAD_L+(d/totalDist)*(sceneW-PAD_L-PAD_R);}
-    // Elevation → Y (höher = weiter oben)
-    function ey(el){return GROUND_Y-((el-elMin)/elSpan)*PROFILE_H;}
+    // Subsample route (max 150 Punkte)
+    const skip=Math.max(1,Math.floor(route.length/150));
+    const pts=route.filter((_,i)=>i%skip===0||i===route.length-1);
+    let cum=[0];
+    for(let i=1;i<pts.length;i++) cum.push(cum[i-1]+hdist(pts[i-1],pts[i]));
+    const totalDist=cum[cum.length-1]||1;
 
-    // Sample-Index für einen GPS-Punkt
+    // Nächster Punkt auf Route
     function nearestIdx(lat,lng){
       let b=0,bd=Infinity;
-      samples.forEach((s,i)=>{const d=hdist([lat,lng],s);if(d<bd){bd=d;b=i;}});
+      pts.forEach((p,i)=>{const d=hdist([lat,lng],p);if(d<bd){bd=d;b=i;}});
       return b;
     }
 
-    // ── ZEICHNEN ──
+    const PAD=40;
+    const ROUTE_Y=H*0.72; // Bodenlinie
+    function rx(d){return PAD+(d/totalDist)*(W-PAD*2);}
 
-    // Himmel-Gradient
-    const sky=ctx.createLinearGradient(0,0,0,H);
-    sky.addColorStop(0,'#d0d0ce');
-    sky.addColorStop(0.6,'#e4e3e0');
-    sky.addColorStop(1,'#ebebea');
-    ctx.fillStyle=sky;
-    ctx.fillRect(0,0,sceneW,H);
+    // ── Himmel ──
+    const skyG=ctx.createLinearGradient(0,0,0,H);
+    skyG.addColorStop(0,'#c8c8c6');
+    skyG.addColorStop(0.7,'#e2e1de');
+    skyG.addColorStop(1,'#eceae6');
+    ctx.fillStyle=skyG; ctx.fillRect(0,0,W,H);
 
-    // ── Bergsilhouetten aus echtem Höhenprofil ──
-    // Schicht 1: fernste Berge (gedämpft, hell)
-    function drawMtnLayer(yOffset,colorStr,blur,smoothing){
-      ctx.save();
-      if(blur>0){ctx.shadowColor=colorStr;ctx.shadowBlur=blur;}
+    // ── Bergsilhouetten (3 Schichten, aus Route-Form abgeleitet) ──
+    function drawMountains(offsetY, color, smoothFactor){
       ctx.beginPath();
       ctx.moveTo(0,H);
-      samples.forEach((s,i)=>{
-        const x=dx(cum[i]);
-        const y=ey(elevations[i])+yOffset;
+      const seg=Math.max(1,Math.floor(pts.length/30));
+      const mPts=pts.filter((_,i)=>i%seg===0||i===pts.length-1);
+      mPts.forEach((p,i)=>{
+        const x=rx(cum[pts.indexOf(p)]||0);
+        // Höhe aus Lat-Variation ableiten (Proxy für Gelände)
+        const latVar=(p[0]-Math.min(...pts.map(q=>q[0])))/(Math.max(...pts.map(q=>q[0]))-Math.min(...pts.map(q=>q[0]))||0.001);
+        const y=ROUTE_Y-offsetY-latVar*(H*0.25);
         i===0?ctx.lineTo(x,y):ctx.lineTo(x,y);
       });
-      ctx.lineTo(sceneW,H);
-      ctx.closePath();
-      ctx.fillStyle=colorStr;
-      ctx.fill();
-      ctx.restore();
+      ctx.lineTo(W,H); ctx.closePath();
+      ctx.fillStyle=color; ctx.fill();
+    }
+    drawMountains(H*0.05,'rgba(185,182,175,0.75)');
+    drawMountains(H*0.02,'rgba(160,157,150,0.85)');
+    drawMountains(0,      'rgba(130,128,122,0.9)');
+
+    // ── Boden ──
+    ctx.fillStyle='#1c1a18';
+    ctx.fillRect(0,ROUTE_Y,W,H-ROUTE_Y);
+    // Bodentextur
+    for(let x=0;x<W;x+=2){
+      const th=1.5+Math.sin(x*0.9)*1.2+Math.random()*3;
+      ctx.fillStyle=`rgba(0,0,0,${0.06+Math.random()*0.15})`;
+      ctx.fillRect(x,ROUTE_Y-th,1.5,th);
     }
 
-    // Hintere Schichten: grau und versetzt
-    drawMtnLayer(H*0.28,'rgba(195,193,188,0.7)',0,8);
-    drawMtnLayer(H*0.16,'rgba(175,173,168,0.8)',0,4);
-    drawMtnLayer(H*0.05,'rgba(150,148,143,0.9)',0,2);
-
-    // ── Dunkler Boden ──
-    ctx.fillStyle='#1e1c1a';
-    ctx.fillRect(0,GROUND_Y,sceneW,H-GROUND_Y);
-
-    // Boden-Textur
-    ctx.save();
-    for(let x=0;x<sceneW;x+=2){
-      const th=2+Math.sin(x*1.1)*1.8+Math.random()*4;
-      ctx.fillStyle=`rgba(0,0,0,${0.08+Math.random()*0.18})`;
-      ctx.fillRect(x,GROUND_Y-th,1.5,th+1);
-    }
-    ctx.restore();
-
-    // ── Echtes Höhenprofil als Geländefläche ──
-    // Ausgefüllte Fläche unter der Route
-    ctx.beginPath();
-    ctx.moveTo(dx(0),GROUND_Y);
-    samples.forEach((s,i)=>ctx.lineTo(dx(cum[i]),ey(elevations[i])));
-    ctx.lineTo(dx(totalDist),GROUND_Y);
-    ctx.closePath();
-    const geoFill=ctx.createLinearGradient(0,0,0,GROUND_Y);
-    geoFill.addColorStop(0,'rgba(90,85,78,0.45)');
-    geoFill.addColorStop(1,'rgba(40,38,34,0.7)');
-    ctx.fillStyle=geoFill;
-    ctx.fill();
-
-    // ── Route als Tuschelinie (exaktes Höhenprofil) ──
-    // 3 Passes für organischen Tuscheeffekt
+    // ── Route als Tuschelinie ──
     for(let pass=0;pass<3;pass++){
       ctx.beginPath();
       let first=true;
-      samples.forEach((s,i)=>{
-        const x=dx(cum[i])+(Math.random()-0.5)*(pass===0?0.6:pass===1?1.0:0.3);
-        const y=ey(elevations[i])+(Math.random()-0.5)*(pass===0?0.5:pass===1?0.8:0.3);
+      pts.forEach((p,i)=>{
+        const x=rx(cum[i])+(Math.random()-0.5)*(pass===0?0.5:0.9);
+        const y=ROUTE_Y+(Math.random()-0.5)*(pass===0?0.4:0.7);
         first?(ctx.moveTo(x,y),first=false):ctx.lineTo(x,y);
       });
-      ctx.strokeStyle=`rgba(12,8,4,${pass===0?0.75:pass===1?0.45:0.25})`;
-      ctx.lineWidth=pass===0?4:pass===1?2.5:1.5;
-      ctx.lineCap='round';ctx.lineJoin='round';
+      ctx.strokeStyle=`rgba(10,6,2,${pass===0?0.8:pass===1?0.5:0.25})`;
+      ctx.lineWidth=pass===0?4.5:pass===1?2.5:1.5;
+      ctx.lineCap='round'; ctx.lineJoin='round';
       ctx.stroke();
     }
 
-    // Start (grün) / Ende (rot)
-    const sp={x:dx(0),y:ey(elevations[0])};
-    const ep={x:dx(totalDist),y:ey(elevations[elevations.length-1])};
-    [[sp,'#22c55e'],[ep,'#ef4444']].forEach(([p,c])=>{
-      ctx.beginPath();ctx.arc(p.x,p.y,6,0,Math.PI*2);
+    // Start/Ende
+    [{x:rx(0),c:'#22c55e'},{x:rx(totalDist),c:'#ef4444'}].forEach(({x,c})=>{
+      ctx.beginPath();ctx.arc(x,ROUTE_Y,5,0,Math.PI*2);
       ctx.fillStyle=c;ctx.fill();
-      ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+      ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
     });
 
-    // ── EINTRAGS-MARKER als Sprechblasen ──
-    const typeColor={mood:'#f97316',thought:'#1e3a6e',sense:'#2d5a2d',voice:'#3a3a3a',sound:'#3a3a3a',photo:'#2a2a2a'};
-    const typeBorder={mood:'#c2460a',thought:'#0f1f3a',sense:'#1a3a1a',voice:'#111',sound:'#111',photo:'#111'};
-    const typeLabel={mood:'Stimmung',thought:'Gedanken',sense:'Wahrnehmung',voice:'Sprachnachricht',sound:'Umgebungssound',photo:'Fotos'};
+    // ── Sprechblasen-Marker ──
+    const TC={mood:'#f97316',thought:'#1e3a6e',sense:'#2d5a2d',voice:'#2a2a2a',sound:'#2a2a2a',photo:'#2a2a2a'};
+    const TL={mood:'Stimmung',thought:'Gedanken',sense:'Wahrnehmung',voice:'Sprachnachricht',sound:'Umgebungssound',photo:'Fotos'};
 
     const markerData=[];
-    const usedX={};
+    const usedBuckets={};
 
     entries.forEach((e,ei)=>{
       if(!e.location)return;
       const idx=nearestIdx(e.location.lat,e.location.lng);
-      const x=dx(cum[idx]);
-      const routeY=ey(elevations[idx]);
-
-      // X-Kollision: leicht versetzen
-      const key=Math.round(x/85);
-      usedX[key]=(usedX[key]||0)+1;
-      const xOff=(usedX[key]-1)*6;
-
-      const bW=88, bH=68, tailH=16;
-      const stackUp=(usedX[key]-1)*86;
-      const bY=routeY-tailH-bH-stackUp-4;
-
-      markerData.push({e,x:x+xOff,routeY,bY,bW,bH,tailH,
-        col:typeColor[e.type]||'#444',
-        border:typeBorder[e.type]||'#222',
-        label:typeLabel[e.type]||e.type});
+      const baseX=rx(cum[idx]);
+      const bucket=Math.round(baseX/90);
+      usedBuckets[bucket]=(usedBuckets[bucket]||0)+1;
+      const stack=usedBuckets[bucket]-1;
+      const bW=85,bH=62,tail=14;
+      const bY=ROUTE_Y-tail-bH-stack*80-6;
+      markerData.push({e,x:baseX,bY,bW,bH,tail,col:TC[e.type]||'#333',label:(TL[e.type]||e.type),ei});
     });
 
-    function drawMarker(m,highlighted){
-      const {x,routeY,bY,bW,bH,tailH,col,border}=m;
-      const bX=x-bW/2, r=9;
+    function drawBubble(m,hl){
+      const{x,bY,bW,bH,tail,col}=m;
+      const bX=x-bW/2,r=8;
       ctx.save();
-      // Schatten
-      ctx.shadowColor='rgba(0,0,0,0.3)';ctx.shadowBlur=8;ctx.shadowOffsetY=3;
-      // Sprechblasen-Form
+      ctx.shadowColor='rgba(0,0,0,0.28)';ctx.shadowBlur=7;ctx.shadowOffsetY=2;
       ctx.beginPath();
       ctx.moveTo(bX+r,bY);ctx.lineTo(bX+bW-r,bY);
       ctx.quadraticCurveTo(bX+bW,bY,bX+bW,bY+r);
       ctx.lineTo(bX+bW,bY+bH-r);
       ctx.quadraticCurveTo(bX+bW,bY+bH,bX+bW-r,bY+bH);
-      ctx.lineTo(x+8,bY+bH);ctx.lineTo(x,bY+bH+tailH);ctx.lineTo(x-8,bY+bH);
+      ctx.lineTo(x+7,bY+bH);ctx.lineTo(x,bY+bH+tail);ctx.lineTo(x-7,bY+bH);
       ctx.lineTo(bX+r,bY+bH);
       ctx.quadraticCurveTo(bX,bY+bH,bX,bY+bH-r);
-      ctx.lineTo(bX,bY+r);ctx.quadraticCurveTo(bX,bY,bX+r,bY);ctx.closePath();
+      ctx.lineTo(bX,bY+r);ctx.quadraticCurveTo(bX,bY,bX+r,bY);
+      ctx.closePath();
       ctx.fillStyle=col;ctx.fill();
       ctx.shadowColor='transparent';
-      if(highlighted){ctx.strokeStyle='#fff';ctx.lineWidth=2.5;}
-      else{ctx.strokeStyle=border;ctx.lineWidth=1.5;}
-      ctx.stroke();
-
-      // Highlight-Glühen
-      if(highlighted){
-        ctx.shadowColor='rgba(255,220,0,0.7)';ctx.shadowBlur=14;
-        ctx.stroke();ctx.shadowColor='transparent';
-      }
+      ctx.strokeStyle=hl?'#fff':'rgba(0,0,0,0.35)';
+      ctx.lineWidth=hl?2:1;ctx.stroke();
+      if(hl){ctx.shadowColor='rgba(255,220,80,0.6)';ctx.shadowBlur=12;ctx.stroke();}
 
       // Label
-      ctx.fillStyle='rgba(255,255,255,0.88)';ctx.font='bold 7.5px sans-serif';ctx.textAlign='center';
-      ctx.fillText(m.label.toUpperCase().substring(0,13),x,bY+12);
-
-      // Inhalt je Typ
-      const e=m.e;
       ctx.shadowColor='transparent';
-      if(e.type==='mood'&&e.moodValue!==undefined){
-        ctx.fillStyle='#fff';ctx.font='bold 24px sans-serif';ctx.textAlign='center';
-        ctx.fillText(e.moodValue,x,bY+bH-14);
-        ctx.font='8px sans-serif';ctx.fillText('/100',x,bY+bH-3);
+      ctx.fillStyle='rgba(255,255,255,0.85)';
+      ctx.font='bold 7px sans-serif';ctx.textAlign='center';
+      ctx.fillText(m.label.substring(0,11).toUpperCase(),x,bY+11);
+
+      // Inhalt
+      const e=m.e;
+      if(e.type==='mood'&&e.moodValue!=null){
+        ctx.fillStyle='#fff';ctx.font='bold 22px sans-serif';
+        ctx.fillText(e.moodValue,x,bY+bH-13);
+        ctx.font='7px sans-serif';ctx.fillText('/100',x,bY+bH-3);
       } else if(e.type==='photo'&&e.dataUrl){
-        // Foto-Vorschau im Marker
         const img=new Image();
         img.onload=()=>{
-          ctx.save();
-          ctx.beginPath();
-          ctx.rect(bX+5,bY+17,bW-10,bH-24);
-          ctx.clip();
-          ctx.drawImage(img,bX+5,bY+17,bW-10,bH-24);
+          ctx.save();ctx.beginPath();
+          ctx.rect(bX+5,bY+16,bW-10,bH-22);ctx.clip();
+          ctx.drawImage(img,bX+5,bY+16,bW-10,bH-22);
           ctx.restore();
-        };
-        img.src=e.dataUrl;
-        // Fallback Icon
-        ctx.fillStyle='rgba(255,255,255,0.6)';ctx.font='18px sans-serif';ctx.textAlign='center';
-        ctx.fillText('📷',x,bY+bH-14);
+        };img.src=e.dataUrl;
+        ctx.font='16px sans-serif';ctx.fillText('📷',x,bY+bH-12);
       } else if(e.type==='voice'||e.type==='sound'){
-        const bars=[0.3,0.7,1,0.8,0.45,0.9,0.4,0.75,0.35,0.6];
-        ctx.strokeStyle='rgba(255,255,255,0.82)';ctx.lineWidth=2;
+        const bars=[.3,.7,1,.8,.5,.9,.4,.7,.35,.6];
+        ctx.strokeStyle='rgba(255,255,255,0.75)';ctx.lineWidth=1.8;
         bars.forEach((h,i)=>{
-          const bx=bX+9+i*(bW-18)/9;
-          const bh=(bH-28)*h;
-          ctx.beginPath();ctx.moveTo(bx,bY+bH/2+bh/2-4);ctx.lineTo(bx,bY+bH/2-bh/2-4);ctx.stroke();
+          const bx=bX+9+i*(bW-18)/9,bh=(bH-26)*h;
+          ctx.beginPath();ctx.moveTo(bx,bY+bH/2+bh/2-3);ctx.lineTo(bx,bY+bH/2-bh/2-3);ctx.stroke();
         });
       } else if(e.text){
-        ctx.fillStyle='rgba(255,255,255,0.92)';ctx.font='8.5px sans-serif';ctx.textAlign='center';
+        ctx.fillStyle='rgba(255,255,255,0.9)';ctx.font='8px sans-serif';
         const words=e.text.split(' ');let line='',lines=[];
-        words.forEach(w=>{const t=line+w+' ';if(ctx.measureText(t).width>bW-14&&line){lines.push(line.trim());line=w+' ';}else line=t;});
+        words.forEach(w=>{const t=line+w+' ';ctx.measureText(t).width>bW-12&&line?(lines.push(line.trim()),line=w+' '):line=t;});
         lines.push(line.trim());
-        lines.slice(0,4).forEach((l,i)=>ctx.fillText(l,x,bY+22+i*11));
+        lines.slice(0,4).forEach((l,i)=>ctx.fillText(l,x,bY+20+i*11));
       }
       ctx.restore();
     }
 
-    markerData.forEach(m=>drawMarker(m,false));
+    markerData.forEach(m=>drawBubble(m,false));
 
-    // ── Hit-Test ──
+    // ── Tippen / Klicken ──
     function hitTest(cx,cy){
       const rect=canvas.getBoundingClientRect();
-      const sx=canvas.width/rect.width, sy=canvas.height/rect.height;
+      const sx=W/rect.width, sy=H/rect.height;
       const px=(cx-rect.left)*sx, py=(cy-rect.top)*sy;
       for(let i=markerData.length-1;i>=0;i--){
         const m=markerData[i];
-        if(px>=m.x-m.bW/2&&px<=m.x+m.bW/2&&py>=m.bY&&py<=m.bY+m.bH+m.tailH) return m;
+        if(px>=m.x-m.bW/2&&px<=m.x+m.bW/2&&py>=m.bY&&py<=m.bY+m.bH+m.tail) return m;
       }
       return null;
     }
 
-    function redrawAll(highlighted){
-      // Komplette Szene neu zeichnen
-      ctx.fillStyle=sky;ctx.fillRect(0,0,sceneW,H);
-      drawMtnLayer(H*0.28,'rgba(195,193,188,0.7)',0,8);
-      drawMtnLayer(H*0.16,'rgba(175,173,168,0.8)',0,4);
-      drawMtnLayer(H*0.05,'rgba(150,148,143,0.9)',0,2);
-      ctx.fillStyle='#1e1c1a';ctx.fillRect(0,GROUND_Y,sceneW,H-GROUND_Y);
-      for(let x=0;x<sceneW;x+=2){const th=2+Math.sin(x*1.1)*1.8+Math.random()*4;ctx.fillStyle=`rgba(0,0,0,${0.08+Math.random()*0.18})`;ctx.fillRect(x,GROUND_Y-th,1.5,th+1);}
-      ctx.beginPath();ctx.moveTo(dx(0),GROUND_Y);samples.forEach((s,i)=>ctx.lineTo(dx(cum[i]),ey(elevations[i])));ctx.lineTo(dx(totalDist),GROUND_Y);ctx.closePath();ctx.fillStyle=geoFill;ctx.fill();
-      for(let pass=0;pass<3;pass++){ctx.beginPath();let first=true;samples.forEach((s,i)=>{const x=dx(cum[i])+(Math.random()-0.5)*(pass===0?0.6:1.0);const y=ey(elevations[i])+(Math.random()-0.5)*(pass===0?0.5:0.8);first?(ctx.moveTo(x,y),first=false):ctx.lineTo(x,y);});ctx.strokeStyle=`rgba(12,8,4,${pass===0?0.75:pass===1?0.45:0.25})`;ctx.lineWidth=pass===0?4:pass===1?2.5:1.5;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();}
-      [[sp,'#22c55e'],[ep,'#ef4444']].forEach(([p,c])=>{ctx.beginPath();ctx.arc(p.x,p.y,6,0,Math.PI*2);ctx.fillStyle=c;ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();});
-      markerData.forEach(m=>drawMarker(m,m===highlighted));
+    function select(m){
+      // Neu zeichnen mit Highlight
+      ctx.clearRect(0,0,W,H);
+      ctx.fillStyle=skyG;ctx.fillRect(0,0,W,H);
+      drawMountains(H*0.05,'rgba(185,182,175,0.75)');
+      drawMountains(H*0.02,'rgba(160,157,150,0.85)');
+      drawMountains(0,'rgba(130,128,122,0.9)');
+      ctx.fillStyle='#1c1a18';ctx.fillRect(0,ROUTE_Y,W,H-ROUTE_Y);
+      for(let x=0;x<W;x+=2){const th=1.5+Math.sin(x*0.9)*1.2+Math.random()*3;ctx.fillStyle=`rgba(0,0,0,${0.06+Math.random()*0.15})`;ctx.fillRect(x,ROUTE_Y-th,1.5,th);}
+      for(let pass=0;pass<3;pass++){ctx.beginPath();let first=true;pts.forEach((p,i)=>{const x=rx(cum[i]);const y=ROUTE_Y;first?(ctx.moveTo(x,y),first=false):ctx.lineTo(x,y);});ctx.strokeStyle=`rgba(10,6,2,${pass===0?0.8:pass===1?0.5:0.25})`;ctx.lineWidth=pass===0?4.5:pass===1?2.5:1.5;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();}
+      [{x:rx(0),c:'#22c55e'},{x:rx(totalDist),c:'#ef4444'}].forEach(({x,c})=>{ctx.beginPath();ctx.arc(x,ROUTE_Y,5,0,Math.PI*2);ctx.fillStyle=c;ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();});
+      markerData.forEach(md=>drawBubble(md,md===m));
+      showEntryCard2D(m);
     }
 
-    canvas.onclick=ev=>{
-      const m=hitTest(ev.clientX,ev.clientY);
-      if(m){redrawAll(m);showEntryCard2D(m);}
-    };
+    canvas.onclick=ev=>{const m=hitTest(ev.clientX,ev.clientY);if(m)select(m);};
     canvas.addEventListener('touchend',ev=>{
       ev.preventDefault();
       const t=ev.changedTouches[0];
       const m=hitTest(t.clientX,t.clientY);
-      if(m){redrawAll(m);showEntryCard2D(m);}
+      if(m)select(m);
     },{passive:false});
 
     document.getElementById('verlaufInfo').textContent=
-      `${(totalDist/1000).toFixed(2)} km · Höhe: ${Math.round(elMin)}–${Math.round(elMax)} m · ${entries.length} Einträge · Tippen zum Öffnen`;
+      `${(totalDist/1000).toFixed(2)} km · ${entries.length} Einträge · Scrollen & Tippen`;
   }
 
   function showEntryCard2D(m){
     const e=m.e;
     const card=document.getElementById('verlaufEntryCard');
     card.style.display='flex';
-    const typeNames={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Wahrnehmung',voice:'💬 Sprachnachricht',sound:'🎙 Umgebungssound',photo:'📸 Foto'};
-    let html=`<span style="font-weight:bold;">${typeNames[e.type]||e.type}</span>`;
-    if(e.type==='mood'&&e.moodValue!==undefined)
-      html+=`<span style="font-size:14px;font-weight:bold;color:#f97316;"> ${e.moodValue}/100</span>`;
+    const TN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Wahrnehmung',voice:'💬 Sprachnachricht',sound:'🎙 Umgebungssound',photo:'📸 Foto'};
+    let html=`<span style="font-weight:bold;">${TN[e.type]||e.type}</span>`;
+    if(e.type==='mood'&&e.moodValue!=null) html+=` <span style="color:#f97316;font-weight:bold;font-size:14px;">${e.moodValue}/100</span>`;
     if(e.text) html+=` <span style="color:#444;">${escHtml(e.text)}</span>`;
     if(e.timestamp) html+=` <span style="color:#aaa;font-size:10px;">${e.timestamp}</span>`;
-    if(e.audioUrl) html+=`<br style="width:100%;"/><audio controls src="${e.audioUrl}" style="width:100%;margin-top:6px;"></audio>`;
-    if(e.dataUrl) html+=`<br style="width:100%;"/><img src="${e.dataUrl}" style="max-width:100%;border-radius:8px;margin-top:6px;"/>`;
+    if(e.audioUrl) html+=`<br/><audio controls src="${e.audioUrl}" style="width:100%;margin-top:6px;"></audio>`;
+    if(e.dataUrl) html+=`<br/><img src="${e.dataUrl}" style="max-width:100%;border-radius:8px;margin-top:6px;"/>`;
     card.innerHTML=html;
   }
 
