@@ -967,11 +967,32 @@ window.addEventListener('load', function() {
     .then(r=>r.json())
     .then(data=>{
       const elevations=data.results?data.results.map(r=>r.elevation):samples.map(()=>0);
-      setTimeout(()=>buildScene2D(walk,route,entries,samples,elevations),60);
+      waitAndBuild(walk,route,entries,samples,elevations);
     })
     .catch(()=>{
-      setTimeout(()=>buildScene2D(walk,route,entries,samples,samples.map(()=>0)),60);
+      waitAndBuild(walk,route,entries,samples,samples.map(()=>0));
     });
+  }
+
+  // Warte bis Canvas wirklich sichtbar und hat Breite > 0
+  function waitAndBuild(walk,route,entries,samples,elevations){
+    const canvas=document.getElementById('verlaufCanvas2D');
+    const wrap=document.getElementById('verlaufSceneWrap');
+    // Sofort versuchen
+    if(wrap.clientWidth>10){
+      buildScene2D(walk,route,entries,samples,elevations);
+      return;
+    }
+    // Sonst auf ResizeObserver warten
+    const ro=new ResizeObserver(_obs=>{
+      if(wrap.clientWidth>10){
+        ro.disconnect();
+        buildScene2D(walk,route,entries,samples,elevations);
+      }
+    });
+    ro.observe(wrap);
+    // Fallback nach 300ms
+    setTimeout(()=>{ro.disconnect();buildScene2D(walk,route,entries,samples,elevations);},300);
   }
 
   function buildScene2D(walk,route,entries,samples,elevations){
@@ -989,8 +1010,9 @@ window.addEventListener('load', function() {
     for(let i=1;i<samples.length;i++) cum.push(cum[i-1]+hdist(samples[i-1],samples[i]));
     const totalDist=cum[cum.length-1]||1;
 
-    // Canvas-Breite: mind. 800px, max. Distanz * 0.4px/m
-    const sceneW=Math.max(800,Math.round(totalDist*0.38)+PAD_L+PAD_R);
+    // Canvas-Breite: mind. wrap-Breite oder Distanz-basiert
+    const wrapW=document.getElementById('verlaufSceneWrap').clientWidth||320;
+    const sceneW=Math.max(wrapW,Math.round(totalDist*0.38)+PAD_L+PAD_R);
     canvas.width=sceneW;
     canvas.height=H;
     canvas.style.width=sceneW+'px';
