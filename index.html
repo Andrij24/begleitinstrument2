@@ -1023,229 +1023,84 @@ window.addEventListener('load', function() {
     }));
   }
   function drawVglScene(canvas,walk,wrap,fallbackW){
-    const ctx = canvas.getContext('2d');
-    const entries = walk.entries.filter(e=>e.location);
-    const route = walk.route||[];
+    // Leaflet-Karte statt Canvas — zuverlässiger auf allen Geräten
+    const mapId='vglmap_'+walk.id+'_'+Date.now();
+    const mapDiv=document.createElement('div');
+    mapDiv.id=mapId;
+    mapDiv.style.cssText='width:100%;height:200px;border-radius:0 0 10px 10px;';
+    // Canvas durch Leaflet-Div ersetzen
+    wrap.innerHTML='';
+    wrap.style.height='200px';
+    wrap.style.overflow='hidden';
+    wrap.appendChild(mapDiv);
 
-    // Handy-Pixel-Ratio für scharfe Darstellung
-    const DPR = Math.min(window.devicePixelRatio||1, 2);
-    // Höhe: 220 CSS-Pixel — gut auf Handy sichtbar
-    const H_CSS = 220;
-    // Mindestbreite 800px damit auf Handy immer gescrollt werden kann
-    
-    if(route.length < 2){
-      const noW=Math.max(fallbackW||wrap.clientWidth||320,320);
-      canvas.width=noW*DPR; canvas.height=H_CSS*DPR;
-      canvas.style.width=noW+'px'; canvas.style.height=H_CSS+'px';
-      ctx.scale(DPR,DPR);
-      ctx.fillStyle='#e8e7e4'; ctx.fillRect(0,0,noW,H_CSS);
-      ctx.fillStyle='#aaa'; ctx.font='13px sans-serif'; ctx.textAlign='center';
-      ctx.fillText('Keine Route aufgezeichnet',noW/2,H_CSS/2);
+    if(!walk.route||walk.route.length<2){
+      mapDiv.style.cssText+='background:#e8e6e2;display:flex;align-items:center;justify-content:center;';
+      mapDiv.innerHTML='<span style="color:#aaa;font-size:12px;">Keine Route</span>';
       return;
     }
 
-    function hdist(a,b){const R=6371000,tr=x=>x*Math.PI/180,dLat=tr(b[0]-a[0]),dLon=tr(b[1]-a[1]),h=Math.sin(dLat/2)**2+Math.cos(tr(a[0]))*Math.cos(tr(b[0]))*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
+    const m=L.map(mapId,{
+      zoomControl:false,attributionControl:false,
+      dragging:true,scrollWheelZoom:false,
+      touchZoom:true,doubleClickZoom:true,
+      tap:false,bounceAtZoomLimits:false
+    });
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
+      maxZoom:19,subdomains:'abcd'
+    }).addTo(m);
 
-    const skip = Math.max(1, Math.floor(route.length/100));
-    const pts  = route.filter((_,i)=>i%skip===0||i===route.length-1);
-    let cum = [0];
-    for(let i=1;i<pts.length;i++) cum.push(cum[i-1]+hdist(pts[i-1],pts[i]));
-    const totalDist = cum[cum.length-1]||1;
-    const W_CSS = Math.max(fallbackW||wrap.clientWidth||320, 800, Math.round(totalDist*0.4)+PAD*2);
-
-    function nearestIdx(lat,lng){let b=0,bd=Infinity;pts.forEach((p,i)=>{const d=hdist([lat,lng],p);if(d<bd){bd=d;b=i;}});return b;}
-
-    const PAD = 44;
-    // Canvas-Größe setzen (W_CSS und DPR jetzt bekannt)
-    canvas.style.width  = W_CSS + 'px';
-    canvas.style.height = H_CSS + 'px';
-    canvas.width  = W_CSS * DPR;
-    canvas.height = H_CSS * DPR;
-    ctx.scale(DPR, DPR);
-    function rx(d){return PAD+(d/totalDist)*(W_CSS-PAD*2);}
-    const ROUTE_Y = H_CSS * 0.74;
-
-    // ── Himmel ──
-    const sky = ctx.createLinearGradient(0,0,0,H_CSS);
-    sky.addColorStop(0,'#cac8c4');
-    sky.addColorStop(1,'#e8e6e2');
-    ctx.fillStyle = sky;
-    ctx.fillRect(0,0,W_CSS,H_CSS);
-
-    // ── Bergsilhouetten aus GPS-Breitengrad ──
-    const lats = pts.map(p=>p[0]);
-    const minLat=Math.min(...lats), latSpan=Math.max(...lats)-minLat||0.001;
-    function mtn(yOff, alpha){
-      ctx.beginPath(); ctx.moveTo(0, H_CSS);
-      const step = Math.max(1,Math.floor(pts.length/28));
-      pts.filter((_,i)=>i%step===0||i===pts.length-1).forEach(p=>{
-        const x = rx(cum[pts.indexOf(p)]||0);
-        const t = (p[0]-minLat)/latSpan;
-        ctx.lineTo(x, ROUTE_Y - yOff - t*H_CSS*0.17);
-      });
-      ctx.lineTo(W_CSS,H_CSS); ctx.closePath();
-      ctx.fillStyle = `rgba(148,146,140,${alpha})`; ctx.fill();
-    }
-    mtn(H_CSS*0.24, 0.5);
-    mtn(H_CSS*0.13, 0.65);
-    mtn(H_CSS*0.02, 0.80);
-
-    // ── Dunkler Boden ──
-    ctx.fillStyle = '#1c1a18';
-    ctx.fillRect(0, ROUTE_Y, W_CSS, H_CSS-ROUTE_Y);
-    // Feine Gras-Textur
-    for(let x=0; x<W_CSS; x+=2){
-      const th = 1.5+Math.sin(x*0.8)*1.2+Math.random()*2.8;
-      ctx.fillStyle = `rgba(0,0,0,${0.05+Math.random()*0.12})`;
-      ctx.fillRect(x, ROUTE_Y-th, 1.5, th);
-    }
-
-    // ── Tuschlinie (gespeicherte Segmente) ──
-    const segs = walk.segments||[];
+    // Tuschlinie aus Segmenten
+    const inkC=L.canvas({padding:0.5});
+    const segs=walk.segments||[];
+    let routeLine;
     if(segs.length>0){
       segs.forEach(s=>{
-        const x1 = rx(cum[nearestIdx(s.ll1[0],s.ll1[1])]);
-        const x2 = rx(cum[nearestIdx(s.ll2[0],s.ll2[1])]);
-        if(Math.abs(x2-x1)<0.3) return;
-        const jy = (Math.random()-0.5)*0.6;
-        ctx.beginPath();
-        ctx.moveTo(x1+(Math.random()-0.5)*0.5, ROUTE_Y+jy);
-        ctx.lineTo(x2+(Math.random()-0.5)*0.5, ROUTE_Y+jy);
-        ctx.strokeStyle = `rgba(5,3,1,${Math.min(s.opacity*1.6,1.0)})`;
-        ctx.lineWidth   = Math.max(3, s.weight*0.9);
-        ctx.lineCap = 'round'; ctx.stroke();
+        L.polyline([s.ll1,s.ll2],{
+          color:'rgba(8,5,2,'+Math.min(s.opacity*1.4,1)+')',
+          weight:Math.max(2.5,s.weight*0.8),
+          lineCap:'round',lineJoin:'round',
+          smoothFactor:0,renderer:inkC
+        }).addTo(m);
       });
+      routeLine=L.polyline(walk.route,{opacity:0,weight:0}).addTo(m);
     } else {
-      [6, 3.5, 1.8].forEach((lw,i)=>{
-        ctx.beginPath(); let first=true;
-        pts.forEach((_,j)=>{
-          const x=rx(cum[j])+(Math.random()-0.5)*0.5;
-          first?(ctx.moveTo(x,ROUTE_Y),first=false):ctx.lineTo(x,ROUTE_Y);
-        });
-        ctx.strokeStyle=`rgba(5,3,1,${[0.9,0.55,0.25][i]})`;
-        ctx.lineWidth=lw; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();
-      });
+      routeLine=L.polyline(walk.route,{
+        color:'rgba(8,5,2,0.75)',weight:4,lineCap:'round'
+      }).addTo(m);
     }
 
     // Start/Ende
-    [{x:rx(0),c:'#22c55e'},{x:rx(totalDist),c:'#ef4444'}].forEach(({x,c})=>{
-      ctx.beginPath(); ctx.arc(x,ROUTE_Y,5,0,Math.PI*2);
-      ctx.fillStyle=c; ctx.fill();
-      ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+    L.circleMarker(walk.route[0],{radius:6,fillColor:'#22c55e',color:'#fff',weight:2,fillOpacity:1}).addTo(m);
+    L.circleMarker(walk.route[walk.route.length-1],{radius:6,fillColor:'#ef4444',color:'#fff',weight:2,fillOpacity:1}).addTo(m);
+
+    // Eintrags-Marker
+    const TC={mood:'#f97316',thought:'#3b5fc0',sense:'#2d7a2d',voice:'#7c3aed',sound:'#7c3aed',photo:'#444'};
+    const TL={mood:'🔋',thought:'💭',sense:'👁',voice:'💬',sound:'🎙',photo:'📸'};
+    const TN={mood:'Stimmung',thought:'Gedanke',sense:'Wahrnehmung',voice:'Sprache',sound:'Sound',photo:'Foto'};
+
+    walk.entries.forEach(e=>{
+      if(!e.location)return;
+      const col=TC[e.type]||'#555';
+      const val=e.type==='mood'&&e.moodValue!=null?String(e.moodValue):'';
+      const icon=L.divIcon({className:'',
+        html:`<div style="background:${col};color:#fff;border:2px solid #fff;border-radius:20px;padding:2px 6px;font-size:10px;font-weight:bold;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${TL[e.type]||'●'}${val?' '+val:''}</div>`,
+        iconAnchor:[0,20],popupAnchor:[40,-20]
+      });
+      let popup=`<div style="min-width:160px;font-size:12px;"><b style="color:${col};">${TN[e.type]||e.type}</b>`;
+      if(e.type==='mood'&&e.moodValue!=null) popup+=`<div style="font-size:22px;font-weight:bold;color:${col};">${e.moodValue}<span style="font-size:11px;color:#aaa;">/5</span></div>`;
+      if(e.text) popup+=`<div style="margin-top:4px;">${escHtml(e.text)}</div>`;
+      if(e.timestamp) popup+=`<div style="font-size:10px;color:#aaa;">${e.timestamp}</div>`;
+      const aUrl=e.audioUrl||(e.entryId&&audioBlobs[e.entryId]?URL.createObjectURL(audioBlobs[e.entryId]):null);
+      if(aUrl) popup+=`<audio controls src="${aUrl}" style="width:100%;margin-top:6px;"></audio>`;
+      if(e.dataUrl) popup+=`<img src="${e.dataUrl}" style="width:100%;border-radius:6px;margin-top:6px;"/>`;
+      popup+='</div>';
+      L.marker([e.location.lat,e.location.lng],{icon}).addTo(m).bindPopup(popup,{maxWidth:240});
     });
 
-    // ── Marker: große Tippflächen für Handy ──
-    const TC = {mood:'#f97316',thought:'#3b5fc0',sense:'#2d7a2d',voice:'#7c3aed',sound:'#7c3aed',photo:'#444444'};
-    const TL = {mood:'Stimmung',thought:'Gedanke',sense:'Wahrnehm.',voice:'Sprache',sound:'Sound',photo:'Foto'};
-    const TI = {mood:'●',thought:'◆',sense:'▲',voice:'▶',sound:'◉',photo:'■'};
-
-    // Marker-Positionen: maximal 1 pro 70px Bucket, dann vertikal stapeln
-    const buckets = {};
-    const markerData = [];
-    entries.forEach(e=>{
-      if(!e.location) return;
-      const xi = nearestIdx(e.location.lat, e.location.lng);
-      const x  = rx(cum[xi]);
-      const col = TC[e.type]||'#555';
-      const bk = Math.round(x/70);
-      buckets[bk] = (buckets[bk]||0)+1;
-      const stack = buckets[bk]-1;
-      // Pin-Radius 18px = gut antippbar auf Handy (min 44px Fläche mit Stiel)
-      const R = 18;
-      const pinY = ROUTE_Y - 22 - stack*44;
-      markerData.push({e, x, pinY, R, col, label:TL[e.type]||e.type, icon:TI[e.type]||'●'});
-    });
-
-    function drawPin(m, hl){
-      const {x,pinY,R,col} = m;
-      // Stiel
-      ctx.beginPath(); ctx.moveTo(x,ROUTE_Y-3); ctx.lineTo(x,pinY+R+3);
-      ctx.strokeStyle = hl ? col : 'rgba(0,0,0,0.3)';
-      ctx.lineWidth = hl ? 2.5 : 1.5; ctx.stroke();
-
-      // Kreis-Schatten
-      ctx.save();
-      ctx.shadowColor='rgba(0,0,0,0.3)'; ctx.shadowBlur=6; ctx.shadowOffsetY=2;
-      ctx.beginPath(); ctx.arc(x,pinY,R,0,Math.PI*2);
-      ctx.fillStyle = hl ? col : col+'dd'; ctx.fill();
-      ctx.restore();
-
-      // Weißer Rand
-      ctx.beginPath(); ctx.arc(x,pinY,R,0,Math.PI*2);
-      ctx.strokeStyle = hl ? '#fff' : 'rgba(255,255,255,0.85)';
-      ctx.lineWidth = hl ? 2.5 : 2; ctx.stroke();
-
-      // Highlight-Glow
-      if(hl){
-        ctx.beginPath(); ctx.arc(x,pinY,R+4,0,Math.PI*2);
-        ctx.strokeStyle='rgba(255,200,50,0.5)'; ctx.lineWidth=3; ctx.stroke();
-      }
-
-      // Inhalt im Kreis
-      ctx.fillStyle='#fff'; ctx.textAlign='center';
-      if(m.e.type==='mood' && m.e.moodValue!=null){
-        ctx.font = 'bold 13px sans-serif';
-        ctx.fillText(m.e.moodValue, x, pinY+5);
-      } else {
-        ctx.font = '13px sans-serif';
-        ctx.fillText(m.icon, x, pinY+5);
-      }
-
-      // Label unter dem Kreis (gut lesbar)
-      ctx.fillStyle = hl ? col : 'rgba(30,25,20,0.75)';
-      ctx.font = `bold ${hl?9:8}px sans-serif`;
-      ctx.fillText(m.label.substring(0,9).toUpperCase(), x, pinY+R+11);
-    }
-
-    markerData.forEach(m=>drawPin(m,false));
-
-    // ── Interaktion (großzügige Hit-Area für Handy) ──
-    function hitTest(cx,cy){
-      const rect = canvas.getBoundingClientRect();
-      const sx = W_CSS/rect.width, sy = H_CSS/rect.height;
-      const px = (cx-rect.left)*sx, py = (cy-rect.top)*sy;
-      // Grossere Hit-Area: 1.8x Radius
-      for(let i=markerData.length-1;i>=0;i--){
-        const m=markerData[i];
-        const dx=px-m.x, dy=py-m.pinY;
-        if(dx*dx+dy*dy <= m.R*m.R*3.2) return m;
-      }
-      return null;
-    }
-
-    function fullRedraw(hl){
-      ctx.setTransform(DPR,0,0,DPR,0,0);
-      ctx.fillStyle=sky; ctx.fillRect(0,0,W_CSS,H_CSS);
-      mtn(H_CSS*0.24,0.5); mtn(H_CSS*0.13,0.65); mtn(H_CSS*0.02,0.80);
-      ctx.fillStyle='#1c1a18'; ctx.fillRect(0,ROUTE_Y,W_CSS,H_CSS-ROUTE_Y);
-      for(let x=0;x<W_CSS;x+=2){const th=1.5+Math.sin(x*0.8)*1.2+Math.random()*2.8;ctx.fillStyle=`rgba(0,0,0,${0.05+Math.random()*0.12})`;ctx.fillRect(x,ROUTE_Y-th,1.5,th);}
-      if(segs.length>0){segs.forEach(s=>{const x1=rx(cum[nearestIdx(s.ll1[0],s.ll1[1])]),x2=rx(cum[nearestIdx(s.ll2[0],s.ll2[1])]);if(Math.abs(x2-x1)<0.3)return;ctx.beginPath();ctx.moveTo(x1,ROUTE_Y);ctx.lineTo(x2,ROUTE_Y);ctx.strokeStyle=`rgba(5,3,1,${Math.min(s.opacity*1.6,1.0)})`;ctx.lineWidth=Math.max(3,s.weight*0.9);ctx.lineCap='round';ctx.stroke();});}
-      else{[5,3,1.5].forEach((lw,i)=>{ctx.beginPath();let f=true;pts.forEach((_,j)=>{const x=rx(cum[j]);f?(ctx.moveTo(x,ROUTE_Y),f=false):ctx.lineTo(x,ROUTE_Y);});ctx.strokeStyle=`rgba(8,5,2,${[0.82,0.48,0.22][i]})`;ctx.lineWidth=lw;ctx.lineCap='round';ctx.stroke();});}
-      [{x:rx(0),c:'#22c55e'},{x:rx(totalDist),c:'#ef4444'}].forEach(({x,c})=>{ctx.beginPath();ctx.arc(x,ROUTE_Y,5,0,Math.PI*2);ctx.fillStyle=c;ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();});
-      markerData.forEach(m=>drawPin(m,m===hl));
-    }
-
-    function showInfo(m){
-      const card=document.getElementById('vergleichEntryCard');
-      if(!card) return;
-      card.style.display='flex';
-      const TN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Wahrnehmung',voice:'💬 Sprache',sound:'🎙 Sound',photo:'📸 Foto'};
-      let html=`<span style="font-weight:bold;color:${m.col};">${TN[m.e.type]||m.e.type}</span>`;
-      if(m.e.type==='mood'&&m.e.moodValue!=null) html+=` <span style="color:#f97316;font-weight:bold;font-size:14px;"> ${m.e.moodValue}/5</span>`;
-      if(m.e.text) html+=` <span style="color:#333;">${escHtml(m.e.text)}</span>`;
-      if(m.e.timestamp) html+=` <span style="color:#aaa;font-size:10px;">${m.e.timestamp}</span>`;
-      const _au=m.e.audioUrl||(m.e.entryId&&audioBlobs[m.e.entryId]?URL.createObjectURL(audioBlobs[m.e.entryId]):null);if(_au) html+=`<br/><audio controls src="${_au}" style="width:100%;margin-top:6px;"></audio>`;
-      if(m.e.dataUrl) html+=`<br/><img src="${m.e.dataUrl}" style="max-width:100%;border-radius:8px;margin-top:6px;"/>`;
-      card.innerHTML=html;
-    }
-
-    canvas.addEventListener('click',ev=>{const m=hitTest(ev.clientX,ev.clientY);if(m){fullRedraw(m);showInfo(m);}});
-    canvas.addEventListener('touchend',ev=>{
-      ev.preventDefault();
-      const t=ev.changedTouches[0];
-      const m=hitTest(t.clientX,t.clientY);
-      if(m){fullRedraw(m);showInfo(m);}
-    },{passive:false});
+    m.fitBounds(routeLine.getBounds(),{padding:[10,10]});
+    setTimeout(()=>m.invalidateSize(),100);
+    vergleichMaps[walk.id]=m;
   }
   document.getElementById('vergleichClose').onclick=()=>{
     document.getElementById('vergleichModal').style.display='none';
