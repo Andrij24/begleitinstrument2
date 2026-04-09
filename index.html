@@ -793,18 +793,32 @@ window.addEventListener('load', function() {
       maxZoom:19, subdomains:'abcd'
     }).addTo(verlaufMap);
 
-    // ── Route als Tuschelinie via SVG-Overlay ──
-    // Mehrere Polylines für organischen Tuscheeffekt
-    const routeOpts=[
-      {color:'rgba(10,6,2,0.7)',  weight:5, lineCap:'round', lineJoin:'round'},
-      {color:'rgba(10,6,2,0.35)', weight:3, lineCap:'round', lineJoin:'round'},
-      {color:'rgba(10,6,2,0.15)', weight:1.5, lineCap:'round', lineJoin:'round'},
-    ];
-    let routeLine;
-    routeOpts.forEach((opts,i)=>{
-      const line=L.polyline(route, opts).addTo(verlaufMap);
-      if(i===0) routeLine=line;
-    });
+    // ── Tuschlinie: gespeicherte Segmente direkt übernehmen ──
+    // walk.segments enthält ll1, ll2, weight, opacity — exakt wie auf der Hauptkarte
+    const inkCanvas=L.canvas({padding:0.5});
+    const segments=walk.segments||[];
+
+    if(segments.length>0){
+      // Jedes Segment als eigene Polyline mit originalem Gewicht + Transparenz
+      segments.forEach(s=>{
+        L.polyline([s.ll1,s.ll2],{
+          color:'rgba(14,10,4,'+Math.min(s.opacity,1)+')',
+          weight:s.weight,
+          lineCap:'round',
+          lineJoin:'round',
+          smoothFactor:0,
+          renderer:inkCanvas
+        }).addTo(verlaufMap);
+      });
+    } else if(route.length>1){
+      // Fallback: einfache Linie wenn keine Segmente gespeichert
+      L.polyline(route,{
+        color:'rgba(14,10,4,0.7)',
+        weight:4,lineCap:'round',lineJoin:'round'
+      }).addTo(verlaufMap);
+    }
+    // Unsichtbare Linie für fitBounds
+    const routeLine=L.polyline(route,{opacity:0,weight:0}).addTo(verlaufMap);
 
     // Start/Ende
     L.circleMarker(route[0],{
