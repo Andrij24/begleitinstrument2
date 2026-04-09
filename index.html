@@ -922,7 +922,7 @@ window.addEventListener('load', function() {
   window.toggleWalk=toggleWalk;
 
 
-  // ── REFLEXION: Skizzen-Szene mit Route + Sprechblasen-Markern ──
+  // ── REFLEXION: Echte OSM-Karte als Hintergrund + Route + Sprechblasen ──
   let rqCurrentWalkId=null;
 
   function openVerlauf(walk) {
@@ -931,9 +931,8 @@ window.addEventListener('load', function() {
     document.getElementById('verlaufModal').classList.add('open');
     document.getElementById('verlaufEntryCard').style.display='none';
     document.getElementById('verlaufEntryCard').innerHTML='';
-    document.getElementById('verlaufInfo').textContent='';
+    document.getElementById('verlaufInfo').textContent='Lade Karte...';
 
-    // Reflexionsfragen laden
     const ref=walk.reflection||{};
     document.getElementById('rqFrei').value=ref.frei||'';
     document.getElementById('rqMoment').value=ref.moment||'';
@@ -952,10 +951,10 @@ window.addEventListener('load', function() {
     if(route.length<2){
       document.getElementById('verlaufSceneWrap').innerHTML=
         '<p style="font-size:11px;color:#9ca3af;padding:20px;text-align:center;">Keine Route aufgezeichnet.</p>';
+      document.getElementById('verlaufInfo').textContent='';
       return;
     }
 
-    // Kurz warten damit Modal sichtbar ist
     setTimeout(()=>buildScene2D(walk,route,entries),60);
   }
 
@@ -965,256 +964,300 @@ window.addEventListener('load', function() {
     const ctx=canvas.getContext('2d');
 
     const H=260;
-    const GROUND_Y=H*0.72; // Bodenlinie
-    const ROUTE_Y=H*0.70;  // Route sitzt auf Boden
+    const GROUND_Y=H*0.75;
+    const ROUTE_Y=H*0.73;
 
     // ── Haversine ──
     function hdist(a,b){const R=6371000,tr=x=>x*Math.PI/180;const dLat=tr(b[0]-a[0]),dLon=tr(b[1]-a[1]);const h=Math.sin(dLat/2)**2+Math.cos(tr(a[0]))*Math.cos(tr(b[0]))*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
 
-    // Kumulative Distanz
     let cum=[0];
     for(let i=1;i<route.length;i++) cum.push(cum[i-1]+hdist(route[i-1],route[i]));
     const totalDist=cum[cum.length-1]||1;
 
-    // Nächsten Punkt auf Route finden
     function nearestDist(lat,lng){
       let b=0,bd=Infinity;
       route.forEach((r,i)=>{const d=hdist([lat,lng],r);if(d<bd){bd=d;b=i;}});
       return cum[b];
     }
 
-    // Canvas-Breite: jeder Marker braucht mindestens 100px, mind. 800px
-    const MARKER_W=110;
-    const PAD=80;
-    const minW=Math.max(800, entries.length*MARKER_W+PAD*2);
-    canvas.width=minW;
+    // Canvas-Breite
+    const PAD=70;
+    const PX_PER_M=0.35; // ~0.35px pro Meter
+    const sceneW=Math.max(800,Math.round(totalDist*PX_PER_M)+PAD*2);
+    canvas.width=sceneW;
     canvas.height=H;
-    canvas.style.width=minW+'px';
+    canvas.style.width=sceneW+'px';
     canvas.style.height=H+'px';
 
-    function xFromDist(d){return PAD+(d/totalDist)*(minW-PAD*2);}
+    function xFromDist(d){return PAD+(d/totalDist)*(sceneW-PAD*2);}
 
-    // ── HINTERGRUND: Berge in Graustufen ──
-    function drawMountains(layers){
-      layers.forEach(({color,heights,yBase,waveLen})=>{
+    // ── OSM-Tile Helfer ──
+    // Tile-Koordinaten für gegebenen Zoom berechnen
+    function lngToTileX(lng,z){return Math.floor((lng+180)/360*Math.pow(2,z));}
+    function latToTileY(lat,z){return Math.floor((1-Math.log(Math.tan(lat*Math.PI/180)+1/Math.cos(lat*Math.PI/180))/Math.PI)/2*Math.pow(2,z));}
+    function tileToLng(x,z){return x/Math.pow(2,z)*360-180;}
+    function tileToLat(y,z){const n=Math.PI-2*Math.PI*y/Math.pow(2,z);return 180/Math.PI*Math.atan(0.5*(Math.exp(n)-Math.exp(-n)));}
+
+    // GPS → Canvas-X (Längengrad linear entlang Route)
+    // Wir mappen den Längengrad-Bereich auf sceneW
+    const lngs=route.map(r=>r[1]);
+    const lats=route.map(r=>r[0]);
+    const minLng=Math.min(...lngs), maxLng=Math.max(...lngs);
+    const minLat=Math.min(...lats), maxLat=Math.max(...lats);
+
+    // Bestes Zoom-Level für den Kartenstreifen
+    function bestZoom(){
+      for(let z=17;z>=10;z--){
+        const x0=lngToTileX(minLng,z), x1=lngToTileX(maxLng,z);
+        const y0=latToTileY(maxLat,z), y1=latToTileY(minLat,z);
+        if((x1-x0+1)*(y1-y0+1)<=24) return z;
+      }
+      return 13;
+    }
+    const ZOOM=bestZoom();
+
+    // Tile-Bereich
+    const tx0=lngToTileX(minLng,ZOOM), tx1=lngToTileX(maxLng,ZOOM);
+    const ty0=latToTileY(maxLat,ZOOM), ty1=latToTileY(minLat,ZOOM);
+
+    // Geo → Canvas-Koordinaten (Mercator-Projektion, gleich wie OSM-Tiles)
+    function mercY(lat){return Math.log(Math.tan(lat*Math.PI/180)+1/Math.cos(lat*Math.PI/180));}
+    const mercYmin=mercY(tileToLat(ty1+1,ZOOM));
+    const mercYmax=mercY(tileToLat(ty0,ZOOM));
+    const tilePixW=sceneW/(tx1-tx0+1);  // Tile-Pixel-Breite auf Canvas
+    const tilePixH=H*1.1/(ty1-ty0+1);   // etwas höher für Überlapp
+
+    const geoLngSpan=tileToLng(tx1+1,ZOOM)-tileToLng(tx0,ZOOM);
+    const canvasPerLng=sceneW/geoLngSpan;
+
+    function geoToCanvas(lat,lng){
+      const x=(lng-tileToLng(tx0,ZOOM))*canvasPerLng;
+      const my=mercY(lat);
+      const y=H*(1-(my-mercYmin)/(mercYmax-mercYmin));
+      return {x,y};
+    }
+
+    // ── Karten-Tiles laden und zeichnen ──
+    // CartoDB Light → schöne Graustufen, CORS-freundlich
+    const TILE_URL='https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png';
+    const SUBDOMAINS=['a','b','c'];
+    let tilesLoaded=0;
+    const totalTiles=(tx1-tx0+1)*(ty1-ty0+1);
+
+    // Zuerst grauen Fallback-Hintergrund
+    ctx.fillStyle='#e8e6e2';
+    ctx.fillRect(0,0,sceneW,H);
+    ctx.fillStyle='#d0cec8';
+    ctx.font='12px sans-serif';ctx.textAlign='center';
+    ctx.fillText('Karte lädt...',sceneW/2,H/2);
+
+    function drawRouteAndMarkers(){
+      // ── Tuschelinie auf Karte ──
+      for(let pass=0;pass<3;pass++){
         ctx.beginPath();
-        ctx.moveTo(0,yBase);
-        for(let x=0;x<=minW;x+=8){
-          let y=yBase;
-          heights.forEach((h,i)=>{ y-=h*Math.sin((x/waveLen+i*1.3)*Math.PI); });
-          ctx.lineTo(x,Math.max(0,y));
-        }
-        ctx.lineTo(minW,yBase);ctx.lineTo(0,yBase);ctx.closePath();
-        ctx.fillStyle=color;ctx.fill();
-      });
-    }
-
-    // Himmel
-    const sky=ctx.createLinearGradient(0,0,0,H);
-    sky.addColorStop(0,'#d8d8d6');sky.addColorStop(1,'#ebebea');
-    ctx.fillStyle=sky;ctx.fillRect(0,0,minW,H);
-
-    // Bergschichten (hinten → vorne)
-    drawMountains([
-      {color:'#c8c8c6',heights:[45,30,20],yBase:GROUND_Y-10,waveLen:minW*0.35},
-      {color:'#b8b8b5',heights:[55,25,35],yBase:GROUND_Y-5,waveLen:minW*0.25},
-      {color:'#a8a8a5',heights:[40,50,20],yBase:GROUND_Y,waveLen:minW*0.18},
-    ]);
-
-    // Boden (dunkel, texturiert)
-    ctx.fillStyle='#2a2a28';
-    ctx.fillRect(0,GROUND_Y,minW,H-GROUND_Y);
-
-    // Boden-Textur (Gras/Erde)
-    for(let x=0;x<minW;x+=3){
-      const h=2+Math.sin(x*0.7)*1.5+Math.random()*3;
-      ctx.fillStyle=`rgba(0,0,0,${0.1+Math.random()*0.2})`;
-      ctx.fillRect(x,GROUND_Y-h,1.5,h+2);
-    }
-
-    // ── ROUTE als Tuschelinie ──
-    // Mehrere Durchgänge für organischen Look
-    for(let pass=0;pass<3;pass++){
-      ctx.beginPath();
-      const step=Math.max(1,Math.floor(route.length/200));
-      route.filter((_,i)=>i%step===0||i===route.length-1).forEach((r,i,arr)=>{
-        const x=xFromDist(cum[route.indexOf(r)]||0)+(Math.random()-0.5)*0.8;
-        const y=ROUTE_Y+(Math.random()-0.5)*1.2;
-        i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
-      });
-      ctx.strokeStyle=`rgba(20,16,10,${pass===0?0.5:pass===1?0.35:0.25})`;
-      ctx.lineWidth=pass===0?4:pass===1?2.5:1.5;
-      ctx.lineCap='round';ctx.lineJoin='round';
-      ctx.stroke();
-    }
-
-    // Start/Ende Punkte
-    ctx.beginPath();ctx.arc(PAD,ROUTE_Y,6,0,Math.PI*2);
-    ctx.fillStyle='#22c55e';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
-    ctx.beginPath();ctx.arc(minW-PAD,ROUTE_Y,6,0,Math.PI*2);
-    ctx.fillStyle='#ef4444';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
-
-    // ── EINTRAGS-MARKER als Sprechblasen ──
-    const typeColor={mood:'#f97316',thought:'#1e3a6e',sense:'#2d5a2d',voice:'#f5f5f5',sound:'#f5f5f5',photo:'#f5f5f5'};
-    const typeBorder={mood:'#c2460a',thought:'#12234a',sense:'#1a3a1a',voice:'#ccc',sound:'#ccc',photo:'#ccc'};
-    const typeLabel={mood:'Stimmung',thought:'Gedanken',sense:'Wahrnehmung',voice:'Sprachnachricht',sound:'Umgebungssound',photo:'Fotos'};
-
-    // Marker-Positionen berechnen, Kollisionen vermeiden
-    const markerData=[];
-    const usedX={};
-
-    entries.forEach((e,ei)=>{
-      if(!e.location)return;
-      const d=nearestDist(e.location.lat,e.location.lng);
-      const baseX=xFromDist(d);
-      const key=Math.round(baseX/MARKER_W);
-      usedX[key]=(usedX[key]||0)+1;
-      const x=baseX+(usedX[key]-1)*0;  // keine X-Verschiebung, stattdessen Y staffeln
-      const bW=90, bH=70;
-      const tailH=20;
-      const stackUp=(usedX[key]-1)*85;
-      const bY=ROUTE_Y-tailH-bH-stackUp;
-      markerData.push({e,x,bY,bW,bH,tailH,col:typeColor[e.type]||'#555',
-        border:typeBorder[e.type]||'#333',label:typeLabel[e.type]||e.type,idx:ei});
-    });
-
-    // Marker zeichnen (Funktion für Redraw)
-    function drawMarker(m,highlighted){
-      const {x,bY,bW,bH,tailH,col,border}=m;
-      const bX=x-bW/2;
-      const r=10; // border-radius
-
-      ctx.save();
-      if(highlighted){ctx.shadowColor='rgba(255,255,255,0.8)';ctx.shadowBlur=12;}
-
-      // Sprechblasen-Form
-      ctx.beginPath();
-      ctx.moveTo(bX+r,bY);
-      ctx.lineTo(bX+bW-r,bY);
-      ctx.quadraticCurveTo(bX+bW,bY,bX+bW,bY+r);
-      ctx.lineTo(bX+bW,bY+bH-r);
-      ctx.quadraticCurveTo(bX+bW,bY+bH,bX+bW-r,bY+bH);
-      // Schwanz mittig
-      ctx.lineTo(x+8,bY+bH);
-      ctx.lineTo(x,bY+bH+tailH);
-      ctx.lineTo(x-8,bY+bH);
-      ctx.lineTo(bX+r,bY+bH);
-      ctx.quadraticCurveTo(bX,bY+bH,bX,bY+bH-r);
-      ctx.lineTo(bX,bY+r);
-      ctx.quadraticCurveTo(bX,bY,bX+r,bY);
-      ctx.closePath();
-      ctx.fillStyle=col;ctx.fill();
-      ctx.strokeStyle=highlighted?'#fff':border;ctx.lineWidth=highlighted?2.5:1.5;ctx.stroke();
-
-      // Label oben
-      ctx.fillStyle='rgba(255,255,255,0.85)';
-      ctx.font='bold 8px sans-serif';
-      ctx.textAlign='center';
-      ctx.fillText(m.label.toUpperCase().substring(0,12),x,bY+13);
-
-      // Inhalt
-      const e=m.e;
-      if(e.type==='photo'&&e.dataUrl){
-        try{
-          const img=new Image();
-          img.onload=()=>{
-            ctx.save();
-            ctx.beginPath();
-            ctx.roundRect?ctx.roundRect(bX+6,bY+18,bW-12,bH-26,6):ctx.rect(bX+6,bY+18,bW-12,bH-26);
-            ctx.clip();
-            ctx.drawImage(img,bX+6,bY+18,bW-12,bH-26);
-            ctx.restore();
-          };
-          img.src=e.dataUrl;
-        }catch(err){}
-        // Kamera-Icon als Fallback
-        ctx.fillStyle='rgba(255,255,255,0.7)';ctx.font='22px sans-serif';ctx.textAlign='center';
-        ctx.fillText('📷',x,bY+bH-16);
-      } else if(e.type==='voice'||e.type==='sound'){
-        // Waveform-Icon
-        ctx.strokeStyle='rgba(50,50,50,0.7)';ctx.lineWidth=2;
-        const bars=[0.3,0.6,1,0.8,0.5,0.9,0.4,0.7,0.3];
-        bars.forEach((h,i)=>{
-          const bx=bX+12+i*(bW-24)/8;
-          const bh=(bH-30)*h;
-          ctx.beginPath();ctx.moveTo(bx,bY+bH/2+bh/2);ctx.lineTo(bx,bY+bH/2-bh/2);ctx.stroke();
+        const step=Math.max(1,Math.floor(route.length/300));
+        let first=true;
+        route.forEach((r,i)=>{
+          if(i%step!==0&&i!==route.length-1)return;
+          const p=geoToCanvas(r[0],r[1]);
+          const jx=(Math.random()-0.5)*(pass===0?0.8:pass===1?1.2:0.4);
+          const jy=(Math.random()-0.5)*(pass===0?0.6:pass===1?1.0:0.3);
+          first?(ctx.moveTo(p.x+jx,p.y+jy),first=false):ctx.lineTo(p.x+jx,p.y+jy);
         });
-      } else if(e.type==='mood'&&e.moodValue!==undefined){
-        // Stimmungswert groß
-        ctx.fillStyle='rgba(255,255,255,0.95)';
-        ctx.font='bold 22px sans-serif';ctx.textAlign='center';
-        ctx.fillText(e.moodValue,x,bY+bH-18);
-        ctx.font='9px sans-serif';
-        ctx.fillText('/100',x,bY+bH-6);
-      } else if(e.text){
-        // Kurztext
-        ctx.fillStyle='rgba(255,255,255,0.9)';
-        ctx.font='9px sans-serif';ctx.textAlign='center';
-        const words=e.text.split(' ');
-        let line='',lines=[];
-        words.forEach(w=>{const t=line+w+' ';if(ctx.measureText(t).width>bW-12&&line){lines.push(line.trim());line=w+' ';}else line=t;});
-        lines.push(line.trim());
-        lines.slice(0,3).forEach((l,i)=>ctx.fillText(l,x,bY+22+i*12));
+        ctx.strokeStyle=`rgba(15,10,5,${pass===0?0.65:pass===1?0.4:0.2})`;
+        ctx.lineWidth=pass===0?4.5:pass===1?2.5:1.5;
+        ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();
       }
-      ctx.restore();
-    }
 
-    // Alle Marker zeichnen
-    markerData.forEach(m=>drawMarker(m,false));
+      // Start/Ende
+      const sp=geoToCanvas(route[0][0],route[0][1]);
+      const ep=geoToCanvas(route[route.length-1][0],route[route.length-1][1]);
+      [[sp,'#22c55e'],[ep,'#ef4444']].forEach(([p,c])=>{
+        ctx.beginPath();ctx.arc(p.x,p.y,7,0,Math.PI*2);
+        ctx.fillStyle=c;ctx.fill();
+        ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+      });
 
-    // Distanz-Info
-    document.getElementById('verlaufInfo').textContent=
-      `${(totalDist/1000).toFixed(2)} km · ${entries.length} Einträge · Scrollen zum Navigieren`;
+      // ── Eintrags-Marker als Sprechblasen ──
+      const typeColor={mood:'#f97316',thought:'#1e3a6e',sense:'#2d5a2d',voice:'#3a3a3a',sound:'#3a3a3a',photo:'#3a3a3a'};
+      const typeBorder={mood:'#c2460a',thought:'#0f1f3a',sense:'#1a3a1a',voice:'#111',sound:'#111',photo:'#111'};
+      const typeLabel={mood:'Stimmung',thought:'Gedanken',sense:'Wahrnehmung',voice:'Sprachnachricht',sound:'Umgebungssound',photo:'Fotos'};
 
-    // ── Antippen: Marker erkennen und Info anzeigen ──
-    function hitTest(clientX,clientY){
-      const rect=canvas.getBoundingClientRect();
-      // canvas ist skaliert via CSS — korrigiere
-      const scaleX=canvas.width/(rect.width);
-      const px=(clientX-rect.left)*scaleX;
-      const py=(clientY-rect.top)*(canvas.height/rect.height);
-      for(let i=markerData.length-1;i>=0;i--){
-        const m=markerData[i];
-        if(px>=m.x-m.bW/2&&px<=m.x+m.bW/2&&py>=m.bY&&py<=m.bY+m.bH+m.tailH) return m;
+      const markerData=[];
+      const usedPos={};
+
+      entries.forEach((e,ei)=>{
+        if(!e.location)return;
+        const p=geoToCanvas(e.location.lat,e.location.lng);
+        const key=`${Math.round(p.x/80)}_${Math.round(p.y/80)}`;
+        usedPos[key]=(usedPos[key]||0)+1;
+        const stackUp=(usedPos[key]-1)*88;
+        const bW=88, bH=68, tailH=18;
+        const bY=p.y-tailH-bH-stackUp;
+        markerData.push({e,x:p.x,y:p.y,bY,bW,bH,tailH,
+          col:typeColor[e.type]||'#444',
+          border:typeBorder[e.type]||'#222',
+          label:typeLabel[e.type]||e.type,idx:ei});
+      });
+
+      function drawMarker(m,highlighted){
+        const {x,bY,bW,bH,tailH,col,border}=m;
+        const bX=x-bW/2, r=8;
+        ctx.save();
+        if(highlighted){ctx.shadowColor='rgba(255,230,0,0.9)';ctx.shadowBlur=16;}
+        // Schatten
+        ctx.shadowColor='rgba(0,0,0,0.25)';ctx.shadowBlur=6;ctx.shadowOffsetY=2;
+        // Blasenform
+        ctx.beginPath();
+        ctx.moveTo(bX+r,bY);ctx.lineTo(bX+bW-r,bY);
+        ctx.quadraticCurveTo(bX+bW,bY,bX+bW,bY+r);
+        ctx.lineTo(bX+bW,bY+bH-r);
+        ctx.quadraticCurveTo(bX+bW,bY+bH,bX+bW-r,bY+bH);
+        ctx.lineTo(x+7,bY+bH);ctx.lineTo(x,bY+bH+tailH);ctx.lineTo(x-7,bY+bH);
+        ctx.lineTo(bX+r,bY+bH);
+        ctx.quadraticCurveTo(bX,bY+bH,bX,bY+bH-r);
+        ctx.lineTo(bX,bY+r);ctx.quadraticCurveTo(bX,bY,bX+r,bY);ctx.closePath();
+        ctx.fillStyle=col;ctx.fill();
+        ctx.shadowColor='transparent';
+        ctx.strokeStyle=highlighted?'#fff':border;ctx.lineWidth=highlighted?2:1.5;ctx.stroke();
+
+        // Label
+        ctx.fillStyle='rgba(255,255,255,0.9)';ctx.font='bold 7.5px sans-serif';ctx.textAlign='center';
+        ctx.fillText(m.label.toUpperCase().substring(0,13),x,bY+12);
+
+        // Inhalt
+        const e=m.e;
+        ctx.shadowColor='transparent';
+        if(e.type==='mood'&&e.moodValue!==undefined){
+          ctx.fillStyle='#fff';ctx.font='bold 24px sans-serif';ctx.textAlign='center';
+          ctx.fillText(e.moodValue,x,bY+bH-14);
+          ctx.font='8px sans-serif';ctx.fillText('/100',x,bY+bH-3);
+        } else if(e.type==='photo'&&e.dataUrl){
+          ctx.fillStyle='rgba(255,255,255,0.7)';ctx.font='20px sans-serif';ctx.textAlign='center';
+          ctx.fillText('📷',x,bY+bH-12);
+        } else if(e.type==='voice'||e.type==='sound'){
+          // Mini-Wellenform
+          const bars=[0.3,0.7,1,0.8,0.5,0.9,0.4,0.7,0.3,0.6];
+          ctx.strokeStyle='rgba(255,255,255,0.8)';ctx.lineWidth=1.8;
+          bars.forEach((h,i)=>{
+            const bx=bX+10+i*(bW-20)/9;
+            const bh=(bH-28)*h;
+            ctx.beginPath();ctx.moveTo(bx,bY+bH/2+bh/2-4);ctx.lineTo(bx,bY+bH/2-bh/2-4);ctx.stroke();
+          });
+        } else if(e.text){
+          ctx.fillStyle='rgba(255,255,255,0.92)';ctx.font='8.5px sans-serif';ctx.textAlign='center';
+          const words=e.text.split(' ');let line='',lines=[];
+          words.forEach(w=>{const t=line+w+' ';if(ctx.measureText(t).width>bW-14&&line){lines.push(line.trim());line=w+' ';}else line=t;});
+          lines.push(line.trim());
+          lines.slice(0,4).forEach((l,i)=>ctx.fillText(l,x,bY+22+i*12));
+        }
+        ctx.restore();
       }
-      return null;
+
+      markerData.forEach(m=>drawMarker(m,false));
+
+      // ── Hit-Test für Antippen ──
+      function hitTest(clientX,clientY){
+        const rect=canvas.getBoundingClientRect();
+        const sx=canvas.width/rect.width, sy=canvas.height/rect.height;
+        const px=(clientX-rect.left)*sx, py=(clientY-rect.top)*sy;
+        for(let i=markerData.length-1;i>=0;i--){
+          const m=markerData[i];
+          if(px>=m.x-m.bW/2&&px<=m.x+m.bW/2&&py>=m.bY&&py<=m.bY+m.bH+m.tailH) return m;
+        }
+        return null;
+      }
+
+      function selectMarker(m){
+        // Neu zeichnen mit Highlight (Tiles bereits im Canvas)
+        // Tiles-Layer neu aus offscreen-cache zeichnen
+        if(window._mapTileCache){
+          ctx.drawImage(window._mapTileCache,0,0);
+        } else {
+          ctx.fillStyle='#e8e6e2';ctx.fillRect(0,0,sceneW,H);
+        }
+        drawRouteAndMarkers._drawAll(m);
+        showEntryCard2D(m);
+      }
+
+      // Speichere markerData für Redraw
+      drawRouteAndMarkers._markers=markerData;
+      drawRouteAndMarkers._drawAll=(highlighted)=>{
+        // Route neu zeichnen
+        for(let pass=0;pass<3;pass++){
+          ctx.beginPath();
+          const step=Math.max(1,Math.floor(route.length/300));
+          let first=true;
+          route.forEach((r,i)=>{
+            if(i%step!==0&&i!==route.length-1)return;
+            const p=geoToCanvas(r[0],r[1]);
+            first?(ctx.moveTo(p.x,p.y),first=false):ctx.lineTo(p.x,p.y);
+          });
+          ctx.strokeStyle=`rgba(15,10,5,${pass===0?0.65:pass===1?0.4:0.2})`;
+          ctx.lineWidth=pass===0?4.5:pass===1?2.5:1.5;
+          ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();
+        }
+        [[sp,'#22c55e'],[ep,'#ef4444']].forEach(([p,c])=>{
+          ctx.beginPath();ctx.arc(p.x,p.y,7,0,Math.PI*2);
+          ctx.fillStyle=c;ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+        });
+        markerData.forEach(m=>drawMarker(m,m===highlighted));
+      };
+
+      canvas.onclick=ev=>{const m=hitTest(ev.clientX,ev.clientY);if(m)selectMarker(m);};
+      canvas.addEventListener('touchend',ev=>{
+        ev.preventDefault();
+        const t=ev.changedTouches[0];
+        const m=hitTest(t.clientX,t.clientY);
+        if(m)selectMarker(m);
+      },{passive:false});
     }
 
-    let activeMarker=null;
-    function selectMarker(m){
-      activeMarker=m;
-      // Neu zeichnen mit Highlight
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      // Hintergrund + Route neu
-      const sky2=ctx.createLinearGradient(0,0,0,H);
-      sky2.addColorStop(0,'#d8d8d6');sky2.addColorStop(1,'#ebebea');
-      ctx.fillStyle=sky2;ctx.fillRect(0,0,minW,H);
-      drawMountains([
-        {color:'#c8c8c6',heights:[45,30,20],yBase:GROUND_Y-10,waveLen:minW*0.35},
-        {color:'#b8b8b5',heights:[55,25,35],yBase:GROUND_Y-5,waveLen:minW*0.25},
-        {color:'#a8a8a5',heights:[40,50,20],yBase:GROUND_Y,waveLen:minW*0.18},
-      ]);
-      ctx.fillStyle='#2a2a28';ctx.fillRect(0,GROUND_Y,minW,H-GROUND_Y);
-      for(let x=0;x<minW;x+=3){const h=2+Math.sin(x*0.7)*1.5+Math.random()*3;ctx.fillStyle=`rgba(0,0,0,${0.1+Math.random()*0.2})`;ctx.fillRect(x,GROUND_Y-h,1.5,h+2);}
-      for(let pass=0;pass<3;pass++){ctx.beginPath();const step=Math.max(1,Math.floor(route.length/200));route.filter((_,i)=>i%step===0||i===route.length-1).forEach((r,i,arr)=>{const x=xFromDist(cum[route.indexOf(r)]||0)+(Math.random()-0.5)*0.8;const y=ROUTE_Y+(Math.random()-0.5)*1.2;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});ctx.strokeStyle=`rgba(20,16,10,${pass===0?0.5:pass===1?0.35:0.25})`;ctx.lineWidth=pass===0?4:pass===1?2.5:1.5;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();}
-      ctx.beginPath();ctx.arc(PAD,ROUTE_Y,6,0,Math.PI*2);ctx.fillStyle='#22c55e';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
-      ctx.beginPath();ctx.arc(minW-PAD,ROUTE_Y,6,0,Math.PI*2);ctx.fillStyle='#ef4444';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
-      markerData.forEach(md=>drawMarker(md,md===m));
+    // Tiles laden
+    const offscreen=document.createElement('canvas');
+    offscreen.width=sceneW;offscreen.height=H;
+    const octx=offscreen.getContext('2d');
+    window._mapTileCache=offscreen;
 
-      // Info-Karte zeigen
-      showEntryCard2D(m);
+    // Grauer Hintergrund auf offscreen
+    octx.fillStyle='#ebe9e4';octx.fillRect(0,0,sceneW,H);
+
+    if(totalTiles===0){
+      drawRouteAndMarkers();
+      document.getElementById('verlaufInfo').textContent=`${(totalDist/1000).toFixed(2)} km · ${entries.length} Einträge`;
+      return;
     }
 
-    canvas.addEventListener('click',ev=>{
-      const m=hitTest(ev.clientX,ev.clientY);
-      if(m) selectMarker(m);
-    });
-    canvas.addEventListener('touchend',ev=>{
-      ev.preventDefault();
-      const t=ev.changedTouches[0];
-      const m=hitTest(t.clientX,t.clientY);
-      if(m) selectMarker(m);
-    },{passive:false});
+    for(let tx=tx0;tx<=tx1;tx++){
+      for(let ty=ty0;ty<=ty1;ty++){
+        const sub=SUBDOMAINS[(tx+ty)%3];
+        const url=TILE_URL.replace('{s}',sub).replace('{z}',ZOOM).replace('{x}',tx).replace('{y}',ty);
+        const img=new Image();
+        img.crossOrigin='anonymous';
+        img.onload=()=>{
+          // Tile auf offscreen zeichnen
+          const tileLeft=(tx-tx0)*tilePixW;
+          const tileTop=(ty-ty0)*tilePixH;
+          octx.drawImage(img,tileLeft,tileTop,tilePixW+1,tilePixH+1);
+          tilesLoaded++;
+          if(tilesLoaded>=totalTiles){
+            // Tiles auf Haupt-Canvas kopieren
+            ctx.drawImage(offscreen,0,0);
+            drawRouteAndMarkers();
+            document.getElementById('verlaufInfo').textContent=
+              `${(totalDist/1000).toFixed(2)} km · ${entries.length} Einträge · Tippen zum Öffnen`;
+          }
+        };
+        img.onerror=()=>{
+          tilesLoaded++;
+          if(tilesLoaded>=totalTiles){
+            ctx.drawImage(offscreen,0,0);
+            drawRouteAndMarkers();
+          }
+        };
+        img.src=url;
+      }
+    }
   }
 
   function showEntryCard2D(m){
@@ -1222,7 +1265,7 @@ window.addEventListener('load', function() {
     const card=document.getElementById('verlaufEntryCard');
     card.style.display='flex';
     const typeNames={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Wahrnehmung',voice:'💬 Sprachnachricht',sound:'🎙 Umgebungssound',photo:'📸 Foto'};
-    let html=`<span style="font-weight:bold;color:${m.col==='#f5f5f5'?'#333':m.col};">${typeNames[e.type]||e.type}</span>`;
+    let html=`<span style="font-weight:bold;">${typeNames[e.type]||e.type}</span>`;
     if(e.type==='mood'&&e.moodValue!==undefined)
       html+=`<span style="font-size:14px;font-weight:bold;color:#f97316;"> ${e.moodValue}/100</span>`;
     if(e.text) html+=` <span style="color:#444;">${escHtml(e.text)}</span>`;
@@ -1234,16 +1277,15 @@ window.addEventListener('load', function() {
 
   document.getElementById('verlaufClose').onclick=()=>{
     document.getElementById('verlaufModal').classList.remove('open');
+    window._mapTileCache=null;
   };
 
-  // Reflexion Slider
   document.getElementById('rqMoodSlider').addEventListener('input',function(){
     const v=parseInt(this.value),col=moodColor(v);
     document.getElementById('rqMoodVal').textContent=v;
     document.getElementById('rqMoodVal').style.color=col;
   });
 
-  // Reflexion speichern
   document.getElementById('rqSaveBtn').onclick=()=>{
     if(!rqCurrentWalkId)return;
     const walk=state.walks.find(w=>w.id==rqCurrentWalkId);
