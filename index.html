@@ -951,7 +951,9 @@ window.addEventListener('load', function() {
 
   function openVergleich(){
     if(selectedForVergleich.size<2) return;
-    const walks=Array.from(selectedForVergleich).map(id=>state.walks.find(w=>w.id==id)).filter(Boolean);
+    const walks=Array.from(selectedForVergleich)
+      .map(id=>state.walks.find(w=>w.id==id)).filter(Boolean);
+
     document.getElementById('vergleichModal').style.display='flex';
     const container=document.getElementById('vergleichContent');
     container.innerHTML='';
@@ -962,72 +964,258 @@ window.addEventListener('load', function() {
 
     walks.forEach((walk,wi)=>{
       const moodEntries=walk.entries.filter(e=>e.type==='mood'&&e.moodValue!=null);
-      const avgMood=moodEntries.length?Math.round(moodEntries.reduce((a,b)=>a+b.moodValue,0)/moodEntries.length):null;
+      const avgMood=moodEntries.length
+        ?Math.round(moodEntries.reduce((a,b)=>a+b.moodValue,0)/moodEntries.length):null;
       const ref=walk.reflection||{};
-      const mapId='vglmap_'+walk.id;
 
-      // Row HTML
+      // ── Zeile pro Walk ──
       const row=document.createElement('div');
       row.className='vgl-walk-row';
-      row.innerHTML=`
-        <div class="vgl-map" id="${mapId}" style="height:180px;"></div>
-        <div class="vgl-body">
-          <div class="vgl-name">
-            <span style="width:12px;height:12px;border-radius:50%;background:${walk.color};display:inline-block;flex-shrink:0;"></span>
-            <span>${escHtml(walk.name)}</span>
-          </div>
-          <div class="vgl-stats">
-            <div class="vgl-stat">
-              <div class="vgl-stat-val">${walk.entries.length}</div>
-              <div class="vgl-stat-lbl">Einträge</div>
-            </div>
-            <div class="vgl-stat">
-              <div class="vgl-stat-val" style="color:${avgMood!=null?moodColor(avgMood):'#aaa'};">${avgMood!=null?avgMood:'—'}</div>
-              <div class="vgl-stat-lbl">Ø Stimmung</div>
-            </div>
-            <div class="vgl-stat">
-              <div class="vgl-stat-val" style="color:${ref.moodRetro!=null?moodColor(ref.moodRetro):'#aaa'};">${ref.moodRetro!=null?ref.moodRetro:'—'}</div>
-              <div class="vgl-stat-lbl">Erinnert</div>
-            </div>
-            <div class="vgl-stat">
-              <div class="vgl-stat-val" style="color:${avgMood!=null&&ref.moodRetro!=null?(ref.moodRetro-avgMood>=0?'#7c3aed':'#dc2626'):'#aaa'};">${avgMood!=null&&ref.moodRetro!=null?(ref.moodRetro-avgMood>=0?'+':'')+(ref.moodRetro-avgMood):'—'}</div>
-              <div class="vgl-stat-lbl">Diskrepanz</div>
-            </div>
-          </div>
-          ${ref.frei?`<div class="vgl-ref">"${escHtml(ref.frei.substring(0,120)+(ref.frei.length>120?'…':''))}"</div>`:''}
-          ${ref.moment?`<div style="font-size:10px;color:#9ca3af;margin-top:4px;">💭 ${escHtml(ref.moment.substring(0,80))}</div>`:''}
-        </div>`;
+
+      // Walk-Titel
+      const title=document.createElement('div');
+      title.style.cssText='display:flex;align-items:center;gap:8px;padding:10px 12px 6px;';
+      title.innerHTML=`<span style="width:12px;height:12px;border-radius:50%;background:${walk.color};display:inline-block;flex-shrink:0;"></span>`
+        +`<span style="font-size:12px;font-weight:bold;color:#111;">${escHtml(walk.name)}</span>`
+        +`<span style="font-size:10px;color:#9ca3af;margin-left:auto;">${walk.entries.length} Einträge`
+        +(avgMood!=null?` · Ø Stimmung: <b style="color:${moodColor(avgMood)};">${avgMood}</b>`:'')
+        +(ref.moodRetro!=null?` · Erinnert: <b style="color:${moodColor(ref.moodRetro)};">${ref.moodRetro}</b>`:'')
+        +'</span>';
+      row.appendChild(title);
+
+      // ── Skizzen-Canvas (scrollbar) ──
+      const sceneWrap=document.createElement('div');
+      sceneWrap.style.cssText='overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;background:#e8e6e2;border-radius:0 0 10px 10px;';
+      const cv=document.createElement('canvas');
+      cv.style.cssText='display:block;height:200px;';
+      sceneWrap.appendChild(cv);
+      row.appendChild(sceneWrap);
+
+      // Reflexionszitat
+      if(ref.frei){
+        const q=document.createElement('div');
+        q.className='vgl-ref';
+        q.textContent='"'+ref.frei.substring(0,120)+(ref.frei.length>120?'…':'')+'"';
+        row.appendChild(q);
+      }
+
       container.appendChild(row);
 
-      // Leaflet-Karte pro Walk
-      setTimeout(()=>{
-        if(!walk.route||walk.route.length<2) return;
-        const m=L.map(mapId,{
-          zoomControl:false,attributionControl:false,
-          dragging:false,scrollWheelZoom:false,
-          doubleClickZoom:false,boxZoom:false,keyboard:false
-        });
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
-          maxZoom:19,subdomains:'abcd'
-        }).addTo(m);
-        const line=L.polyline(walk.route,{color:walk.color,weight:4,opacity:0.9}).addTo(m);
-        // Eintrags-Marker
-        const tc={mood:'#f97316',thought:'#1e3a6e',sense:'#2d5a2d',voice:'#7c3aed',sound:'#f58231',photo:'#555'};
-        walk.entries.forEach(e=>{
-          if(!e.location)return;
-          const col=tc[e.type]||walk.color;
-          const icon=L.divIcon({className:'',
-            html:`<div style="width:10px;height:10px;border-radius:50%;background:${col};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.3);"></div>`,
-            iconSize:[10,10],iconAnchor:[5,5]});
-          L.marker([e.location.lat,e.location.lng],{icon}).addTo(m);
-        });
-        m.fitBounds(line.getBounds(),{padding:[10,10]});
-        m.invalidateSize();
-        vergleichMaps[walk.id]=m;
-      }, 80+wi*60);
+      // Szene nach kleinem Delay zeichnen (DOM muss sichtbar sein)
+      setTimeout(()=>drawVglScene(cv,walk,sceneWrap), 80+wi*60);
     });
   }
 
+  function drawVglScene(canvas,walk,wrap){
+    const ctx=canvas.getContext('2d');
+    const H=200;
+    const entries=walk.entries.filter(e=>e.location);
+    const route=walk.route||[];
+    if(route.length<2){
+      canvas.width=wrap.clientWidth||320;
+      canvas.height=H;
+      canvas.style.width=(wrap.clientWidth||320)+'px';
+      ctx.fillStyle='#e8e6e2';ctx.fillRect(0,0,canvas.width,H);
+      ctx.fillStyle='#aaa';ctx.font='12px sans-serif';ctx.textAlign='center';
+      ctx.fillText('Keine Route',canvas.width/2,H/2);
+      return;
+    }
+
+    function hdist(a,b){const R=6371000,tr=x=>x*Math.PI/180;const dLat=tr(b[0]-a[0]),dLon=tr(b[1]-a[1]);const h=Math.sin(dLat/2)**2+Math.cos(tr(a[0]))*Math.cos(tr(b[0]))*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
+
+    const skip=Math.max(1,Math.floor(route.length/150));
+    const pts=route.filter((_,i)=>i%skip===0||i===route.length-1);
+    let cum=[0];
+    for(let i=1;i<pts.length;i++) cum.push(cum[i-1]+hdist(pts[i-1],pts[i]));
+    const totalDist=cum[cum.length-1]||1;
+
+    function nearestIdx(lat,lng){let b=0,bd=Infinity;pts.forEach((p,i)=>{const d=hdist([lat,lng],p);if(d<bd){bd=d;b=i;}});return b;}
+
+    const PAD=40;
+    const W=Math.max(wrap.clientWidth||320, Math.round(totalDist*0.35)+PAD*2);
+    canvas.width=W; canvas.height=H;
+    canvas.style.width=W+'px'; canvas.style.height=H+'px';
+
+    const SCALE=window.devicePixelRatio||1;
+    // Don't scale - keep 1:1 for simplicity on small screens
+
+    function rx(d){return PAD+(d/totalDist)*(W-PAD*2);}
+    const ROUTE_Y=H*0.72;
+
+    // Himmel
+    const sky=ctx.createLinearGradient(0,0,0,H);
+    sky.addColorStop(0,'#ccccca');sky.addColorStop(0.7,'#e0dfdc');sky.addColorStop(1,'#eae9e6');
+    ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+
+    // Bergsilhouetten
+    function mtn(yOff,color){
+      ctx.beginPath();ctx.moveTo(0,H);
+      const seg=Math.max(1,Math.floor(pts.length/25));
+      pts.filter((_,i)=>i%seg===0||i===pts.length-1).forEach((p,i,arr)=>{
+        const x=rx(cum[pts.indexOf(p)]||0);
+        const t=(p[0]-Math.min(...pts.map(q=>q[0])))/(Math.max(...pts.map(q=>q[0]))-Math.min(...pts.map(q=>q[0]))||0.001);
+        const y=ROUTE_Y-yOff-t*(H*0.22);
+        ctx.lineTo(x,y);
+      });
+      ctx.lineTo(W,H);ctx.closePath();
+      ctx.fillStyle=color;ctx.fill();
+    }
+    mtn(H*0.25,'rgba(190,188,182,0.7)');
+    mtn(H*0.13,'rgba(165,163,157,0.82)');
+    mtn(H*0.02,'rgba(138,136,130,0.92)');
+
+    // Boden
+    ctx.fillStyle='#1e1c1a';ctx.fillRect(0,ROUTE_Y,W,H-ROUTE_Y);
+    for(let x=0;x<W;x+=2){
+      const th=1.5+Math.sin(x*0.9)*1.2+Math.random()*3;
+      ctx.fillStyle=`rgba(0,0,0,${0.06+Math.random()*0.15})`;
+      ctx.fillRect(x,ROUTE_Y-th,1.5,th);
+    }
+
+    // Tuschlinie aus gespeicherten Segmenten
+    const segs=walk.segments||[];
+    if(segs.length>0){
+      // Segmente auf Canvas-X projizieren
+      segs.forEach(s=>{
+        const i1=nearestIdx(s.ll1[0],s.ll1[1]);
+        const i2=nearestIdx(s.ll2[0],s.ll2[1]);
+        const x1=rx(cum[i1]),x2=rx(cum[i2]);
+        const alpha=Math.min(s.opacity,1);
+        const w=Math.max(1,s.weight*0.8);
+        ctx.beginPath();ctx.moveTo(x1+(Math.random()-0.5)*0.6,ROUTE_Y+(Math.random()-0.5)*0.5);
+        ctx.lineTo(x2+(Math.random()-0.5)*0.6,ROUTE_Y+(Math.random()-0.5)*0.5);
+        ctx.strokeStyle=`rgba(12,8,4,${alpha})`;
+        ctx.lineWidth=w;ctx.lineCap='round';ctx.stroke();
+      });
+    } else {
+      // Fallback
+      for(let pass=0;pass<3;pass++){
+        ctx.beginPath();let first=true;
+        pts.forEach((_,i)=>{const x=rx(cum[i])+(Math.random()-0.5)*0.7;const y=ROUTE_Y+(Math.random()-0.5)*0.6;first?(ctx.moveTo(x,y),first=false):ctx.lineTo(x,y);});
+        ctx.strokeStyle=`rgba(12,8,4,${pass===0?0.75:pass===1?0.45:0.2})`;
+        ctx.lineWidth=pass===0?4:pass===1?2.5:1.5;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();
+      }
+    }
+
+    // Start/Ende
+    [{x:rx(0),c:'#22c55e'},{x:rx(totalDist),c:'#ef4444'}].forEach(({x,c})=>{
+      ctx.beginPath();ctx.arc(x,ROUTE_Y,5,0,Math.PI*2);
+      ctx.fillStyle=c;ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+    });
+
+    // Sprechblasen-Marker
+    const TC={mood:'#f97316',thought:'#1e3a6e',sense:'#2d5a2d',voice:'#2a2a2a',sound:'#2a2a2a',photo:'#2a2a2a'};
+    const TL={mood:'Stimmung',thought:'Gedanken',sense:'Wahrnehmung',voice:'Sprache',sound:'Sound',photo:'Foto'};
+    const markerData=[];
+    const usedX={};
+
+    entries.forEach((e,ei)=>{
+      if(!e.location)return;
+      const idx=nearestIdx(e.location.lat,e.location.lng);
+      const x=rx(cum[idx]);
+      const col=TC[e.type]||'#555';
+      const bucket=Math.round(x/88);
+      usedX[bucket]=(usedX[bucket]||0)+1;
+      const stack=usedX[bucket]-1;
+      const bW=84,bH=60,tail=14;
+      const bY=ROUTE_Y-tail-bH-stack*76-4;
+      markerData.push({e,x,bY,bW,bH,tail,col,label:TL[e.type]||e.type});
+    });
+
+    function drawBubble(m,hl){
+      const{x,bY,bW,bH,tail,col}=m;
+      const bX=x-bW/2,r=8;
+      ctx.save();
+      ctx.shadowColor='rgba(0,0,0,0.25)';ctx.shadowBlur=6;ctx.shadowOffsetY=2;
+      ctx.beginPath();
+      ctx.moveTo(bX+r,bY);ctx.lineTo(bX+bW-r,bY);
+      ctx.quadraticCurveTo(bX+bW,bY,bX+bW,bY+r);
+      ctx.lineTo(bX+bW,bY+bH-r);
+      ctx.quadraticCurveTo(bX+bW,bY+bH,bX+bW-r,bY+bH);
+      ctx.lineTo(x+7,bY+bH);ctx.lineTo(x,bY+bH+tail);ctx.lineTo(x-7,bY+bH);
+      ctx.lineTo(bX+r,bY+bH);
+      ctx.quadraticCurveTo(bX,bY+bH,bX,bY+bH-r);
+      ctx.lineTo(bX,bY+r);ctx.quadraticCurveTo(bX,bY,bX+r,bY);ctx.closePath();
+      ctx.fillStyle=col;ctx.fill();
+      ctx.shadowColor='transparent';
+      ctx.strokeStyle=hl?'#fff':'rgba(0,0,0,0.3)';ctx.lineWidth=hl?2.5:1;ctx.stroke();
+      if(hl){ctx.shadowColor='rgba(255,220,0,0.7)';ctx.shadowBlur=12;ctx.stroke();}
+
+      ctx.shadowColor='transparent';
+      ctx.fillStyle='rgba(255,255,255,0.88)';ctx.font='bold 7px sans-serif';ctx.textAlign='center';
+      ctx.fillText(m.label.substring(0,11).toUpperCase(),x,bY+11);
+
+      const e=m.e;
+      if(e.type==='mood'&&e.moodValue!=null){
+        ctx.fillStyle='#fff';ctx.font='bold 20px sans-serif';ctx.fillText(e.moodValue,x,bY+bH-13);
+        ctx.font='7px sans-serif';ctx.fillText('/100',x,bY+bH-3);
+      } else if(e.type==='photo'&&e.dataUrl){
+        const img=new Image();
+        img.onload=()=>{ctx.save();ctx.beginPath();ctx.rect(bX+4,bY+16,bW-8,bH-22);ctx.clip();ctx.drawImage(img,bX+4,bY+16,bW-8,bH-22);ctx.restore();};
+        img.src=e.dataUrl;
+        ctx.fillStyle='rgba(255,255,255,0.6)';ctx.font='16px sans-serif';ctx.fillText('📷',x,bY+bH-12);
+      } else if(e.type==='voice'||e.type==='sound'){
+        const bars=[.3,.7,1,.8,.45,.9,.4,.7,.35,.6];
+        ctx.strokeStyle='rgba(255,255,255,0.75)';ctx.lineWidth=1.8;
+        bars.forEach((h,i)=>{const bx=bX+8+i*(bW-16)/9,bh=(bH-26)*h;ctx.beginPath();ctx.moveTo(bx,bY+bH/2+bh/2-4);ctx.lineTo(bx,bY+bH/2-bh/2-4);ctx.stroke();});
+      } else if(e.text){
+        ctx.fillStyle='rgba(255,255,255,0.92)';ctx.font='8px sans-serif';
+        const words=e.text.split(' ');let line='',lines=[];
+        words.forEach(w=>{const t=line+w+' ';ctx.measureText(t).width>bW-12&&line?(lines.push(line.trim()),line=w+' '):line=t;});
+        lines.push(line.trim());
+        lines.slice(0,4).forEach((l,i)=>ctx.fillText(l,x,bY+20+i*11));
+      }
+      ctx.restore();
+    }
+
+    markerData.forEach(m=>drawBubble(m,false));
+
+    // Hit-Test für Antippen
+    function hitTest(cx,cy){
+      const rect=canvas.getBoundingClientRect();
+      const sx=canvas.width/rect.width,sy=canvas.height/rect.height;
+      const px=(cx-rect.left)*sx,py=(cy-rect.top)*sy;
+      for(let i=markerData.length-1;i>=0;i--){
+        const m=markerData[i];
+        if(px>=m.x-m.bW/2&&px<=m.x+m.bW/2&&py>=m.bY&&py<=m.bY+m.bH+m.tail) return m;
+      }
+      return null;
+    }
+
+    function redraw(hl){
+      ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+      mtn(H*0.25,'rgba(190,188,182,0.7)');mtn(H*0.13,'rgba(165,163,157,0.82)');mtn(H*0.02,'rgba(138,136,130,0.92)');
+      ctx.fillStyle='#1e1c1a';ctx.fillRect(0,ROUTE_Y,W,H-ROUTE_Y);
+      for(let x=0;x<W;x+=2){const th=1.5+Math.sin(x*0.9)*1.2+Math.random()*3;ctx.fillStyle=`rgba(0,0,0,${0.06+Math.random()*0.15})`;ctx.fillRect(x,ROUTE_Y-th,1.5,th);}
+      if(segs.length>0){segs.forEach(s=>{const i1=nearestIdx(s.ll1[0],s.ll1[1]),i2=nearestIdx(s.ll2[0],s.ll2[1]);const x1=rx(cum[i1]),x2=rx(cum[i2]);ctx.beginPath();ctx.moveTo(x1,ROUTE_Y);ctx.lineTo(x2,ROUTE_Y);ctx.strokeStyle=`rgba(12,8,4,${Math.min(s.opacity,1)})`;ctx.lineWidth=Math.max(1,s.weight*0.8);ctx.lineCap='round';ctx.stroke();});}
+      else{for(let pass=0;pass<3;pass++){ctx.beginPath();let first=true;pts.forEach((_,i)=>{const x=rx(cum[i]);first?(ctx.moveTo(x,ROUTE_Y),first=false):ctx.lineTo(x,ROUTE_Y);});ctx.strokeStyle=`rgba(12,8,4,${pass===0?0.75:0.35})`;ctx.lineWidth=pass===0?4:2;ctx.stroke();}}
+      [{x:rx(0),c:'#22c55e'},{x:rx(totalDist),c:'#ef4444'}].forEach(({x,c})=>{ctx.beginPath();ctx.arc(x,ROUTE_Y,5,0,Math.PI*2);ctx.fillStyle=c;ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();});
+      markerData.forEach(m=>drawBubble(m,m===hl));
+    }
+
+    // Eintrag anzeigen
+    function showInfo(m){
+      const e=m.e;
+      const card=document.getElementById('vergleichEntryCard');
+      if(!card)return;
+      card.style.display='flex';
+      const TN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Wahrnehmung',voice:'💬 Sprache',sound:'🎙 Sound',photo:'📸 Foto'};
+      let html=`<span style="font-weight:bold;">${TN[e.type]||e.type}</span>`;
+      if(e.type==='mood'&&e.moodValue!=null) html+=` <span style="color:#f97316;font-weight:bold;">${e.moodValue}/100</span>`;
+      if(e.text) html+=` <span style="color:#444;">${escHtml(e.text)}</span>`;
+      if(e.timestamp) html+=` <span style="color:#aaa;font-size:10px;">${e.timestamp}</span>`;
+      if(e.audioUrl) html+=`<br/><audio controls src="${e.audioUrl}" style="width:100%;margin-top:4px;"></audio>`;
+      if(e.dataUrl) html+=`<br/><img src="${e.dataUrl}" style="max-width:100%;border-radius:6px;margin-top:4px;"/>`;
+      card.innerHTML=html;
+    }
+
+    canvas.addEventListener('click',ev=>{const m=hitTest(ev.clientX,ev.clientY);if(m){redraw(m);showInfo(m);}});
+    canvas.addEventListener('touchend',ev=>{
+      ev.preventDefault();
+      const t=ev.changedTouches[0];
+      const m=hitTest(t.clientX,t.clientY);if(m){redraw(m);showInfo(m);}
+    },{passive:false});
+  }
   document.getElementById('vergleichClose').onclick=()=>{
     document.getElementById('vergleichModal').style.display='none';
     Object.values(vergleichMaps).forEach(m=>{try{m.remove();}catch(e){}});
@@ -1254,6 +1442,7 @@ window.addEventListener('load', function() {
       <button id="vergleichClose" style="width:28px;height:28px;border-radius:50%;border:none;background:#eee;cursor:pointer;font-size:14px;">✕</button>
     </div>
     <div id="vergleichContent" style="display:flex;flex-direction:column;gap:16px;"></div>
+    <div id="vergleichEntryCard" style="background:#f5f5f5;border-radius:10px;padding:10px 12px;font-size:11px;color:#333;display:none;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
   </div>
 </div>
 </body>
