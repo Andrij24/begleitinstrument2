@@ -51,6 +51,7 @@
     .wb-export{background:#16a34a;color:#fff;}
     .wb-analyse{background:#7c3aed;color:#fff;}
     .wb-delete{background:#fee2e2;color:#dc2626;}
+    .wb-verlauf{background:#0e7490;color:#fff;}
     .ref-question{font-size:11px;font-weight:bold;color:#374151;margin-bottom:4px;margin-top:10px;}
     .ref-question:first-of-type{margin-top:0;}
     textarea.ref-input{width:100%;font-size:11px;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;font-family:sans-serif;background:#fafafa;}
@@ -163,6 +164,18 @@
       margin: 4px 0;
       flex-shrink: 0;
     }
+
+
+    /* Verlauf-Modal */
+    #verlaufModal{position:fixed;inset:0;z-index:3500;background:rgba(0,0,0,0.82);display:none;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;}
+    #verlaufModal.open{display:flex;}
+    #verlaufBox{background:#f8f8f8;border-radius:20px;width:min(96vw,640px);padding:20px;display:flex;flex-direction:column;gap:14px;margin:auto;}
+    .verlauf-header{display:flex;align-items:center;justify-content:space-between;}
+    .verlauf-title{font-size:14px;font-weight:bold;color:#111;}
+    .verlauf-close{width:28px;height:28px;border-radius:50%;border:none;background:#eee;cursor:pointer;font-size:14px;}
+    .verlauf-legend{display:flex;flex-wrap:wrap;gap:8px;font-size:10px;color:#555;}
+    .verlauf-legend span{display:flex;align-items:center;gap:4px;}
+    .verlauf-legend i{width:10px;height:10px;border-radius:50%;display:inline-block;}
 
     #moodModal,#thoughtModal,#senseModal{position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,0.78);display:none;align-items:center;justify-content:center;}
     #thoughtModal,#senseModal{z-index:2000;background:rgba(0,0,0,0.75);}
@@ -742,6 +755,134 @@ window.addEventListener('load', function() {
   }
   window.toggleWalk=toggleWalk;
 
+
+  // ── VERLAUF-ANSICHT: Route als 2.5D Höhenprofil ──
+  function openVerlauf(walk) {
+    document.getElementById('verlaufTitle').textContent = 'Verlauf: ' + walk.name;
+    document.getElementById('verlaufModal').classList.add('open');
+
+    const entries = walk.entries.filter(e => e.timestamp && e.location);
+    const route = walk.route || [];
+
+    if (route.length < 2) {
+      document.getElementById('verlaufCanvas').innerHTML = '<p style="font-size:11px;color:#9ca3af;padding:20px 0;">Keine Route aufgezeichnet.</p>';
+      document.getElementById('verlaufInfo').textContent = '';
+      return;
+    }
+
+    document.getElementById('verlaufCanvas').innerHTML = '<p style="font-size:11px;color:#aaa;padding:12px 0;">⏳ Lade Höhendaten...</p>';
+
+    const step = Math.max(1, Math.floor(route.length / 80));
+    const samples = route.filter((_, i) => i % step === 0 || i === route.length - 1);
+
+    fetch('https://api.open-elevation.com/api/v1/lookup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ locations: samples.map(ll => ({ latitude: ll[0], longitude: ll[1] })) })
+    })
+    .then(r => r.json())
+    .then(data => {
+      const elevations = data.results ? data.results.map(r => r.elevation) : samples.map(() => 0);
+      renderVerlaufSVG(walk, samples, elevations, entries);
+    })
+    .catch(() => {
+      renderVerlaufSVG(walk, samples, samples.map(() => 0), entries);
+    });
+  }
+
+  function renderVerlaufSVG(walk, samples, elevations, entries) {
+    const W=600, H=320, PAD_L=44, PAD_R=24, PAD_T=50, PAD_B=56;
+    const plotW=W-PAD_L-PAD_R, plotH=H-PAD_T-PAD_B;
+
+    function hdist(a,b){const R=6371000,tr=x=>x*Math.PI/180;const dLat=tr(b[0]-a[0]),dLon=tr(b[1]-a[1]);const h=Math.sin(dLat/2)**2+Math.cos(tr(a[0]))*Math.cos(tr(b[0]))*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
+
+    let cumDist=[0];
+    for(let i=1;i<samples.length;i++) cumDist.push(cumDist[i-1]+hdist(samples[i-1],samples[i]));
+    const totalDist=cumDist[cumDist.length-1]||1;
+
+    function dx(d){return PAD_L+(d/totalDist)*plotW;}
+    const elMin=Math.min(...elevations)-3, elMax=Math.max(...elevations)+3, elSpan=elMax-elMin||1;
+    function ey(el){return PAD_T+plotH-((el-elMin)/elSpan)*plotH;}
+
+    function nearestIdx(lat,lng){let b=0,bd=Infinity;samples.forEach((s,i)=>{const d=hdist([lat,lng],s);if(d<bd){bd=d;b=i;}});return b;}
+
+    const typeColor={mood:'#facc15',thought:'#22c55e',sense:'#f97316',voice:'#7c3aed',sound:'#f58231',photo:'#555'};
+    const typeSymbol={mood:'●',thought:'◆',sense:'▲',voice:'▶',sound:'◉',photo:'■'};
+
+    const routePoints=samples.map((s,i)=>`${dx(cumDist[i])},${ey(elevations[i])}`).join(' ');
+    const floorY=PAD_T+plotH;
+
+    let svg=`<svg width="100%" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif;">`;
+    svg+=`<rect width="${W}" height="${H}" fill="#f5f5f3" rx="12"/>`;
+
+    // Geländefläche
+    const area=`M ${dx(0)} ${floorY} `+samples.map((s,i)=>`L ${dx(cumDist[i])} ${ey(elevations[i])}`).join(' ')+` L ${dx(totalDist)} ${floorY} Z`;
+    svg+=`<path d="${area}" fill="rgba(160,155,148,0.22)"/>`;
+
+    // 2.5D Schatten
+    [[5,0.07],[3,0.11],[1.5,0.17]].forEach(([off,op])=>{
+      const sh=samples.map((s,i)=>`${dx(cumDist[i])+off*0.4},${ey(elevations[i])+off}`).join(' ');
+      svg+=`<polyline points="${sh}" fill="none" stroke="rgba(0,0,0,${op})" stroke-width="${off*2}" stroke-linecap="round" stroke-linejoin="round"/>`;
+    });
+
+    // Konturlinie
+    svg+=`<polyline points="${routePoints}" fill="none" stroke="#b8b4ae" stroke-width="1.5" stroke-linejoin="round"/>`;
+
+    // Gitternetz
+    for(let i=0;i<=4;i++){
+      const y=PAD_T+(plotH/4)*i, el=elMax-(elSpan/4)*i;
+      svg+=`<line x1="${PAD_L}" y1="${y}" x2="${W-PAD_R}" y2="${y}" stroke="rgba(0,0,0,0.05)" stroke-width="1"/>`;
+      svg+=`<text x="${PAD_L-4}" y="${y+4}" text-anchor="end" font-size="8" fill="#bbb">${Math.round(el)}m</text>`;
+    }
+    const distStep=totalDist>2000?500:totalDist>500?200:100;
+    for(let d=0;d<=totalDist;d+=distStep){
+      const x=dx(d), lbl=d>=1000?(d/1000).toFixed(1)+'km':Math.round(d)+'m';
+      svg+=`<line x1="${x}" y1="${PAD_T}" x2="${x}" y2="${floorY}" stroke="rgba(0,0,0,0.05)" stroke-width="1"/>`;
+      svg+=`<text x="${x}" y="${floorY+14}" text-anchor="middle" font-size="8" fill="#aaa">${lbl}</text>`;
+    }
+
+    // Hauptroute
+    svg+=`<polyline points="${routePoints}" fill="none" stroke="rgba(28,20,10,0.75)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+
+    // Start/Ende
+    svg+=`<circle cx="${dx(0)}" cy="${ey(elevations[0])}" r="5" fill="#22c55e" stroke="white" stroke-width="2"/>`;
+    svg+=`<text x="${dx(0)}" y="${ey(elevations[0])-10}" text-anchor="middle" font-size="8" fill="#22c55e">Start</text>`;
+    svg+=`<circle cx="${dx(totalDist)}" cy="${ey(elevations[elevations.length-1])}" r="5" fill="#ef4444" stroke="white" stroke-width="2"/>`;
+    svg+=`<text x="${dx(totalDist)}" y="${ey(elevations[elevations.length-1])-10}" text-anchor="middle" font-size="8" fill="#ef4444">Ende</text>`;
+
+    // Eintrags-Marker
+    const usedX={};
+    entries.forEach(e=>{
+      if(!e.location)return;
+      const idx=nearestIdx(e.location.lat,e.location.lng);
+      const x=dx(cumDist[idx]), baseY=ey(elevations[idx]);
+      const col=typeColor[e.type]||'#888';
+      const key=Math.round(x/10);
+      usedX[key]=(usedX[key]||0)+1;
+      const markerY=baseY-20-(usedX[key]-1)*24;
+      svg+=`<line x1="${x}" y1="${baseY-4}" x2="${x}" y2="${markerY+8}" stroke="${col}" stroke-width="1.5" stroke-dasharray="2 2" opacity="0.65"/>`;
+      svg+=`<circle cx="${x}" cy="${markerY}" r="8" fill="white" stroke="${col}" stroke-width="2"/>`;
+      svg+=`<text x="${x}" y="${markerY+3}" text-anchor="middle" font-size="7" fill="${col}" font-weight="bold">${typeSymbol[e.type]||'●'}</text>`;
+      if(e.type==='mood'&&e.moodValue!==undefined){
+        svg+=`<text x="${x}" y="${markerY-12}" text-anchor="middle" font-size="9" fill="${col}" font-weight="bold">${e.moodValue}</text>`;
+      } else if(e.text){
+        svg+=`<text x="${x}" y="${markerY-12}" text-anchor="middle" font-size="7" fill="${col}">${escHtml(e.text.substring(0,10)+(e.text.length>10?'…':''))}</text>`;
+      }
+    });
+
+    svg+=`<text x="${PAD_L}" y="${PAD_T-10}" font-size="9" fill="#999" font-weight="bold">Höhe (m)</text>`;
+    svg+=`<text x="${W/2}" y="${H-5}" text-anchor="middle" font-size="9" fill="#aaa">Distanz entlang Route</text>`;
+    svg+='</svg>';
+
+    document.getElementById('verlaufCanvas').innerHTML=svg;
+    document.getElementById('verlaufInfo').textContent=
+      `Distanz: ${(totalDist/1000).toFixed(2)} km · ${entries.length} Einträge · Höhe: ${Math.round(elMin+3)}–${Math.round(elMax-3)} m`;
+  }
+
+  document.getElementById('verlaufClose').onclick=()=>{
+    document.getElementById('verlaufModal').classList.remove('open');
+  };
+
   // AUSWERTUNG — nur Ich-Sicht
   let analyseCharts={};
   function destroyAnalyseCharts(){Object.values(analyseCharts).forEach(c=>{try{c.destroy();}catch(e){}});analyseCharts={};}
@@ -804,9 +945,10 @@ window.addEventListener('load', function() {
       header.innerHTML='<span class="color-dot" style="background:'+w.color+'"></span><span class="walk-label">'+escHtml(w.name)+(w.steps?'<br><span style="font-size:9px;color:#9ca3af;font-weight:normal;">👣 '+(w.steps||0).toLocaleString('de-DE')+' Schritte'+(hasRef?' · ✍️':'')+'</span>':'')+'</span><span class="walk-badge">sichtbar</span>';
       header.addEventListener('click',()=>toggleWalk(w.id));
       const actions=document.createElement('div');actions.className='walk-actions';actions.setAttribute('data-id',w.id);
-      actions.innerHTML='<input class="walk-name-input" type="text" placeholder="Name ändern..." value="'+escHtml(w.name)+'"/><div class="walk-btn-row"><button class="walk-btn wb-save">✏️ Umbenennen</button><button class="walk-btn wb-analyse">📊 Auswerten</button><button class="walk-btn wb-export">📦 Export</button><button class="walk-btn wb-delete">🗑</button></div>';
+      actions.innerHTML='<input class="walk-name-input" type="text" placeholder="Name ändern..." value="'+escHtml(w.name)+'"/><div class="walk-btn-row"><button class="walk-btn wb-save">✏️ Umbenennen</button><button class="walk-btn wb-verlauf">📈 Verlauf</button><button class="walk-btn wb-analyse">📊 Auswerten</button><button class="walk-btn wb-export">📦 Export</button><button class="walk-btn wb-delete">🗑</button></div>';
       actions.querySelector('.wb-save').onclick=()=>{const n=actions.querySelector('.walk-name-input').value.trim();if(!n)return;w.name=n;header.querySelector('.walk-label').firstChild.textContent=n;saveWalks();};
       actions.querySelector('.wb-analyse').onclick=()=>openAnalyse(w);
+      actions.querySelector('.wb-verlauf').onclick=()=>openVerlauf(w);
       actions.querySelector('.wb-export').onclick=()=>exportWalk(w);
       actions.querySelector('.wb-delete').onclick=()=>{if(!confirm('Walk "'+w.name+'" wirklich löschen?'))return;if(state.activeLayers[w.id]){state.map.removeLayer(state.activeLayers[w.id]);delete state.activeLayers[w.id];}if(state.archiveInkLayers[w.id]){state.map.removeLayer(state.archiveInkLayers[w.id]);delete state.archiveInkLayers[w.id];}state.walks=state.walks.filter(x=>x.id!==w.id);saveWalks();renderArchive();if(Object.keys(state.activeLayers).length===0)document.getElementById('reflexionPanel').style.display='none';};
       item.appendChild(header);item.appendChild(actions);list.appendChild(item);
@@ -863,5 +1005,26 @@ window.addEventListener('load', function() {
   renderArchive();
 });
 </script>
+
+<!-- VERLAUF-MODAL -->
+<div id="verlaufModal">
+  <div id="verlaufBox">
+    <div class="verlauf-header">
+      <div class="verlauf-title" id="verlaufTitle">Zeitverlauf</div>
+      <button class="verlauf-close" id="verlaufClose">✕</button>
+    </div>
+    <div class="verlauf-legend">
+      <span><i style="background:#facc15;"></i> Stimmung</span>
+      <span><i style="background:#22c55e;"></i> Gedanke</span>
+      <span><i style="background:#f97316;"></i> Wahrnehmung</span>
+      <span><i style="background:#7c3aed;"></i> Sprache</span>
+      <span><i style="background:#f97316;border:1px solid #999;"></i> Sound</span>
+      <span><i style="background:#555;"></i> Foto</span>
+    </div>
+    <div id="verlaufCanvas" style="width:100%;overflow-x:auto;"></div>
+    <div id="verlaufInfo" style="font-size:11px;color:#9ca3af;margin-top:4px;"></div>
+  </div>
+</div>
+
 </body>
 </html>
