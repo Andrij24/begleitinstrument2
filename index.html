@@ -54,12 +54,6 @@
     .wb-analyse{background:#7c3aed;color:#fff;}
     .wb-delete{background:#fee2e2;color:#dc2626;}
     .wb-verlauf{background:#0e7490;color:#fff;}
-    .ref-question{font-size:11px;font-weight:bold;color:#374151;margin-bottom:4px;margin-top:10px;}
-    .ref-question:first-of-type{margin-top:0;}
-    textarea.ref-input{width:100%;font-size:11px;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;font-family:sans-serif;background:#fafafa;}
-    .mood-retro-wrap{display:flex;align-items:center;gap:8px;margin:4px 0;}
-    .mood-retro-wrap input[type=range]{flex:1;}
-    .mood-retro-val{font-size:14px;font-weight:bold;min-width:28px;text-align:right;}
 
     /* Auswertungs-Modal — ohne Dritte-Sicht */
     #analyseModal{position:fixed;inset:0;z-index:3500;background:rgba(0,0,0,0.82);display:none;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;}
@@ -233,25 +227,7 @@
       <div class="section-label">Walks</div>
       <div id="archiveList"><div style="font-size:11px;color:#999;">Noch keine Walks gespeichert.</div></div>
     </div>
-    <div class="section" id="reflexionPanel" style="display:none;">
-      <div class="section-label">Reflexion: <span id="refWalkName"></span></div>
-      <div class="ref-question">Wie erinnerst du den Walk insgesamt?</div>
-      <textarea class="ref-input" id="refFrei" rows="3" placeholder="Freie Beschreibung..."></textarea>
-      <div class="ref-question">Stimmung rückblickend (0=tief, 100=hoch)</div>
-      <div class="mood-retro-wrap">
-        <input type="range" id="refMoodSlider" min="0" max="100" value="50" step="1"/>
-        <span class="mood-retro-val" id="refMoodVal" style="color:#facc15;">50</span>
-      </div>
-      <div class="ref-question">Welcher Moment blieb am stärksten in Erinnerung?</div>
-      <textarea class="ref-input" id="refMoment" rows="2" placeholder="Ort, Situation, Eindruck..."></textarea>
-      <div class="ref-question">Orte die deine Stimmung beeinflusst haben?</div>
-      <textarea class="ref-input" id="refOrte" rows="2" placeholder="Park, Kreuzung, Lärm..."></textarea>
-      <div class="ref-question">Was war bedeutsam aber nicht aufgezeichnet?</div>
-      <textarea class="ref-input" id="refNicht" rows="2" placeholder="Was fehlt in den Daten?"></textarea>
-      <div class="ref-question">Was überrascht dich beim Blick auf die Aufzeichnung?</div>
-      <textarea class="ref-input" id="refUeber" rows="2" placeholder="Diskrepanz, Überraschung..."></textarea>
-      <button id="btnSaveRef" class="btn btn-blue w-full" style="margin-top:10px;">💾 Reflexion speichern</button>
-    </div>
+
   </div>
 </div>
 
@@ -381,7 +357,6 @@ window.addEventListener('load', function() {
   let state={walks:JSON.parse(localStorage.getItem('psychogeo_walks')||'[]'),current:null,map:null,liveMarker:null,activeLayers:{},currentTile:null,archiveInkLayers:{}};
   const audioBlobs={};
   let currentTileUrl='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-  let currentRefId=null;
 
   state.map=L.map('map',{zoomControl:false,maxZoom:22}).setView([47.23,9.61],17);
   state.currentTile=L.tileLayer(currentTileUrl,{crossOrigin:true,maxZoom:22,maxNativeZoom:19}).addTo(state.map);
@@ -803,22 +778,6 @@ window.addEventListener('load', function() {
     localStorage.setItem('psychogeo_walks',JSON.stringify(ts));
   }
 
-  document.getElementById('btnSaveRef').onclick=()=>{
-    const walk=state.walks.find(w=>w.id==currentRefId);if(!walk)return;
-    if(!walk.reflection)walk.reflection={};
-    walk.reflection.frei=document.getElementById('refFrei').value;
-    walk.reflection.moodRetro=parseInt(document.getElementById('refMoodSlider').value);
-    walk.reflection.moment=document.getElementById('refMoment').value;
-    walk.reflection.orte=document.getElementById('refOrte').value;
-    walk.reflection.nicht=document.getElementById('refNicht').value;
-    walk.reflection.ueber=document.getElementById('refUeber').value;
-    saveWalks();alert('Reflexion gespeichert.');
-  };
-  document.getElementById('refMoodSlider').addEventListener('input',function(){
-    const v=parseInt(this.value),col=moodColor(v);
-    document.getElementById('refMoodVal').textContent=v;
-    document.getElementById('refMoodVal').style.color=col;
-  });
 
   function placeMarker(type,latLng,popupHTML){
     mapLayers[type]=mapLayers[type]||[];
@@ -934,7 +893,6 @@ window.addEventListener('load', function() {
       state.map.removeLayer(state.activeLayers[id]);delete state.activeLayers[id];
       if(state.archiveInkLayers[id]){state.map.removeLayer(state.archiveInkLayers[id]);delete state.archiveInkLayers[id];}
       if(header)header.classList.remove('shown');if(actions)actions.classList.remove('open');
-      if(Object.keys(state.activeLayers).length===0)document.getElementById('reflexionPanel').style.display='none';
     } else {
       const group=L.layerGroup();
       if(walk.segments&&walk.segments.length>0){
@@ -959,19 +917,6 @@ window.addEventListener('load', function() {
         walk.entries.forEach(e=>{if(e.location)bounds.extend([e.location.lat,e.location.lng]);});
         state.map.fitBounds(bounds,{padding:[60,60],maxZoom:17,animate:true,duration:0.8});
       }
-      currentRefId=id;
-      document.getElementById('reflexionPanel').style.display='block';
-      document.getElementById('refWalkName').innerText=walk.name;
-      const ref=walk.reflection||{};
-      document.getElementById('refFrei').value=ref.frei||'';
-      document.getElementById('refMoment').value=ref.moment||'';
-      document.getElementById('refOrte').value=ref.orte||'';
-      document.getElementById('refNicht').value=ref.nicht||'';
-      document.getElementById('refUeber').value=ref.ueber||'';
-      const mr=ref.moodRetro!==undefined?ref.moodRetro:50;
-      document.getElementById('refMoodSlider').value=mr;
-      document.getElementById('refMoodVal').textContent=mr;
-      document.getElementById('refMoodVal').style.color=moodColor(mr);
     }
   }
   window.toggleWalk=toggleWalk;
@@ -1086,15 +1031,15 @@ window.addEventListener('load', function() {
     verlaufScene.background=new THREE.Color(0x111111);
     verlaufScene.fog=new THREE.FogExp2(0x111111,0.045);
 
-    const camera=new THREE.PerspectiveCamera(44,W/H,0.01,100);
-    // Kamera von schräg oben vorne — zeigt die echte Form der Route
-    camera.position.set(0,5,9);
+    const camera=new THREE.PerspectiveCamera(50,W/H,0.01,200);
+    camera.position.set(0,6,10);
     camera.lookAt(0,0,0);
 
-    verlaufRenderer=new THREE.WebGLRenderer({antialias:true});
+    verlaufRenderer=new THREE.WebGLRenderer({antialias:true,alpha:false});
     verlaufRenderer.setSize(W,H);
     verlaufRenderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
-    verlaufRenderer.shadowMap.enabled=true;
+    verlaufRenderer.shadowMap.enabled=false; // disable for performance/visibility
+    verlaufRenderer.setClearColor(0x111111,1);
     container.appendChild(verlaufRenderer.domElement);
 
     // Beleuchtung
@@ -1247,32 +1192,68 @@ window.addEventListener('load', function() {
       }
     });
 
-    // ── Kamera-Orbit (sanfte Rotation) ──
-    let camAngle=0, camDragging=false, camLastX=0;
-    let camTargetAngle=0, camCurrentAngle=0;
+    // ── Kamera-Orbit: Maus + Touch ──
+    let camTargetAngle=0.3, camCurrentAngle=0.3;
+    let camTargetElev=0.55, camCurrentElev=0.55;
+    let camDragging=false, camLastX=0, camLastY=0;
+    const CAM_R=10;
 
-    // Maus-Drag für manuelle Rotation
-    verlaufRenderer.domElement.addEventListener('mousedown',ev=>{camDragging=true;camLastX=ev.clientX;});
+    function setCameraFromAngles(){
+      camera.position.x=Math.sin(camCurrentAngle)*CAM_R*Math.cos(camCurrentElev);
+      camera.position.z=Math.cos(camCurrentAngle)*CAM_R*Math.cos(camCurrentElev);
+      camera.position.y=CAM_R*Math.sin(camCurrentElev)+0.5;
+      camera.lookAt(0,0.3,0);
+    }
+
+    // Mouse
+    const el=verlaufRenderer.domElement;
+    el.addEventListener('mousedown',ev=>{
+      // Only drag if not clicking a marker
+      const m=getMarkerAt(ev.clientX,ev.clientY);
+      if(!m){camDragging=true;camLastX=ev.clientX;camLastY=ev.clientY;}
+    });
     window.addEventListener('mouseup',()=>{camDragging=false;});
-    verlaufRenderer.domElement.addEventListener('mousemove',ev=>{
+    el.addEventListener('mousemove',ev=>{
       if(!camDragging)return;
-      const dx=ev.clientX-camLastX;
-      camTargetAngle+=dx*0.008;
-      camLastX=ev.clientX;
+      camTargetAngle-=(ev.clientX-camLastX)*0.007;
+      camTargetElev=Math.max(0.1,Math.min(1.2,camTargetElev+(ev.clientY-camLastY)*0.005));
+      camLastX=ev.clientX; camLastY=ev.clientY;
+    });
+
+    // Touch
+    let touchStartX=0,touchStartY=0,touchStartAngle=0,touchStartElev=0;
+    el.addEventListener('touchstart',ev=>{
+      if(ev.touches.length===1){
+        touchStartX=ev.touches[0].clientX; touchStartY=ev.touches[0].clientY;
+        touchStartAngle=camTargetAngle; touchStartElev=camTargetElev;
+      }
+    },{passive:true});
+    el.addEventListener('touchmove',ev=>{
+      if(ev.touches.length===1){
+        ev.preventDefault();
+        const dx=ev.touches[0].clientX-touchStartX;
+        const dy=ev.touches[0].clientY-touchStartY;
+        camTargetAngle=touchStartAngle-dx*0.008;
+        camTargetElev=Math.max(0.1,Math.min(1.2,touchStartElev+dy*0.005));
+      }
+    },{passive:false});
+    el.addEventListener('touchend',ev=>{
+      if(ev.changedTouches.length){
+        const t=ev.changedTouches[0];
+        const m=getMarkerAt(t.clientX,t.clientY);
+        if(m) showEntryCard(m);
+      }
     });
 
     let animT=0;
     function animate(){
       verlaufAnimFrame=requestAnimationFrame(animate);
       animT+=0.003;
-      // Sanfte Auto-Rotation wenn kein Drag
-      if(!camDragging) camTargetAngle+=0.003;
-      camCurrentAngle+=(camTargetAngle-camCurrentAngle)*0.05;
-      const r=9;
-      camera.position.x=Math.sin(camCurrentAngle)*r;
-      camera.position.z=Math.cos(camCurrentAngle)*r;
-      camera.position.y=5+Math.sin(animT*0.3)*0.3;
-      camera.lookAt(0,0.2,0);
+      // Auto-Rotation wenn kein Drag
+      if(!camDragging) camTargetAngle+=0.004;
+      camCurrentAngle+=(camTargetAngle-camCurrentAngle)*0.06;
+      camCurrentElev+=(camTargetElev-camCurrentElev)*0.06;
+      setCameraFromAngles();
       verlaufRenderer.render(verlaufScene,camera);
     }
     animate();
@@ -1451,7 +1432,7 @@ window.addEventListener('load', function() {
       actions.querySelector('.wb-analyse').onclick=()=>openAnalyse(w);
       actions.querySelector('.wb-verlauf').onclick=()=>openVerlauf(w);
       actions.querySelector('.wb-export').onclick=()=>exportWalk(w);
-      actions.querySelector('.wb-delete').onclick=()=>{if(!confirm('Walk "'+w.name+'" wirklich löschen?'))return;if(state.activeLayers[w.id]){state.map.removeLayer(state.activeLayers[w.id]);delete state.activeLayers[w.id];}if(state.archiveInkLayers[w.id]){state.map.removeLayer(state.archiveInkLayers[w.id]);delete state.archiveInkLayers[w.id];}state.walks=state.walks.filter(x=>x.id!==w.id);saveWalks();renderArchive();if(Object.keys(state.activeLayers).length===0)document.getElementById('reflexionPanel').style.display='none';};
+      actions.querySelector('.wb-delete').onclick=()=>{if(!confirm('Walk "'+w.name+'" wirklich löschen?'))return;if(state.activeLayers[w.id]){state.map.removeLayer(state.activeLayers[w.id]);delete state.activeLayers[w.id];}if(state.archiveInkLayers[w.id]){state.map.removeLayer(state.archiveInkLayers[w.id]);delete state.archiveInkLayers[w.id];}state.walks=state.walks.filter(x=>x.id!==w.id);saveWalks();renderArchive();};
       item.appendChild(header);item.appendChild(actions);list.appendChild(item);
     });
   }
