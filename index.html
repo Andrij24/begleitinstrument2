@@ -385,6 +385,8 @@ window.addEventListener('load', function() {
     drawerTitle.textContent=panelNames[name];
     drawer.classList.add('open');currentPanel=name;
     document.querySelector('.panel-tab[data-panel="'+name+'"]').classList.add('active');
+    // Archiv immer neu rendern wenn geöffnet
+    if(name==='archiv') renderArchive();
   }
   document.querySelectorAll('.panel-tab').forEach(b=>b.addEventListener('click',()=>openPanel(b.getAttribute('data-panel'))));
   document.getElementById('drawerClose').addEventListener('click',()=>{drawer.classList.remove('open');document.querySelectorAll('.panel-tab').forEach(t=>t.classList.remove('active'));currentPanel=null;});
@@ -1226,6 +1228,14 @@ window.addEventListener('load', function() {
   };
 
   function renderArchive(){
+    // Walks frisch aus localStorage laden (verhindert Verlust nach Reload)
+    try{
+      const saved=localStorage.getItem('psychogeo_walks');
+      if(saved){
+        const parsed=JSON.parse(saved);
+        if(parsed.length>0) state.walks=parsed;
+      }
+    }catch(e){}
     const list=document.getElementById('archiveList');
     if(!state.walks.length){list.innerHTML='<div style="font-size:11px;color:#999;">Noch keine Walks gespeichert.</div>';return;}
     list.innerHTML='';
