@@ -963,145 +963,165 @@ window.addEventListener('load', function() {
     const walks=Array.from(selectedForVergleich)
       .map(id=>state.walks.find(w=>w.id==id)).filter(Boolean);
 
-    document.getElementById('vergleichModal').style.display='flex';
-    const container=document.getElementById('vergleichContent');
-    container.innerHTML='';
-    Object.values(vergleichMaps).forEach(m=>{try{m.remove();}catch(e){}});
-    vergleichMaps={};
+    const overlay=document.getElementById('vglOverlay');
+    overlay.style.display='flex';
+    const list=document.getElementById('vglList');
+    list.innerHTML='';
+    document.getElementById('vglInfo').style.display='none';
 
-    // Alle Zeilen zuerst aufbauen
-    const sceneWraps=[], canvases=[];
     walks.forEach((walk,wi)=>{
-      const moodEntries=walk.entries.filter(e=>e.type==='mood'&&e.moodValue!=null);
-      const avgMood=moodEntries.length
-        ?Math.round(moodEntries.reduce((a,b)=>a+b.moodValue,0)/moodEntries.length):null;
       const ref=walk.reflection||{};
+      const moodE=walk.entries.filter(e=>e.type==='mood'&&e.moodValue!=null);
+      const avg=moodE.length?Math.round(moodE.reduce((a,b)=>a+b.moodValue,0)/moodE.length):null;
 
-      const row=document.createElement('div');
-      row.className='vgl-walk-row';
+      const card=document.createElement('div');
+      card.style.cssText='background:#222;border-radius:12px;overflow:hidden;margin-bottom:4px;';
 
-      const title=document.createElement('div');
-      title.style.cssText='display:flex;align-items:center;gap:8px;padding:10px 12px 6px;flex-wrap:wrap;';
-      title.innerHTML=`<span style="width:12px;height:12px;border-radius:50%;background:${walk.color};display:inline-block;flex-shrink:0;"></span>`
-        +`<span style="font-size:12px;font-weight:bold;color:#111;">${escHtml(walk.name)}</span>`
-        +`<span style="font-size:10px;color:#9ca3af;margin-left:auto;">${walk.entries.length} Eintr.`
-        +(avgMood!=null?` · Ø <b style="color:${moodColor(avgMood)};">${avgMood}/5</b>`:'')
-        +(ref.moodRetro!=null?` · Erinnert: <b style="color:${moodColor(ref.moodRetro)};">${ref.moodRetro}/5</b>`:'')
-        +'</span>';
-      row.appendChild(title);
+      const ttl=document.createElement('div');
+      ttl.style.cssText='display:flex;align-items:center;gap:8px;padding:8px 12px;';
+      ttl.innerHTML=`<span style="width:10px;height:10px;border-radius:50%;background:${walk.color};flex-shrink:0;display:inline-block;"></span>`
+        +`<span style="color:#fff;font-size:12px;font-weight:bold;flex:1;">${escHtml(walk.name)}</span>`
+        +(avg!=null?`<span style="color:${moodColor(avg)};font-size:11px;font-weight:bold;">${avg}/5</span>`:'')
+        +(ref.moodRetro!=null?`<span style="color:#aaa;font-size:10px;margin-left:4px;">↩${ref.moodRetro}/5</span>`:'');
+      card.appendChild(ttl);
 
-      const sceneWrap=document.createElement('div');
-      sceneWrap.style.cssText='overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;background:#e0deda;border-radius:0 0 10px 10px;height:200px;';
+      const scroller=document.createElement('div');
+      scroller.style.cssText='overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;background:#1a1816;';
       const cv=document.createElement('canvas');
-      cv.style.cssText='display:block;height:200px;';
-      sceneWrap.appendChild(cv);
-      row.appendChild(sceneWrap);
+      scroller.appendChild(cv);
+      card.appendChild(scroller);
 
       if(ref.frei){
         const q=document.createElement('div');
-        q.className='vgl-ref';
-        q.textContent='"'+ref.frei.substring(0,100)+(ref.frei.length>100?'…':'')+'"';
-        row.appendChild(q);
+        q.style.cssText='padding:6px 12px;font-size:10px;color:#888;font-style:italic;border-top:1px solid #333;';
+        q.textContent='"'+ref.frei.substring(0,80)+(ref.frei.length>80?'…':'')+'"';
+        card.appendChild(q);
       }
-      container.appendChild(row);
-      sceneWraps.push(sceneWrap);
-      canvases.push({cv,walk});
+      list.appendChild(card);
+      setTimeout(()=>drawSkizze(cv,scroller,walk), 60+wi*40);
     });
-
-    // NACH dem Anhängen zeichnen — mit echten Breiten
-    requestAnimationFrame(()=>requestAnimationFrame(()=>{
-      canvases.forEach(({cv,walk},wi)=>{
-        const sw=sceneWraps[wi];
-        // Breite aus tatsächlichem Layout lesen
-        const fw=Math.max(
-          sw.getBoundingClientRect().width,
-          container.getBoundingClientRect().width,
-          window.innerWidth-48
-        )||320;
-        drawVglScene(cv,walk,sw,fw);
-      });
-    }));
   }
-  function drawVglScene(canvas,walk,wrap,fallbackW){
-    // Leaflet-Karte statt Canvas — zuverlässiger auf allen Geräten
-    const mapId='vglmap_'+walk.id+'_'+Date.now();
-    const mapDiv=document.createElement('div');
-    mapDiv.id=mapId;
-    mapDiv.style.cssText='width:100%;height:200px;border-radius:0 0 10px 10px;';
-    // Canvas durch Leaflet-Div ersetzen
-    wrap.innerHTML='';
-    wrap.style.height='200px';
-    wrap.style.overflow='hidden';
-    wrap.appendChild(mapDiv);
 
-    if(!walk.route||walk.route.length<2){
-      mapDiv.style.cssText+='background:#e8e6e2;display:flex;align-items:center;justify-content:center;';
-      mapDiv.innerHTML='<span style="color:#aaa;font-size:12px;">Keine Route</span>';
-      return;
+  function drawSkizze(canvas, scroller, walk){
+    const entries=walk.entries.filter(e=>e.location);
+    const route=walk.route||[];
+    function hdist(a,b){const R=6371000,tr=x=>x*Math.PI/180,dLat=tr(b[0]-a[0]),dLon=tr(b[1]-a[1]),h=Math.sin(dLat/2)**2+Math.cos(tr(a[0]))*Math.cos(tr(b[0]))*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
+    const H=200, DPR=Math.min(window.devicePixelRatio||1,2);
+    if(route.length<2){
+      canvas.width=320*DPR;canvas.height=H*DPR;
+      canvas.style.cssText='width:320px;height:'+H+'px;display:block;';
+      const ctx=canvas.getContext('2d');ctx.scale(DPR,DPR);
+      ctx.fillStyle='#1a1816';ctx.fillRect(0,0,320,H);
+      ctx.fillStyle='#555';ctx.font='12px sans-serif';ctx.textAlign='center';
+      ctx.fillText('Keine Route',160,H/2);return;
     }
-
-    const m=L.map(mapId,{
-      zoomControl:false,attributionControl:false,
-      dragging:true,scrollWheelZoom:false,
-      touchZoom:true,doubleClickZoom:true,
-      tap:false,bounceAtZoomLimits:false
-    });
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
-      maxZoom:19,subdomains:'abcd'
-    }).addTo(m);
-
-    // Tuschlinie aus Segmenten
-    const inkC=L.canvas({padding:0.5});
+    const skip=Math.max(1,Math.floor(route.length/100));
+    const pts=route.filter((_,i)=>i%skip===0||i===route.length-1);
+    let cum=[0];for(let i=1;i<pts.length;i++)cum.push(cum[i-1]+hdist(pts[i-1],pts[i]));
+    const totalDist=cum[cum.length-1]||1;
+    function nIdx(lat,lng){let b=0,bd=Infinity;pts.forEach((p,i)=>{const d=hdist([lat,lng],p);if(d<bd){bd=d;b=i;}});return b;}
+    const PAD=40;
+    const W_CSS=Math.max(window.innerWidth-24,Math.round(totalDist*0.35)+PAD*2,500);
+    canvas.width=W_CSS*DPR;canvas.height=H*DPR;
+    canvas.style.cssText='width:'+W_CSS+'px;height:'+H+'px;display:block;';
+    const ctx=canvas.getContext('2d');ctx.scale(DPR,DPR);
+    function rx(d){return PAD+(d/totalDist)*(W_CSS-PAD*2);}
+    function rxI(i){return rx(cum[Math.min(i,cum.length-1)]);}
+    const RY=H*0.74;
+    // Himmel
+    const sky=ctx.createLinearGradient(0,0,0,H);
+    sky.addColorStop(0,'#c4c2be');sky.addColorStop(1,'#e4e2de');
+    ctx.fillStyle=sky;ctx.fillRect(0,0,W_CSS,H);
+    // Berge
+    const lats=pts.map(p=>p[0]),minLat=Math.min(...lats),latSpan=Math.max(...lats)-minLat||0.001;
+    function mtn(off,alpha){
+      ctx.beginPath();ctx.moveTo(0,H);
+      pts.filter((_,i)=>i%Math.max(1,Math.floor(pts.length/28))===0||i===pts.length-1).forEach(p=>{
+        ctx.lineTo(rxI(pts.indexOf(p)),RY-off-(p[0]-minLat)/latSpan*H*0.18);
+      });
+      ctx.lineTo(W_CSS,H);ctx.closePath();
+      ctx.fillStyle='rgba(130,128,122,'+alpha+')';ctx.fill();
+    }
+    mtn(H*0.22,0.5);mtn(H*0.12,0.65);mtn(H*0.02,0.82);
+    // Boden
+    ctx.fillStyle='#1a1816';ctx.fillRect(0,RY,W_CSS,H-RY);
+    for(let x=0;x<W_CSS;x+=2){ctx.fillStyle='rgba(0,0,0,'+(0.04+Math.random()*0.1)+')';ctx.fillRect(x,RY-(1.5+Math.sin(x)*1+Math.random()*2.5),1.5,3);}
+    // Tuschlinie
     const segs=walk.segments||[];
-    let routeLine;
     if(segs.length>0){
       segs.forEach(s=>{
-        L.polyline([s.ll1,s.ll2],{
-          color:'rgba(8,5,2,'+Math.min(s.opacity*1.4,1)+')',
-          weight:Math.max(2.5,s.weight*0.8),
-          lineCap:'round',lineJoin:'round',
-          smoothFactor:0,renderer:inkC
-        }).addTo(m);
+        if(!s.ll1||!s.ll2)return;
+        const x1=rxI(nIdx(s.ll1[0],s.ll1[1])),x2=rxI(nIdx(s.ll2[0],s.ll2[1]));
+        if(Math.abs(x2-x1)<0.3)return;
+        ctx.beginPath();ctx.moveTo(x1,RY+(Math.random()-0.5)*0.4);ctx.lineTo(x2,RY+(Math.random()-0.5)*0.4);
+        ctx.strokeStyle='rgba(8,5,2,'+Math.min(s.opacity*1.5,1)+')';
+        ctx.lineWidth=Math.max(3,s.weight*0.9);ctx.lineCap='round';ctx.stroke();
       });
-      routeLine=L.polyline(walk.route,{opacity:0,weight:0}).addTo(m);
     } else {
-      routeLine=L.polyline(walk.route,{
-        color:'rgba(8,5,2,0.75)',weight:4,lineCap:'round'
-      }).addTo(m);
+      [5,3,1.5].forEach((lw,i)=>{ctx.beginPath();let f=true;cum.forEach((_,j)=>{const x=rxI(j);f?(ctx.moveTo(x,RY),f=false):ctx.lineTo(x,RY);});ctx.strokeStyle='rgba(8,5,2,'+(i===0?0.85:i===1?0.5:0.22)+')';ctx.lineWidth=lw;ctx.lineCap='round';ctx.stroke();});
     }
-
     // Start/Ende
-    L.circleMarker(walk.route[0],{radius:6,fillColor:'#22c55e',color:'#fff',weight:2,fillOpacity:1}).addTo(m);
-    L.circleMarker(walk.route[walk.route.length-1],{radius:6,fillColor:'#ef4444',color:'#fff',weight:2,fillOpacity:1}).addTo(m);
-
-    // Eintrags-Marker
-    const TC={mood:'#f97316',thought:'#3b5fc0',sense:'#2d7a2d',voice:'#7c3aed',sound:'#7c3aed',photo:'#444'};
-    const TL={mood:'🔋',thought:'💭',sense:'👁',voice:'💬',sound:'🎙',photo:'📸'};
-    const TN={mood:'Stimmung',thought:'Gedanke',sense:'Wahrnehmung',voice:'Sprache',sound:'Sound',photo:'Foto'};
-
-    walk.entries.forEach(e=>{
+    [{x:rx(0),c:'#22c55e'},{x:rx(totalDist),c:'#ef4444'}].forEach(({x,c})=>{ctx.beginPath();ctx.arc(x,RY,5,0,Math.PI*2);ctx.fillStyle=c;ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();});
+    // Marker
+    const TC={mood:'#f97316',thought:'#4a7fd4',sense:'#4a9a4a',voice:'#9b59b6',sound:'#9b59b6',photo:'#888'};
+    const TL={mood:'Stimmung',thought:'Gedanke',sense:'Wahrnehm.',voice:'Sprache',sound:'Sound',photo:'Foto'};
+    const buckets={};const markers=[];
+    entries.forEach(e=>{
       if(!e.location)return;
-      const col=TC[e.type]||'#555';
-      const val=e.type==='mood'&&e.moodValue!=null?String(e.moodValue):'';
-      const icon=L.divIcon({className:'',
-        html:`<div style="background:${col};color:#fff;border:2px solid #fff;border-radius:20px;padding:2px 6px;font-size:10px;font-weight:bold;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${TL[e.type]||'●'}${val?' '+val:''}</div>`,
-        iconAnchor:[0,20],popupAnchor:[40,-20]
-      });
-      let popup=`<div style="min-width:160px;font-size:12px;"><b style="color:${col};">${TN[e.type]||e.type}</b>`;
-      if(e.type==='mood'&&e.moodValue!=null) popup+=`<div style="font-size:22px;font-weight:bold;color:${col};">${e.moodValue}<span style="font-size:11px;color:#aaa;">/5</span></div>`;
-      if(e.text) popup+=`<div style="margin-top:4px;">${escHtml(e.text)}</div>`;
-      if(e.timestamp) popup+=`<div style="font-size:10px;color:#aaa;">${e.timestamp}</div>`;
-      const aUrl=e.audioUrl||(e.entryId&&audioBlobs[e.entryId]?URL.createObjectURL(audioBlobs[e.entryId]):null);
-      if(aUrl) popup+=`<audio controls src="${aUrl}" style="width:100%;margin-top:6px;"></audio>`;
-      if(e.dataUrl) popup+=`<img src="${e.dataUrl}" style="width:100%;border-radius:6px;margin-top:6px;"/>`;
-      popup+='</div>';
-      L.marker([e.location.lat,e.location.lng],{icon}).addTo(m).bindPopup(popup,{maxWidth:240});
+      const idx=nIdx(e.location.lat,e.location.lng),x=rxI(idx),col=TC[e.type]||'#666';
+      const bk=Math.round(x/60);buckets[bk]=(buckets[bk]||0)+1;
+      const R=18,pinY=RY-24-(buckets[bk]-1)*44;
+      markers.push({e,x,pinY,R,col,label:TL[e.type]||e.type});
     });
-
-    m.fitBounds(routeLine.getBounds(),{padding:[10,10]});
-    setTimeout(()=>m.invalidateSize(),100);
-    vergleichMaps[walk.id]=m;
+    function drawPin(m,hl){
+      const{x,pinY,R,col}=m;
+      ctx.beginPath();ctx.moveTo(x,RY-3);ctx.lineTo(x,pinY+R+3);
+      ctx.strokeStyle=hl?col:'rgba(255,255,255,0.3)';ctx.lineWidth=hl?2:1.5;ctx.stroke();
+      ctx.save();if(hl){ctx.shadowColor='rgba(255,200,0,0.7)';ctx.shadowBlur=12;}
+      ctx.beginPath();ctx.arc(x,pinY,R,0,Math.PI*2);ctx.fillStyle=hl?col:col+'cc';ctx.fill();ctx.restore();
+      ctx.beginPath();ctx.arc(x,pinY,R,0,Math.PI*2);ctx.strokeStyle='rgba(255,255,255,'+(hl?0.95:0.7)+')';ctx.lineWidth=hl?2.5:2;ctx.stroke();
+      ctx.fillStyle='#fff';ctx.textAlign='center';
+      if(m.e.type==='mood'&&m.e.moodValue!=null){ctx.font='bold 13px sans-serif';ctx.fillText(m.e.moodValue,x,pinY+5);}
+      else{ctx.font='bold 9px sans-serif';ctx.fillText(m.label.substring(0,4),x,pinY+5);}
+      ctx.fillStyle=hl?col:'rgba(220,215,210,0.85)';ctx.font=(hl?8:7)+'px sans-serif';
+      ctx.fillText(m.label.substring(0,8).toUpperCase(),x,pinY+R+10);
+    }
+    markers.forEach(m=>drawPin(m,false));
+    function hitTest(cx,cy){
+      const rect=canvas.getBoundingClientRect(),sx=W_CSS/rect.width,sy=H/rect.height;
+      const px=(cx-rect.left)*sx,py=(cy-rect.top)*sy;
+      for(let i=markers.length-1;i>=0;i--){const m=markers[i],dx=px-m.x,dy=py-m.pinY;if(dx*dx+dy*dy<=m.R*m.R*3)return m;}
+      return null;
+    }
+    function redraw(hl){
+      ctx.fillStyle=sky;ctx.fillRect(0,0,W_CSS,H);
+      mtn(H*0.22,0.5);mtn(H*0.12,0.65);mtn(H*0.02,0.82);
+      ctx.fillStyle='#1a1816';ctx.fillRect(0,RY,W_CSS,H-RY);
+      if(segs.length>0){segs.forEach(s=>{if(!s.ll1||!s.ll2)return;const x1=rxI(nIdx(s.ll1[0],s.ll1[1])),x2=rxI(nIdx(s.ll2[0],s.ll2[1]));if(Math.abs(x2-x1)<0.3)return;ctx.beginPath();ctx.moveTo(x1,RY);ctx.lineTo(x2,RY);ctx.strokeStyle='rgba(8,5,2,'+Math.min(s.opacity*1.5,1)+')';ctx.lineWidth=Math.max(3,s.weight*0.9);ctx.lineCap='round';ctx.stroke();});}
+      else{[5,3,1.5].forEach((lw,i)=>{ctx.beginPath();let f=true;cum.forEach((_,j)=>{const x=rxI(j);f?(ctx.moveTo(x,RY),f=false):ctx.lineTo(x,RY);});ctx.strokeStyle='rgba(8,5,2,'+(i===0?0.85:i===1?0.5:0.22)+')';ctx.lineWidth=lw;ctx.lineCap='round';ctx.stroke();});}
+      [{x:rx(0),c:'#22c55e'},{x:rx(totalDist),c:'#ef4444'}].forEach(({x,c})=>{ctx.beginPath();ctx.arc(x,RY,5,0,Math.PI*2);ctx.fillStyle=c;ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();});
+      markers.forEach(m=>drawPin(m,m===hl));
+    }
+    function showVglInfo(m){
+      const info=document.getElementById('vglInfo');info.style.display='block';
+      const TN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Wahrnehmung',voice:'💬 Sprache',sound:'🎙 Sound',photo:'📸 Foto'};
+      let html='<span style="font-weight:bold;color:'+m.col+';">'+(TN[m.e.type]||m.e.type)+'</span>';
+      if(m.e.type==='mood'&&m.e.moodValue!=null)html+=' <span style="color:#f97316;font-weight:bold;font-size:14px;">'+m.e.moodValue+'/5</span>';
+      if(m.e.text)html+=' <span style="color:#ccc;">'+escHtml(m.e.text)+'</span>';
+      if(m.e.timestamp)html+=' <span style="color:#666;font-size:10px;">'+m.e.timestamp+'</span>';
+      const aUrl=m.e.audioUrl||(m.e.entryId&&audioBlobs[m.e.entryId]?URL.createObjectURL(audioBlobs[m.e.entryId]):null);
+      if(aUrl)html+='<br><audio controls src="'+aUrl+'" style="width:100%;margin-top:4px;height:28px;"></audio>';
+      if(m.e.dataUrl)html+='<br><img src="'+m.e.dataUrl+'" style="max-height:80px;border-radius:4px;margin-top:4px;"/>';
+      info.innerHTML=html;
+    }
+    canvas.addEventListener('click',ev=>{const m=hitTest(ev.clientX,ev.clientY);if(m){redraw(m);showVglInfo(m);}});
+    canvas.addEventListener('touchend',ev=>{ev.preventDefault();const t=ev.changedTouches[0];const m=hitTest(t.clientX,t.clientY);if(m){redraw(m);showVglInfo(m);}},{passive:false});
   }
+
+
+  document.getElementById('vglClose').onclick=()=>{
+    document.getElementById('vglOverlay').style.display='none';
+  };
   document.getElementById('vergleichClose').onclick=()=>{
     document.getElementById('vergleichModal').style.display='none';
     Object.values(vergleichMaps).forEach(m=>{try{m.remove();}catch(e){}});
@@ -1320,16 +1340,12 @@ window.addEventListener('load', function() {
 </div>
 
 
-<!-- VERGLEICH-MODAL -->
-<div id="vergleichModal" style="position:fixed;inset:0;z-index:3600;background:rgba(0,0,0,0.88);display:none;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto;">
-  <div style="background:#f5f5f5;border-radius:20px;width:min(96vw,640px);padding:16px;display:flex;flex-direction:column;gap:12px;margin:auto;">
-    <div style="display:flex;align-items:center;justify-content:space-between;">
-      <div style="font-size:14px;font-weight:bold;color:#111;">⚖️ Walk-Vergleich</div>
-      <button id="vergleichClose" style="width:28px;height:28px;border-radius:50%;border:none;background:#eee;cursor:pointer;font-size:14px;">✕</button>
-    </div>
-    <div id="vergleichContent" style="display:flex;flex-direction:column;gap:16px;"></div>
-    <div id="vergleichEntryCard" style="background:#f5f5f5;border-radius:10px;padding:10px 12px;font-size:11px;color:#333;display:none;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
+<!-- VERGLEICH-VOLLBILD -->
+<div id="vglOverlay" style="display:none;position:fixed;inset:0;z-index:5000;background:#111;flex-direction:column;overflow:hidden;">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#000;flex-shrink:0;border-bottom:1px solid #333;">
+    <div style="color:#fff;font-size:14px;font-weight:bold;">⚖️ Walk-Vergleich</div>
+    <button id="vglClose" style="padding:8px 18px;border-radius:8px;border:none;background:#333;color:#fff;font-size:12px;font-weight:bold;cursor:pointer;">✕ Schließen</button>
   </div>
-</div>
-</body>
-</html>
+  <div id="vglList" style="flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:12px;display:flex;flex-direction:column;gap:12px;"></div>
+  <div id="vglInfo" style="display:none;background:#1a1a1a;color:#fff;padding:10px 14px;font-size:12px;flex-shrink:0;border-top:1px solid #333;max-height:120px;overflow-y:auto;"></div>
+</div>>
