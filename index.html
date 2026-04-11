@@ -161,11 +161,11 @@
 
 
     /* Verlauf-Modal */
-    #verlaufModal{position:fixed;inset:0;z-index:3500;background:rgba(0,0,0,0.82);display:none;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;}
+    #verlaufModal{position:fixed;inset:0;z-index:3500;background:#000;display:none;align-items:stretch;justify-content:stretch;padding:0;overflow-y:auto;}
     #verlaufModal.open{display:flex;}
     #verlaufBox{background:#f8f8f8;border-radius:20px;width:min(96vw,640px);padding:20px;display:flex;flex-direction:column;gap:14px;margin:auto;}
-    .verlauf-header{display:flex;align-items:center;justify-content:space-between;}
-    .verlauf-title{font-size:14px;font-weight:bold;color:#111;}
+    .verlauf-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#1a1a1a;flex-shrink:0;}
+    .verlauf-title{font-size:14px;font-weight:bold;color:#fff;}
     .verlauf-close{width:28px;height:28px;border-radius:50%;border:none;background:#eee;cursor:pointer;font-size:14px;}
     .verlauf-legend{display:flex;flex-wrap:wrap;gap:8px;font-size:10px;color:#555;}
     .verlauf-legend span{display:flex;align-items:center;gap:4px;}
@@ -785,16 +785,18 @@ window.addEventListener('load', function() {
       zoomControl:true,
       attributionControl:false,
       dragging:true,
-      scrollWheelZoom:false,
+      scrollWheelZoom:true,
       touchZoom:true,
       doubleClickZoom:true,
       tap:true,
       tapTolerance:30,
       bounceAtZoomLimits:false,
-      zoomSnap:0.5,
-      zoomDelta:0.5
+      zoomSnap:1,
+      zoomDelta:1
     });
     verlaufMap.getContainer().style.touchAction='none';
+    // Zoom-Buttons größer für Handy
+    verlaufMap.zoomControl.setPosition('bottomright');
 
     // Graustufen-Karte
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
@@ -858,33 +860,21 @@ window.addEventListener('load', function() {
         inner=`<span style="font-size:14px;">${ico}</span>`;
       }
 
-      const html=`
-        <div style="
-          position:relative;
-          background:${col};
-          color:#fff;
-          border:2px solid #fff;
-          border-radius:10px 10px 10px 0;
-          padding:5px 8px;
-          min-width:60px;
-          max-width:110px;
-          box-shadow:0 3px 10px rgba(0,0,0,0.35);
-          display:flex;
-          flex-direction:column;
-          align-items:center;
-          gap:1px;
-          cursor:pointer;
-          -webkit-tap-highlight-color:transparent;
-        ">
-          <div style="font-size:7px;font-weight:bold;opacity:0.85;text-transform:uppercase;letter-spacing:0.3px;white-space:nowrap;">${typeText[e.type]||e.type}</div>
-          <div style="display:flex;align-items:center;gap:3px;">${inner}</div>
-        </div>`;
-
+            const html=`<div style="
+        width:34px;height:34px;border-radius:50%;
+        background:${col};color:#fff;
+        border:3px solid #fff;
+        box-shadow:0 2px 8px rgba(0,0,0,0.4);
+        display:flex;align-items:center;justify-content:center;
+        font-size:${e.type==='mood'&&e.moodValue!=null?'12px':'15px'};
+        font-weight:bold;
+        cursor:pointer;
+      ">${e.type==='mood'&&e.moodValue!=null?e.moodValue:(typeIcon[e.type]||'●')}</div>`;
       const icon=L.divIcon({
         className:'',
         html,
-        iconSize:[null,null],
-        iconAnchor:[0,42],
+        iconSize:[32,32],
+        iconAnchor:[16,16],
         popupAnchor:[45,-42]
       });
 
@@ -902,17 +892,56 @@ window.addEventListener('load', function() {
 
       L.marker([e.location.lat,e.location.lng],{icon})
         .addTo(verlaufMap)
-        .bindPopup(popupHTML,{maxWidth:280,closeButton:true,className:'vgl-popup',autoPan:true,autoPanPaddingTopLeft:[10,80],autoPanPaddingBottomRight:[10,20]});
+        .on('click',function(){
+          // Entry-Card unterhalb der Karte anzeigen
+          const card=document.getElementById('verlaufEntryCard');
+          card.style.display='block';
+          const TN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Wahrnehmung',voice:'💬 Sprache',sound:'🎙 Sound',photo:'📸 Foto'};
+          let h='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
+            +'<span style="font-weight:bold;font-size:13px;color:'+col+';">'+(TN[e.type]||e.type)+'</span>';
+          if(e.type==='mood'&&e.moodValue!=null)
+            h+='<span style="font-size:20px;font-weight:bold;color:'+col+';">'+e.moodValue+'/5</span>';
+          if(e.timestamp)
+            h+='<span style="color:#888;font-size:10px;margin-left:auto;">'+e.timestamp+'</span>';
+          h+='</div>';
+          if(e.text) h+='<div style="font-size:13px;color:#ccc;line-height:1.6;margin-bottom:8px;">'+escHtml(e.text)+'</div>';
+          const aUrl=e.audioUrl||(e.entryId&&audioBlobs[e.entryId]?URL.createObjectURL(audioBlobs[e.entryId]):null);
+          if(aUrl) h+='<audio controls src="'+aUrl+'" style="width:100%;margin-bottom:8px;height:40px;"></audio>';
+          if(e.dataUrl) h+='<img src="'+e.dataUrl+'" style="width:100%;border-radius:8px;max-height:200px;object-fit:cover;"/>';
+          card.innerHTML=h;
+          card.scrollIntoView({behavior:'smooth',block:'nearest'});
+        })
+        .bindTooltip(typeText[e.type]||e.type,{permanent:false,direction:'top',offset:[0,-18]});
     });
 
     // Karte auf Route zoomen
     verlaufMap.fitBounds(routeLine.getBounds(),{padding:[30,30]});
-    setTimeout(()=>verlaufMap.invalidateSize(),300);
+    setTimeout(()=>{
+      if(verlaufMap){
+        verlaufMap.invalidateSize();
+        // Zoom-Buttons sichtbar machen
+        verlaufMap.zoomControl.setPosition('bottomright');
+      }
+    },300);
 
     document.getElementById('verlaufInfo').textContent=
       `${entries.length} Einträge · Zoomen mit 2 Fingern oder +/− · Marker antippen`;
   }
 
+  document.getElementById('verlaufFragenToggle').onclick=()=>{
+    const el=document.getElementById('verlaufEntries');
+    const btn=document.getElementById('verlaufFragenToggle');
+    if(el.style.display==='none'||el.style.display===''){
+      el.style.display='flex';
+      btn.textContent='🗺 Karte';
+      btn.style.background='#374151';
+    } else {
+      el.style.display='none';
+      btn.textContent='📝 Fragen';
+      btn.style.background='#2563eb';
+      setTimeout(()=>verlaufMap&&verlaufMap.invalidateSize(),100);
+    }
+  };
   document.getElementById('verlaufClose').onclick=()=>{
     document.getElementById('verlaufModal').classList.remove('open');
     if(verlaufMap){verlaufMap.remove();verlaufMap=null;}
@@ -1356,12 +1385,15 @@ window.addEventListener('load', function() {
 </script>
 <!-- REFLEXIONS-MODAL -->
 <div id="verlaufModal">
-  <div id="verlaufBox" style="max-height:94vh;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;">
+  <div id="verlaufBox" style="width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden;background:#111;">
     <div class="verlauf-header">
       <div class="verlauf-title" id="verlaufTitle">Reflexion</div>
-      <button class="verlauf-close" id="verlaufClose">✕</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button id="verlaufFragenToggle" style="padding:6px 12px;border-radius:8px;border:none;background:#2563eb;color:#fff;font-size:11px;font-weight:bold;cursor:pointer;">📝 Fragen</button>
+        <button class="verlauf-close" id="verlaufClose">✕</button>
+      </div>
     </div>
-    <div id="verlaufMapDiv" style="width:100%;height:320px;border-radius:10px;overflow:hidden;flex-shrink:0;touch-action:none;z-index:1;"></div>
+    <div id="verlaufMapDiv" style="width:100%;flex:1;min-height:0;overflow:hidden;touch-action:none;z-index:1;border-radius:0;"></div>
     <div id="verlaufEntryCard" style="background:#f5f5f5;border-radius:10px;padding:10px 12px;font-size:11px;color:#333;display:none;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
     <div id="verlaufInfo" style="font-size:10px;color:#9ca3af;margin-top:4px;margin-bottom:8px;"></div>
     <div id="reflexionQPanel" style="overflow-y:auto;display:none;flex-direction:column;gap:10px;padding-bottom:8px;">
