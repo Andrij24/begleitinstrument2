@@ -235,7 +235,7 @@
     <div class="section" id="sec-archiv" style="display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
         <div class="section-label" style="border:none;padding:0;margin:0;">Walks</div>
-        <button id="btnVergleich" style="padding:6px 12px;border-radius:8px;border:none;background:#7c3aed;color:#fff;font-size:10px;font-weight:bold;cursor:pointer;display:none;">⚖️ Vergleichen</button>
+        <button id="btnVergleich" style="padding:6px 12px;border-radius:8px;border:none;background:#7c3aed;color:#fff;font-size:10px;font-weight:bold;cursor:pointer;display:none;">⚖️ Vergleichen starten</button>
       </div>
       <div id="archiveList"><div style="font-size:11px;color:#999;">Noch keine Walks gespeichert.</div></div>
     </div>
@@ -1214,16 +1214,7 @@ window.addEventListener('load', function() {
       const item=document.createElement('div');item.className='walk-item';
       const hasRef=w.reflection&&(w.reflection.frei||w.reflection.moment);
 
-      // Vergleich-Checkbox — als eigenes Input-Element erstellen
-      const cbRow=document.createElement('div');
-      cbRow.style.cssText='display:flex;align-items:center;padding:4px 10px 0;gap:6px;font-size:10px;color:#9ca3af;';
-      const cb=document.createElement('input');
-      cb.type='checkbox'; cb.style.cursor='pointer';
-      cb.checked=selectedForVergleich.has(w.id);
-      cb.addEventListener('change',()=>toggleVergleichSelect(w.id));
-      cbRow.appendChild(cb);
-      cbRow.appendChild(document.createTextNode(' Vergleich'));
-      item.appendChild(cbRow);
+      // Vergleich-Auswahl via ⚖️ Button in quickRow (siehe unten)
 
       // Walk-Header
       const header=document.createElement('div');
@@ -1238,7 +1229,34 @@ window.addEventListener('load', function() {
       header.addEventListener('click',()=>toggleWalk(w.id));
       item.appendChild(header);
 
-      // Aktions-Buttons
+      // ── Immer sichtbare Schnell-Buttons ──
+      const quickRow=document.createElement('div');
+      quickRow.style.cssText='display:flex;gap:6px;padding:4px 10px 6px;align-items:center;';
+      [{cls:'wb-verlauf',label:'📋 Reflexion',col:'#2563eb'},
+       {cls:'wb-analyse',label:'📊 Auswerten',col:'#16a34a'}
+      ].forEach(({cls,label,col})=>{
+        const btn=document.createElement('button');
+        btn.className='walk-btn '+cls;
+        btn.textContent=label;
+        btn.style.cssText='flex:1;padding:7px 4px;font-size:11px;border-radius:8px;border:1.5px solid '+col+';background:#fff;color:'+col+';font-weight:bold;cursor:pointer;';
+        quickRow.appendChild(btn);
+      });
+      // Vergleich-Checkbox als Button
+      const vglBtn=document.createElement('button');
+      vglBtn.style.cssText='padding:7px 8px;font-size:11px;border-radius:8px;border:1.5px solid '+(selectedForVergleich.has(w.id)?'#7c3aed':'#d1d5db')+';background:'+(selectedForVergleich.has(w.id)?'#7c3aed':'#fff')+';color:'+(selectedForVergleich.has(w.id)?'#fff':'#9ca3af')+';font-weight:bold;cursor:pointer;white-space:nowrap;';
+      vglBtn.textContent='⚖️';
+      vglBtn.title='Zum Vergleich hinzufügen';
+      vglBtn.onclick=()=>{
+        toggleVergleichSelect(w.id);
+        const sel=selectedForVergleich.has(w.id);
+        vglBtn.style.background=sel?'#7c3aed':'#fff';
+        vglBtn.style.color=sel?'#fff':'#9ca3af';
+        vglBtn.style.borderColor=sel?'#7c3aed':'#d1d5db';
+      };
+      quickRow.appendChild(vglBtn);
+      item.appendChild(quickRow);
+
+      // ── Aufklappbare Aktions-Buttons (nach Header-Klick) ──
       const actions=document.createElement('div');
       actions.className='walk-actions';
       actions.setAttribute('data-id',w.id);
@@ -1250,8 +1268,6 @@ window.addEventListener('load', function() {
       btnRow.className='walk-btn-row';
       [
         {cls:'wb-save',  label:'✏️ Umbenennen'},
-        {cls:'wb-verlauf',label:'📋 Reflexion'},
-        {cls:'wb-analyse',label:'📊 Auswerten'},
         {cls:'wb-export', label:'📦 Export'},
         {cls:'wb-delete', label:'🗑'},
       ].forEach(({cls,label})=>{
@@ -1263,12 +1279,12 @@ window.addEventListener('load', function() {
       item.appendChild(actions);
 
       // Button-Handler
+      quickRow.querySelector('.wb-verlauf').onclick=()=>openVerlauf(w);
+      quickRow.querySelector('.wb-analyse').onclick=()=>openAnalyse(w);
       actions.querySelector('.wb-save').onclick=()=>{
         const n=nameInput.value.trim();if(!n)return;
         w.name=n;header.querySelector('.walk-label').firstChild.textContent=n;saveWalks();
       };
-      actions.querySelector('.wb-analyse').onclick=()=>openAnalyse(w);
-      actions.querySelector('.wb-verlauf').onclick=()=>openVerlauf(w);
       actions.querySelector('.wb-export').onclick=()=>exportWalk(w);
       actions.querySelector('.wb-delete').onclick=()=>{
         if(!confirm('Walk "'+w.name+'" wirklich löschen?'))return;
