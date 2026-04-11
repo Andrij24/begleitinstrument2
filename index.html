@@ -788,13 +788,12 @@ window.addEventListener('load', function() {
       scrollWheelZoom:false,
       touchZoom:true,
       doubleClickZoom:true,
-      tap:false,
-      tapTolerance:20,
+      tap:true,
+      tapTolerance:30,
       bounceAtZoomLimits:false,
-      zoomSnap:0.25,
-      zoomDelta:0.25
+      zoomSnap:0.5,
+      zoomDelta:0.5
     });
-    // Touch-Events direkt auf Map-Container erlauben
     verlaufMap.getContainer().style.touchAction='none';
 
     // Graustufen-Karte
@@ -867,8 +866,8 @@ window.addEventListener('load', function() {
           border:2px solid #fff;
           border-radius:10px 10px 10px 0;
           padding:5px 8px;
-          min-width:52px;
-          max-width:90px;
+          min-width:60px;
+          max-width:110px;
           box-shadow:0 3px 10px rgba(0,0,0,0.35);
           display:flex;
           flex-direction:column;
@@ -893,18 +892,17 @@ window.addEventListener('load', function() {
       let popupHTML=`<div style="min-width:180px;font-size:12px;padding:2px;">
         <div style="font-weight:bold;color:${col};margin-bottom:4px;">${ico} ${typeText[e.type]||e.type}</div>`;
       if(e.type==='mood'&&e.moodValue!=null)
-        popupHTML+=`<div style="font-size:24px;font-weight:bold;color:${col};">${e.moodValue}<span style="font-size:12px;color:#aaa;"> /5</span></div>`;
-      if(e.text) popupHTML+=`<div style="margin-top:4px;color:#333;line-height:1.5;">${escHtml(e.text)}</div>`;
-      if(e.timestamp) popupHTML+=`<div style="font-size:10px;color:#aaa;margin-top:4px;">${e.timestamp}</div>`;
-      // Audio: audioUrl nur in-session verfügbar (nach Reload aus audioBlobs)
+        popupHTML+=`<div style="font-size:28px;font-weight:bold;color:${col};margin:4px 0;">${e.moodValue}<span style="font-size:13px;color:#aaa;"> /5</span></div>`;
+      if(e.text) popupHTML+=`<div style="margin-top:6px;color:#222;line-height:1.6;font-size:13px;">${escHtml(e.text)}</div>`;
+      if(e.timestamp) popupHTML+=`<div style="font-size:10px;color:#aaa;margin-top:6px;">${e.timestamp}</div>`;
       const aUrl=e.audioUrl||(e.entryId&&audioBlobs[e.entryId]?URL.createObjectURL(audioBlobs[e.entryId]):null);
-      if(aUrl) popupHTML+=`<audio controls src="${aUrl}" style="width:100%;margin-top:8px;height:36px;"></audio>`;
-      if(e.dataUrl) popupHTML+=`<img src="${e.dataUrl}" style="width:100%;border-radius:8px;margin-top:8px;max-height:200px;object-fit:cover;"/>`;
+      if(aUrl) popupHTML+=`<audio controls src="${aUrl}" style="width:100%;margin-top:10px;height:40px;"></audio>`;
+      if(e.dataUrl) popupHTML+=`<img src="${e.dataUrl}" style="width:100%;border-radius:8px;margin-top:10px;max-height:220px;object-fit:cover;"/>`;
       popupHTML+='</div>';
 
       L.marker([e.location.lat,e.location.lng],{icon})
         .addTo(verlaufMap)
-        .bindPopup(popupHTML,{maxWidth:260,closeButton:true,className:'vgl-popup'});
+        .bindPopup(popupHTML,{maxWidth:280,closeButton:true,className:'vgl-popup',autoPan:true,autoPanPaddingTopLeft:[10,80],autoPanPaddingBottomRight:[10,20]});
     });
 
     // Karte auf Route zoomen
@@ -912,7 +910,7 @@ window.addEventListener('load', function() {
     setTimeout(()=>verlaufMap.invalidateSize(),300);
 
     document.getElementById('verlaufInfo').textContent=
-      `${entries.length} Einträge · Scrollen & Zoomen mit 2 Fingern · Marker antippen`;
+      `${entries.length} Einträge · Zoomen mit 2 Fingern oder +/− · Marker antippen`;
   }
 
   document.getElementById('verlaufClose').onclick=()=>{
@@ -1363,7 +1361,7 @@ window.addEventListener('load', function() {
       <div class="verlauf-title" id="verlaufTitle">Reflexion</div>
       <button class="verlauf-close" id="verlaufClose">✕</button>
     </div>
-    <div id="verlaufMapDiv" style="width:100%;height:280px;border-radius:10px;overflow:hidden;flex-shrink:0;touch-action:none;z-index:1;"></div>
+    <div id="verlaufMapDiv" style="width:100%;height:320px;border-radius:10px;overflow:hidden;flex-shrink:0;touch-action:none;z-index:1;"></div>
     <div id="verlaufEntryCard" style="background:#f5f5f5;border-radius:10px;padding:10px 12px;font-size:11px;color:#333;display:none;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
     <div id="verlaufInfo" style="font-size:10px;color:#9ca3af;margin-top:4px;margin-bottom:8px;"></div>
     <div id="reflexionQPanel" style="overflow-y:auto;display:none;flex-direction:column;gap:10px;padding-bottom:8px;">
