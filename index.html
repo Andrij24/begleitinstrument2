@@ -1000,7 +1000,18 @@ window.addEventListener('load', function() {
         card.appendChild(q);
       }
       list.appendChild(card);
-      setTimeout(()=>drawSkizze(cv,scroller,walk), 60+wi*40);
+      setTimeout(()=>{
+        try{drawSkizze(cv,scroller,walk);}
+        catch(err){
+          console.error('drawSkizze error:',err);
+          const ctx=cv.getContext('2d');
+          cv.width=300;cv.height=100;
+          cv.style.cssText='width:300px;height:100px;display:block;';
+          ctx.fillStyle='#f5f5f5';ctx.fillRect(0,0,300,100);
+          ctx.fillStyle='#aaa';ctx.font='11px sans-serif';ctx.textAlign='center';
+          ctx.fillText('Fehler beim Laden',150,50);
+        }
+      }, 60+wi*40);
     });
   }
 
@@ -1047,8 +1058,10 @@ window.addEventListener('load', function() {
     const minLat=Math.min(...lats), latSpan=Math.max(...lats)-minLat||0.001;
     function mtn(off,color){
       ctx.beginPath(); ctx.moveTo(0,H);
-      pts.filter((_,i)=>i%Math.max(1,Math.floor(pts.length/28))===0||i===pts.length-1).forEach(p=>{
-        const x=rxI(pts.indexOf(p));
+      const mtnStep=Math.max(1,Math.floor(pts.length/28));
+      pts.forEach((p,i)=>{
+        if(i%mtnStep!==0&&i!==pts.length-1) return;
+        const x=rxI(i); // Index direkt, nicht indexOf
         const t=(p[0]-minLat)/latSpan;
         ctx.lineTo(x, RY-off-t*H*0.20);
       });
