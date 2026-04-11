@@ -960,6 +960,44 @@ window.addEventListener('load', function() {
 
   document.getElementById('btnVergleich').onclick=()=>openVergleich();
 
+  function openAnalyse(walk){
+    destroyAnalyseCharts();
+    document.getElementById('analyseWalkName').textContent='Auswertung: '+walk.name;
+    const moodEntries=walk.entries.filter(e=>e.type==='mood'&&e.moodValue!==undefined);
+    const aufgezWerte=moodEntries.map(e=>e.moodValue);
+    const avgAufgez=aufgezWerte.length?Math.round(aufgezWerte.reduce((a,b)=>a+b,0)/aufgezWerte.length):null;
+    const ref=walk.reflection||{};
+    const moodRetro=ref.moodRetro!==undefined?ref.moodRetro:null;
+    const diskrepanz=(avgAufgez!==null&&moodRetro!==null)?(moodRetro-avgAufgez):null;
+    document.getElementById('aStat1').textContent=avgAufgez!==null?avgAufgez:'—';
+    document.getElementById('aStat2').textContent=moodRetro!==null?moodRetro:'—';
+    document.getElementById('aStat3').textContent=diskrepanz!==null?(diskrepanz>=0?'+':'')+diskrepanz:'—';
+    document.getElementById('aStat3').style.color=diskrepanz>0?'#7c3aed':diskrepanz<0?'#dc2626':'#374151';
+    const chartLabels=moodEntries.length>0?moodEntries.map((e,i)=>e.timestamp||(i+1)+'.'):['—'];
+    const chartData=aufgezWerte.length>0?aufgezWerte:[0];
+    const erinData=chartData.map(v=>moodRetro!==null?Math.min(5,Math.max(1,Math.round(v*0.4+moodRetro*0.6))):v);
+    const chartOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:1,max:5,ticks:{color:'#888',font:{size:10}},grid:{color:'rgba(0,0,0,0.04)'}},x:{ticks:{color:'#888',font:{size:10}},grid:{display:false}}}};
+    analyseCharts.aufz=new Chart(document.getElementById('chartAufz').getContext('2d'),{type:'line',data:{labels:chartLabels,datasets:[{data:chartData,borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.08)',borderWidth:2,pointRadius:4,pointBackgroundColor:'#1D9E75',tension:0.4,fill:true}]},options:chartOpts});
+    analyseCharts.erin=new Chart(document.getElementById('chartErin').getContext('2d'),{type:'line',data:{labels:chartLabels,datasets:[{data:erinData,borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,0.08)',borderWidth:2,pointRadius:4,pointBackgroundColor:'#534AB7',tension:0.4,fill:true}]},options:chartOpts});
+    const db=document.getElementById('diskBars');db.innerHTML='';
+    if(chartData.length>=2){
+      const ss=Math.ceil(chartData.length/4);
+      for(let i=0;i<4;i++){
+        const seg=chartData.slice(i*ss,(i+1)*ss);const segE=erinData.slice(i*ss,(i+1)*ss);if(!seg.length)break;
+        const aS=seg.reduce((a,b)=>a+b,0)/seg.length;const aE=segE.reduce((a,b)=>a+b,0)/segE.length;
+        const diff=Math.round(aE-aS);const pct=Math.min(Math.abs(diff),50)*2;const col=diff>=0?'#22c55e':'#ef4444';
+        db.innerHTML+='<div class="disk-row"><div style="width:64px;font-size:10px;color:#6b7280;">Abschn. '+(i+1)+'</div><div class="disk-bar-bg"><div class="disk-bar-fill" style="width:'+pct+'%;background:'+col+';"></div></div><div style="font-size:10px;color:#6b7280;min-width:30px;text-align:right;">'+(diff>=0?'+':'')+diff+'</div></div>';
+      }
+    } else {
+      db.innerHTML='<div style="font-size:11px;color:#9ca3af;">Mind. 2 Stimmungsmarker für Segmentauswertung.</div>';
+    }
+    document.getElementById('refFreiDisplay').textContent=ref.frei||'(keine freie Reflexion)';
+    const rA=document.getElementById('refAnswersDisplay');
+    const fragen=[{l:'Stärkster Moment',v:ref.moment},{l:'Orte & Einflüsse',v:ref.orte},{l:'Nicht Aufgezeichnetes',v:ref.nicht},{l:'Überraschung',v:ref.ueber}];
+    rA.innerHTML=fragen.map(f=>f.v?'<div style="border-left:3px solid #e5e5e5;padding-left:8px;"><div style="font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;margin-bottom:2px;">'+f.l+'</div><div style="font-size:11px;color:#374151;">'+escHtml(f.v)+'</div></div>':'').join('');
+    document.getElementById('analyseModal').classList.add('open');
+  }
+
   function openVergleich(){
     if(selectedForVergleich.size<2) return;
     const walks=Array.from(selectedForVergleich)
@@ -1240,6 +1278,2883 @@ window.addEventListener('load', function() {
       };
 
       list.appendChild(item);
+    });
+    // Aktive Walks wieder als 'shown' markieren
+    Object.keys(state.activeLayers).forEach(id=>{
+      const h=list.querySelector('.walk-header[data-id="'+id+'"]');
+      const a=list.querySelector('.walk-actions[data-id="'+id+'"]');
+      if(h)h.classList.add('shown');
+      if(a)a.classList.add('open');
+    });
+  }
+
+  async function exportWalk(walk){
+    if(typeof JSZip==='undefined'){alert('JSZip nicht geladen.');return;}
+    const overlay=document.getElementById('exportOverlay');const msg=document.getElementById('exportMsg');overlay.classList.add('open');
+    try{
+      const zip=new JSZip();const folder=zip.folder(walk.name.replace(/[^a-zA-Z0-9äöüÄÖÜß _-]/g,'_'));
+      msg.textContent='Exportiere Daten...';
+      const ref=walk.reflection||{};
+      folder.file('walk_daten.json',JSON.stringify({name:walk.name,schritte:walk.steps||0,kartenansicht:currentTileUrl,route:walk.route,reflexion:{frei:ref.frei||'',moodRetro:ref.moodRetro!==undefined?ref.moodRetro:null,moment:ref.moment||'',orte:ref.orte||'',nichtErfasst:ref.nicht||'',ueberraschung:ref.ueber||''},entries:walk.entries.map(e=>({type:e.type,timestamp:e.timestamp,location:e.location,text:e.text||null,moodValue:e.moodValue||null,audioDuration:e.audioDuration||null}))},null,2));
+      let gpx='<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Begleitinstrument PRO">\n  <trk>\n    <n>'+escHtml(walk.name)+'</n>\n    <trkseg>\n';
+      walk.route.forEach(p=>{gpx+='      <trkpt lat="'+p[0]+'" lon="'+p[1]+'"></trkpt>\n';});
+      gpx+='    </trkseg>\n  </trk>\n</gpx>';
+      folder.file('route.gpx',gpx);
+      let pc=0;walk.entries.forEach(e=>{if(e.type==='photo'&&e.dataUrl){pc++;folder.file('foto_'+pc+'.jpg',e.dataUrl.split(',')[1],{base64:true});}});
+      let ac=0;walk.entries.forEach(e=>{if((e.type==='voice'||e.type==='sound')&&e.entryId&&audioBlobs[e.entryId]){ac++;folder.file((e.type==='voice'?'sprache':'sound')+'_'+ac+'.mp4',audioBlobs[e.entryId]);}});
+      if(ref.frei||ref.moment){folder.file('reflexion.txt','REFLEXION: '+walk.name+'\n'+'='.repeat(40)+'\n\nFreie Reflexion:\n'+(ref.frei||'—')+'\n\nStimmung retrospektiv: '+(ref.moodRetro!==undefined?ref.moodRetro+'/100':'—')+'\n\nStärkster Moment:\n'+(ref.moment||'—')+'\n\nOrte:\n'+(ref.orte||'—')+'\n\nNicht Erfasstes:\n'+(ref.nicht||'—')+'\n\nÜberraschung:\n'+(ref.ueber||'—')+'\n');}
+      msg.textContent='Erstelle Kartenbild...';
+      await takeMapSnapshot(walk,folder);
+      msg.textContent='Erstelle ZIP...';
+      const blob=await zip.generateAsync({type:'blob'},m=>{msg.textContent='Packe... '+Math.round(m.percent)+'%';});
+      const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=walk.name.replace(/[^a-zA-Z0-9äöüÄÖÜß _-]/g,'_')+'_export.zip';a.click();setTimeout(()=>URL.revokeObjectURL(url),5000);
+    }catch(err){alert('Export fehlgeschlagen: '+err.message);}finally{overlay.classList.remove('open');}
+  }
+
+  async function takeMapSnapshot(walk,folder){
+    try{
+      const W=1200,H=900,P=80;const route=walk.route||[];if(route.length<2){folder.file('karte.png','');return;}
+      let minLat=Infinity,maxLat=-Infinity,minLng=Infinity,maxLng=-Infinity;
+      route.forEach(([lat,lng])=>{minLat=Math.min(minLat,lat);maxLat=Math.max(maxLat,lat);minLng=Math.min(minLng,lng);maxLng=Math.max(maxLng,lng);});
+      const lS=maxLat-minLat||0.001,lnS=maxLng-minLng||0.001;
+      const sX=(W-P*2)/lnS,sY=(H-P*2)/lS,sc=Math.min(sX,sY);
+      function toXY(lat,lng){return{x:P+(lng-minLng)*sc,y:H-P-(lat-minLat)*sc};}
+      const canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;
+      const ctx=canvas.getContext('2d');ctx.fillStyle='#f8f6f1';ctx.fillRect(0,0,W,H);
+      ctx.strokeStyle='rgba(0,0,0,0.06)';ctx.lineWidth=1;
+      for(let x=0;x<W;x+=60){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+      for(let y=0;y<H;y+=60){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+      const segs=walk.segments||[];
+      if(segs.length>0){segs.forEach(s=>{const p1=toXY(s.ll1[0],s.ll1[1]),p2=toXY(s.ll2[0],s.ll2[1]);drawInkStroke(ctx,p1.x,p1.y,p2.x,p2.y,s.weight,s.opacity);});}
+      else{ctx.beginPath();route.forEach(([lat,lng],i)=>{const{x,y}=toXY(lat,lng);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});ctx.strokeStyle='rgba(20,16,12,0.7)';ctx.lineWidth=5;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();}
+      const dc={mood:null,thought:'#22c55e',sense:'#f97316',voice:'#7c3aed',sound:'#f97316',photo:'#555'};
+      walk.entries.forEach(e=>{if(!e.location)return;const col=e.type==='mood'?(e.markerColor||'#facc15'):(dc[e.type]||walk.color);const r=(e.type==='mood'||e.type==='thought'||e.type==='sense')?9:6;const{x,y}=toXY(e.location.lat,e.location.lng);ctx.beginPath();ctx.arc(x,y,r+2,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();if(e.text||e.moodValue!==undefined){ctx.font='11px sans-serif';ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillText(e.moodValue!==undefined?String(e.moodValue):(e.text||'').substring(0,20),x+r+3,y+4);}});
+      const sp=toXY(route[0][0],route[0][1]),ep=toXY(route[route.length-1][0],route[route.length-1][1]);
+      [sp,ep].forEach((pt,i)=>{ctx.beginPath();ctx.arc(pt.x,pt.y,8,0,Math.PI*2);ctx.fillStyle=i===0?'#22c55e':'#ef4444';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();});
+      const b64=canvas.toDataURL('image/png').split(',')[1];if(b64)folder.file('karte.png',b64,{base64:true});
+    }catch(err){console.error('Snapshot:',err);}
+  }
+
+  renderArchive();
+});
+</script>
+<!-- REFLEXIONS-MODAL -->
+<div id="verlaufModal">
+  <div id="verlaufBox" style="max-height:94vh;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;">
+    <div class="verlauf-header">
+      <div class="verlauf-title" id="verlaufTitle">Reflexion</div>
+      <button class="verlauf-close" id="verlaufClose">✕</button>
+    </div>
+    <div id="verlaufMapDiv" style="width:100%;height:280px;border-radius:10px;overflow:hidden;flex-shrink:0;touch-action:none;z-index:1;"></div>
+    <div id="verlaufEntryCard" style="background:#f5f5f5;border-radius:10px;padding:10px 12px;font-size:11px;color:#333;display:none;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
+    <div id="verlaufInfo" style="font-size:10px;color:#9ca3af;margin-top:4px;margin-bottom:8px;"></div>
+    <div id="reflexionQPanel" style="overflow-y:auto;display:none;flex-direction:column;gap:10px;padding-bottom:8px;">
+      <div style="font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;border-bottom:1px solid #e5e5e5;padding-bottom:6px;">Reflexion nach dem Walk</div>
+      <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #1D9E75;">
+        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Wie erinnerst du den Walk insgesamt?</div>
+        <textarea id="rqFrei" rows="3" placeholder="Freie Beschreibung..." style="width:100%;font-size:12px;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;font-family:sans-serif;background:#fff;"></textarea>
+      </div>
+      <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #7c3aed;">
+        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Stimmung rückblickend (1 = sehr tief · 5 = sehr hoch)</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <input type="range" id="rqMoodSlider" min="1" max="5" value="3" step="1" style="flex:1;"/>
+          <span id="rqMoodVal" style="font-size:16px;font-weight:bold;color:#facc15;min-width:30px;text-align:right;">3</span>
+        </div>
+      </div>
+      <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #f97316;">
+        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Welcher Moment blieb am stärksten in Erinnerung?</div>
+        <textarea id="rqMoment" rows="2" placeholder="Ort, Situation, Eindruck..." style="width:100%;font-size:12px;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;font-family:sans-serif;background:#fff;"></textarea>
+      </div>
+      <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #22c55e;">
+        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Orte die deine Stimmung beeinflusst haben?</div>
+        <textarea id="rqOrte" rows="2" placeholder="Park, Kreuzung, Lärm..." style="width:100%;font-size:12px;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;font-family:sans-serif;background:#fff;"></textarea>
+      </div>
+      <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #3b82f6;">
+        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Was war bedeutsam aber nicht aufgezeichnet?</div>
+        <textarea id="rqNicht" rows="2" placeholder="Was fehlt in den Daten?" style="width:100%;font-size:12px;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;font-family:sans-serif;background:#fff;"></textarea>
+      </div>
+      <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #BA7517;">
+        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Was überrascht dich beim Blick auf die Aufzeichnung?</div>
+        <textarea id="rqUeber" rows="2" placeholder="Diskrepanz, Überraschung..." style="width:100%;font-size:12px;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;font-family:sans-serif;background:#fff;"></textarea>
+      </div>
+      <button id="rqSaveBtn" style="width:100%;padding:13px;border-radius:10px;border:none;background:#2563eb;color:#fff;font-size:12px;font-weight:bold;cursor:pointer;">💾 Reflexion speichern</button>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- STIMMUNGS-MODAL -->
+<div id="moodModal" style="display:none;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;padding:28px 24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:16px;">
+    <div style="font-size:14px;font-weight:bold;color:#111;text-align:center;">🔋 Stimmung</div>
+    <div style="height:16px;border-radius:8px;background:linear-gradient(to right,#3b82f6,#22c55e,#facc15,#f97316,#ef4444);position:relative;">
+      <div id="moodThumb" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;background:#fff;border:3px solid #facc15;box-shadow:0 2px 8px rgba(0,0,0,0.3);pointer-events:none;"></div>
+    </div>
+    <input type="range" id="moodSlider" min="1" max="5" value="3" step="1" style="width:100%;margin:-8px 0;opacity:0;height:32px;cursor:pointer;"/>
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:#aaa;margin-top:-8px;"><span>1 — sehr tief</span><span>3 — neutral</span><span>5 — sehr hoch</span></div>
+    <div style="text-align:center;"><span id="moodVal" style="font-size:36px;font-weight:bold;color:#facc15;">3</span><span style="font-size:13px;color:#aaa;">/100</span></div>
+    <textarea id="moodText" placeholder="Notiz (optional)..." style="width:100%;height:56px;border-radius:10px;border:1.5px solid #e5e5e5;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
+    <div style="display:flex;gap:10px;">
+      <button id="moodCancel" style="flex:1;padding:13px;border-radius:12px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:12px;cursor:pointer;">Abbrechen</button>
+      <button id="moodSave" style="flex:2;padding:13px;border-radius:12px;border:none;font-weight:bold;font-size:12px;cursor:pointer;color:#fff;background:#facc15;">Marker setzen</button>
+    </div>
+  </div>
+</div>
+<!-- GEDANKEN-MODAL -->
+<div id="thoughtModal" style="display:none;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;padding:24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:14px;">
+    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">💭 Gedanke</div>
+    <textarea id="thoughtText" placeholder="Was denkst du gerade?" style="width:100%;height:100px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
+    <div style="display:flex;gap:8px;">
+      <button id="thoughtCancel" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;">Abbrechen</button>
+      <button id="thoughtSave" style="flex:1;padding:12px;border-radius:10px;border:none;background:#12345f;color:#fff;font-weight:bold;font-size:11px;cursor:pointer;">Marker setzen</button>
+    </div>
+  </div>
+</div>
+<!-- WAHRNEHMUNG-MODAL -->
+<div id="senseModal" style="display:none;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;padding:24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:14px;">
+    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">👁 Wahrnehmung</div>
+    <textarea id="senseText" placeholder="Was nimmst du wahr?" style="width:100%;height:100px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
+    <div style="display:flex;gap:8px;">
+      <button id="senseCancel" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;">Abbrechen</button>
+      <button id="senseSave" style="flex:1;padding:12px;border-radius:10px;border:none;background:#3d633d;color:#fff;font-weight:bold;font-size:11px;cursor:pointer;">Marker setzen</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- VERGLEICH-VOLLBILD -->
+<div id="vglOverlay" style="display:none;position:fixed;inset:0;z-index:5000;background:#f0ede8;flex-direction:column;overflow:hidden;">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#fff;flex-shrink:0;border-bottom:1px solid #e5e5e5;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+    <div style="color:#111;font-size:14px;font-weight:bold;">⚖️ Walk-Vergleich</div>
+    <button id="vglClose" style="padding:8px 18px;border-radius:8px;border:none;background:#f0f0f0;color:#333;font-size:12px;font-weight:bold;cursor:pointer;">✕ Schließen</button>
+  </div>
+  <div id="vglList" style="flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:12px;display:flex;flex-direction:column;gap:12px;background:#f0ede8;"></div>
+  <div id="vglInfo" style="display:none;background:#fff;color:#333;padding:12px 16px;font-size:12px;flex-shrink:0;border-top:1px solid #e5e5e5;max-height:150px;overflow-y:auto;box-shadow:0 -2px 8px rgba(0,0,0,0.06);"></div>
+</div>><!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <title>Begleitinstrument PRO</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" defer></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html,body{height:100%;overflow:hidden;font-family:sans-serif;}
+    #map{width:100%;height:100vh;z-index:1;}
+    #topBar{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:1000;display:flex;gap:8px;}
+    .btn{padding:10px 14px;border-radius:10px;font-weight:bold;font-size:10px;cursor:pointer;text-transform:uppercase;border:none;}
+    .btn-blue{background:#2563eb;color:#fff;}
+    .btn-red{background:#dc2626;color:#fff;}
+    .w-full{width:100%;}
+    #panelToggles{position:fixed;top:12px;right:12px;z-index:1001;display:flex;flex-direction:column;gap:6px;}
+    .panel-tab{padding:8px 12px;border-radius:10px;border:none;font-size:10px;font-weight:bold;text-transform:uppercase;cursor:pointer;background:#fff;color:#333;box-shadow:0 2px 8px rgba(0,0,0,0.15);transition:background 0.15s,color 0.15s;white-space:nowrap;}
+    .panel-tab.active{background:#2563eb;color:#fff;}
+    #drawer{position:fixed;top:0;right:-340px;width:320px;height:100vh;z-index:1002;background:#f5f5f5;box-shadow:-4px 0 20px rgba(0,0,0,0.15);transition:right 0.3s ease;display:flex;flex-direction:column;overflow:hidden;}
+    #drawer.open{right:0;}
+    #drawerHeader{background:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e5e5e5;flex-shrink:0;}
+    #drawerTitle{font-size:12px;font-weight:bold;text-transform:uppercase;color:#333;}
+    #drawerClose{width:28px;height:28px;border-radius:50%;border:none;background:#eee;cursor:pointer;font-size:14px;}
+    #drawerBody{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px;}
+    .section{background:#fff;border-radius:12px;padding:12px;border:1px solid #e5e5e5;}
+    .section-label{font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;border-bottom:1px solid #f0f0f0;padding-bottom:4px;margin-bottom:10px;}
+    .layer-opt{display:block;width:100%;text-align:left;padding:8px 10px;border-radius:6px;border:1px solid #ddd;cursor:pointer;font-size:11px;background:#fff;margin-bottom:4px;}
+    .layer-opt.active{background:#dbeafe;color:#1d4ed8;font-weight:bold;border-color:#1d4ed8;}
+    .layer-toggle-btn{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;border:1.5px solid #ddd;background:#f9f9f9;cursor:pointer;font-size:11px;font-weight:bold;color:#555;width:100%;margin-bottom:5px;transition:all 0.15s ease;}
+    .layer-toggle-btn.active{background:#dbeafe;border-color:#2563eb;color:#1d4ed8;}
+    .layer-toggle-btn .dot{width:8px;height:8px;border-radius:50%;background:#ccc;flex-shrink:0;}
+    .layer-toggle-btn.active .dot{background:#2563eb;}
+    .walk-item{background:#fff;border-radius:10px;border:1px solid #e5e5e5;margin-bottom:8px;overflow:hidden;}
+    .walk-header{display:flex;align-items:center;gap:8px;padding:9px 10px;cursor:pointer;transition:background 0.1s;}
+    .walk-header:hover{background:#f0f4ff;}
+    .walk-header.shown{background:#dbeafe;}
+    .color-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+    .walk-label{flex:1;font-size:11px;font-weight:bold;color:#333;}
+    .walk-badge{font-size:9px;font-weight:bold;color:#1d4ed8;background:#bfdbfe;padding:2px 6px;border-radius:10px;display:none;}
+    .walk-header.shown .walk-badge{display:block;}
+    .walk-actions{display:none;padding:0 10px 10px;gap:6px;flex-direction:column;}
+    .walk-actions.open{display:flex;}
+    .walk-name-input{width:100%;padding:6px 8px;border-radius:6px;border:1px solid #ddd;font-size:11px;margin-bottom:2px;}
+    .walk-btn-row{display:flex;gap:5px;flex-wrap:wrap;}
+    .walk-btn{flex:1;padding:7px 4px;border-radius:7px;border:none;font-size:9px;font-weight:bold;cursor:pointer;text-transform:uppercase;min-width:50px;}
+    .wb-save{background:#2563eb;color:#fff;}
+    .wb-export{background:#16a34a;color:#fff;}
+    .wb-analyse{background:#7c3aed;color:#fff;}
+    .wb-delete{background:#fee2e2;color:#dc2626;}
+    .wb-verlauf{background:#0e7490;color:#fff;}
+
+    /* Auswertungs-Modal — ohne Dritte-Sicht */
+    #analyseModal{position:fixed;inset:0;z-index:3500;background:rgba(0,0,0,0.82);display:none;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;}
+    #analyseModal.open{display:flex;}
+    #analyseBox{background:#f8f8f8;border-radius:20px;width:min(96vw,560px);padding:20px;display:flex;flex-direction:column;gap:14px;margin:auto;}
+    .analyse-header{display:flex;align-items:center;justify-content:space-between;}
+    .analyse-title{font-size:14px;font-weight:bold;color:#111;}
+    .analyse-close{width:28px;height:28px;border-radius:50%;border:none;background:#eee;cursor:pointer;font-size:14px;}
+    .a-card{background:#fff;border-radius:12px;padding:12px;border:1px solid #e5e5e5;}
+    .a-label{font-size:9px;font-weight:bold;text-transform:uppercase;color:#9ca3af;margin-bottom:8px;}
+    .stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+    .stat-box{background:#f0f4ff;border-radius:8px;padding:10px;text-align:center;}
+    .stat-val{font-size:20px;font-weight:bold;color:#1a1a1a;}
+    .stat-lbl{font-size:9px;color:#6b7280;text-transform:uppercase;margin-top:2px;}
+    .disk-row{display:flex;align-items:center;gap:8px;margin:5px 0;}
+    .disk-bar-bg{flex:1;height:7px;border-radius:4px;background:#f0f0f0;overflow:hidden;}
+    .disk-bar-fill{height:100%;border-radius:4px;}
+
+    /* Modals */
+    #cameraModal,#audioModal,#stopModal{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,0.88);display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
+    #cameraModal.open,#audioModal.open,#stopModal.open{display:flex;}
+    #cameraPreview{width:min(90vw,400px);border-radius:12px;background:#000;}
+    #captureBtn{padding:14px 32px;border-radius:50px;border:none;background:#fff;font-size:14px;font-weight:bold;cursor:pointer;}
+    #closeCamera,#closeAudio{position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:18px;width:36px;height:36px;border-radius:50%;cursor:pointer;}
+    #audioStatus{color:#fff;font-size:14px;font-weight:bold;text-align:center;}
+    #audioTimer{color:#ef4444;font-size:32px;font-weight:bold;}
+    #audioViz{display:flex;align-items:flex-end;gap:3px;height:48px;margin:8px 0;}
+    .bar{width:6px;background:#ef4444;border-radius:3px;transition:height 0.1s;}
+    #stopAudioBtn{padding:14px 32px;border-radius:50px;border:none;background:#ef4444;color:#fff;font-size:14px;font-weight:bold;cursor:pointer;}
+    #photoInput{display:none;}
+    #stopModal .modal-box{background:#fff;border-radius:16px;padding:24px;width:min(90vw,320px);display:flex;flex-direction:column;gap:12px;}
+    #stopModal h3{font-size:14px;font-weight:bold;color:#111;}
+    #stopModal p{font-size:11px;color:#666;}
+    #walkNameInput{width:100%;padding:10px 12px;border-radius:8px;border:1px solid #ddd;font-size:13px;}
+    .modal-btns{display:flex;gap:8px;}
+    .modal-btns button{flex:1;padding:11px;border-radius:8px;border:none;font-size:11px;font-weight:bold;cursor:pointer;text-transform:uppercase;}
+    #modalCancel{background:#f0f0f0;color:#555;}
+    #modalSave{background:#2563eb;color:#fff;}
+    #exportOverlay{position:fixed;inset:0;z-index:4000;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;}
+    #exportOverlay.open{display:flex;}
+    #exportBox{background:#fff;border-radius:14px;padding:24px 28px;text-align:center;min-width:200px;}
+    #exportMsg{font-size:13px;color:#333;margin-top:8px;}
+
+    /* ── MODERNES FAB-PANEL ── */
+    #fabGrid {
+      position: fixed;
+      bottom: 24px;
+      left: 16px;
+      z-index: 1001;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      background: rgba(255,255,255,0.78);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-radius: 26px;
+      border: 1px solid rgba(255,255,255,0.95);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.13), 0 1px 0 rgba(255,255,255,0.85) inset, 0 0 0 0.5px rgba(0,0,0,0.06);
+      padding: 10px 8px;
+    }
+    .fab {
+      position: relative;
+      width: 46px;
+      height: 46px;
+      border-radius: 15px;
+      border: none;
+      cursor: pointer;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      color: #1a1a1a;
+      transition: background 0.13s ease, transform 0.1s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .fab:hover { background: rgba(0,0,0,0.06); transform: scale(1.1); }
+    .fab:active { transform: scale(0.91); background: rgba(0,0,0,0.1); }
+    .fab::after {
+      content: attr(data-label);
+      position: absolute;
+      left: calc(100% + 12px);
+      top: 50%;
+      transform: translateY(-50%) translateX(-4px);
+      background: rgba(14,14,14,0.88);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1px;
+      padding: 5px 11px;
+      border-radius: 9px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.18s ease, transform 0.18s ease;
+    }
+    .fab:hover::after { opacity: 1; transform: translateY(-50%) translateX(0); }
+    .fab-divider {
+      width: 28px;
+      height: 1px;
+      background: rgba(0,0,0,0.08);
+      border-radius: 1px;
+      margin: 4px 0;
+      flex-shrink: 0;
+    }
+
+
+    /* Verlauf-Modal */
+    #verlaufModal{position:fixed;inset:0;z-index:3500;background:rgba(0,0,0,0.82);display:none;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;}
+    #verlaufModal.open{display:flex;}
+    #verlaufBox{background:#f8f8f8;border-radius:20px;width:min(96vw,640px);padding:20px;display:flex;flex-direction:column;gap:14px;margin:auto;}
+    .verlauf-header{display:flex;align-items:center;justify-content:space-between;}
+    .verlauf-title{font-size:14px;font-weight:bold;color:#111;}
+    .verlauf-close{width:28px;height:28px;border-radius:50%;border:none;background:#eee;cursor:pointer;font-size:14px;}
+    .verlauf-legend{display:flex;flex-wrap:wrap;gap:8px;font-size:10px;color:#555;}
+    .verlauf-legend span{display:flex;align-items:center;gap:4px;}
+    .verlauf-legend i{width:10px;height:10px;border-radius:50%;display:inline-block;}
+
+    .vgl-popup .leaflet-popup-content-wrapper{border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.2);}
+    .vgl-popup .leaflet-popup-content{margin:12px 14px;}
+    .vgl-walk-row{background:#fff;border-radius:14px;overflow:hidden;border:1px solid #e5e5e5;}
+    .vgl-map{width:100%;height:180px;border-radius:10px 10px 0 0;}
+    .vgl-body{padding:12px;}
+    .vgl-name{font-size:12px;font-weight:bold;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+    .vgl-stats{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+    .vgl-stat{background:#f0f4ff;border-radius:8px;padding:6px 10px;text-align:center;flex:1;min-width:60px;}
+    .vgl-stat-val{font-size:16px;font-weight:bold;color:#1a1a1a;}
+    .vgl-stat-lbl{font-size:8px;color:#6b7280;text-transform:uppercase;}
+    .vgl-ref{background:#f9f9f9;border-radius:8px;padding:8px;font-size:11px;color:#555;font-style:italic;margin-top:4px;}
+    #moodModal,#thoughtModal,#senseModal{position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,0.78);display:none;align-items:center;justify-content:center;}
+    #thoughtModal,#senseModal{z-index:2000;background:rgba(0,0,0,0.75);}
+  </style>
+</head>
+<body>
+<div id="map"></div>
+<div id="map3d" style="display:none;position:fixed;inset:0;z-index:2;"></div>
+<button id="exit3d" style="display:none;position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:1003;padding:10px 18px;border-radius:10px;border:none;background:rgba(0,0,0,0.75);color:#fff;font-size:11px;font-weight:bold;cursor:pointer;">✕ 3D verlassen</button>
+<div id="topBar">
+  <button id="btnStart" class="btn btn-blue">START</button>
+  <button id="btnStop" class="btn btn-red">STOP / SAVE</button>
+</div>
+<div id="panelToggles">
+  <button class="panel-tab" data-panel="ansicht">🗺 Ansicht</button>
+  <button class="panel-tab" data-panel="ebenen">☰ Ebenen</button>
+  <button class="panel-tab" data-panel="archiv">📂 Archiv</button>
+</div>
+<div id="drawer">
+  <div id="drawerHeader">
+    <span id="drawerTitle">Panel</span>
+    <button id="drawerClose">✕</button>
+  </div>
+  <div id="drawerBody">
+    <div class="section" id="sec-ansicht" style="display:none;">
+      <div class="section-label">Kartenansicht</div>
+      <button class="layer-opt active" data-url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png">Standard</button>
+      <button class="layer-opt" data-url="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}">Satellit</button>
+      <button class="layer-opt" data-url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png">Graustufen</button>
+      <button class="layer-opt" data-type="3d">🏔 3D Ansicht</button>
+    </div>
+    <div class="section" id="sec-ebenen" style="display:none;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        <div style="background:#f0f4ff;border-radius:10px;padding:10px 12px;text-align:center;">
+          <div style="font-size:9px;font-weight:bold;color:#6b7280;text-transform:uppercase;margin-bottom:4px;">Schritte</div>
+          <div id="stepCount" style="font-size:22px;font-weight:bold;color:#1a1a1a;">0</div>
+        </div>
+        <div style="background:#f0f4ff;border-radius:10px;padding:10px 12px;text-align:center;">
+          <div style="font-size:9px;font-weight:bold;color:#6b7280;text-transform:uppercase;margin-bottom:4px;">Tempo</div>
+          <div id="currentSpeed" style="font-size:18px;font-weight:bold;color:#1a1a1a;">—</div>
+        </div>
+      </div>
+      <div style="font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;border-bottom:1px solid #f0f0f0;padding-bottom:4px;margin-bottom:10px;">Ebenen</div>
+      <button class="layer-toggle-btn active" data-layer="route"><span class="dot"></span> Route</button>
+      <button class="layer-toggle-btn active" data-layer="photo"><span class="dot"></span> Fotos</button>
+      <button class="layer-toggle-btn active" data-layer="sound"><span class="dot"></span> Umgebungssound</button>
+      <button class="layer-toggle-btn active" data-layer="voice"><span class="dot"></span> Sprachnachricht</button>
+      <button class="layer-toggle-btn active" data-layer="sense"><span class="dot"></span> Wahrnehmung</button>
+      <button class="layer-toggle-btn active" data-layer="thought"><span class="dot"></span> Gedanken</button>
+      <button class="layer-toggle-btn active" data-layer="mood"><span class="dot"></span> Stimmung</button>
+    </div>
+    <div class="section" id="sec-archiv" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div class="section-label" style="border:none;padding:0;margin:0;">Walks</div>
+        <button id="btnVergleich" style="padding:6px 12px;border-radius:8px;border:none;background:#7c3aed;color:#fff;font-size:10px;font-weight:bold;cursor:pointer;display:none;">⚖️ Vergleichen</button>
+      </div>
+      <div id="archiveList"><div style="font-size:11px;color:#999;">Noch keine Walks gespeichert.</div></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODERNES FAB-PANEL — Reihenfolge: Foto, Sound, Sprache, Wahrnehmung, Gedanke, Stimmung -->
+<div id="fabGrid">
+  <button id="fabPhoto"   class="fab" data-label="Foto aufnehmen">📸</button>
+  <button id="fabSound"   class="fab" data-label="Umgebungssound">🎙</button>
+  <button id="fabMsg"     class="fab" data-label="Sprachnachricht">💬</button>
+  <div class="fab-divider"></div>
+  <button id="fabSense"   class="fab" data-label="Wahrnehmung">👁</button>
+  <button id="fabThought" class="fab" data-label="Gedanke">💭</button>
+  <div class="fab-divider"></div>
+  <button id="fabMood"    class="fab" data-label="Stimmung">🔋</button>
+</div>
+
+<div id="cameraModal">
+  <button id="closeCamera">✕</button>
+  <video id="cameraPreview" autoplay playsinline muted></video>
+  <button id="captureBtn">📸 Foto aufnehmen</button>
+  <canvas id="photoCanvas" style="display:none;"></canvas>
+</div>
+<div id="audioModal">
+  <button id="closeAudio">✕</button>
+  <div id="audioStatus">Aufnahme läuft...</div>
+  <div id="audioTimer">0:00</div>
+  <div id="audioViz">
+    <div class="bar" style="height:8px"></div><div class="bar" style="height:16px"></div>
+    <div class="bar" style="height:24px"></div><div class="bar" style="height:16px"></div>
+    <div class="bar" style="height:8px"></div><div class="bar" style="height:20px"></div>
+    <div class="bar" style="height:12px"></div><div class="bar" style="height:28px"></div>
+    <div class="bar" style="height:14px"></div><div class="bar" style="height:8px"></div>
+  </div>
+  <button id="stopAudioBtn">⏹ Aufnahme beenden</button>
+</div>
+<div id="stopModal">
+  <div class="modal-box">
+    <h3>Walk beenden &amp; speichern</h3>
+    <p>Gib deinem Walk einen Namen:</p>
+    <input id="walkNameInput" type="text" placeholder="z.B. Morgenspaziergang Zentrum"/>
+    <div class="modal-btns">
+      <button id="modalCancel">Abbrechen</button>
+      <button id="modalSave">💾 Speichern</button>
+    </div>
+  </div>
+</div>
+<div id="exportOverlay"><div id="exportBox"><div style="font-size:24px;">📦</div><div id="exportMsg">Exportiere...</div></div></div>
+<input type="file" id="photoInput" accept="image/*" capture="environment"/>
+
+<!-- AUSWERTUNGS-MODAL — nur Ich-Sicht -->
+<div id="analyseModal">
+  <div id="analyseBox">
+    <div class="analyse-header">
+      <div class="analyse-title" id="analyseWalkName">Auswertung</div>
+      <button class="analyse-close" id="analyseClose">✕</button>
+    </div>
+    <div class="stat-row" style="margin-bottom:12px;">
+      <div class="stat-box"><div class="stat-val" id="aStat1">—</div><div class="stat-lbl">Ø Stimmung (1-5)</div></div>
+      <div class="stat-box"><div class="stat-val" id="aStat2" style="color:#7c3aed;">—</div><div class="stat-lbl">Erinnert (1-5)</div></div>
+      <div class="stat-box"><div class="stat-val" id="aStat3">—</div><div class="stat-lbl">Diskrepanz</div></div>
+    </div>
+    <div class="a-card" style="margin-bottom:10px;">
+      <div class="a-label" style="color:#0F6E56;">Schicht 1 — Aufgezeichnete Stimmung</div>
+      <div style="position:relative;height:120px;"><canvas id="chartAufz"></canvas></div>
+    </div>
+    <div class="a-card" style="margin-bottom:10px;">
+      <div class="a-label" style="color:#534AB7;">Schicht 2 — Selbstreflexion</div>
+      <div style="position:relative;height:120px;"><canvas id="chartErin"></canvas></div>
+      <div style="background:#f5f3ff;border-radius:8px;padding:8px 10px;margin-top:8px;font-size:11px;color:#374151;font-style:italic;" id="refFreiDisplay">—</div>
+    </div>
+    <div class="a-card" style="margin-bottom:10px;">
+      <div class="a-label" style="color:#854F0B;">Diskrepanz pro Abschnitt</div>
+      <div id="diskBars"></div>
+      <div style="font-size:10px;color:#9ca3af;margin-top:6px;">Grün = Erinnerung höher als Aufzeichnung · Rot = niedriger · Skala 1–5</div>
+    </div>
+    <div class="a-card">
+      <div class="a-label">Reflexionsantworten</div>
+      <div id="refAnswersDisplay" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- STIMMUNGS-MODAL -->
+<div id="moodModal" style="display:none;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;padding:28px 24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:16px;">
+    <div style="font-size:14px;font-weight:bold;color:#111;text-align:center;">🔋 Stimmung</div>
+    <div style="height:16px;border-radius:8px;background:linear-gradient(to right,#3b82f6,#22c55e,#facc15,#f97316,#ef4444);position:relative;">
+      <div id="moodThumb" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;background:#fff;border:3px solid #facc15;box-shadow:0 2px 8px rgba(0,0,0,0.3);pointer-events:none;"></div>
+    </div>
+    <input type="range" id="moodSlider" min="1" max="5" value="3" step="1" style="width:100%;margin:-8px 0;opacity:0;height:32px;cursor:pointer;"/>
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:#aaa;margin-top:-8px;"><span>1 — sehr tief</span><span>3 — neutral</span><span>5 — sehr hoch</span></div>
+    <div style="text-align:center;"><span id="moodVal" style="font-size:36px;font-weight:bold;color:#facc15;">3</span><span style="font-size:13px;color:#aaa;">/100</span></div>
+    <textarea id="moodText" placeholder="Notiz (optional)..." style="width:100%;height:56px;border-radius:10px;border:1.5px solid #e5e5e5;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
+    <div style="display:flex;gap:10px;">
+      <button id="moodCancel" style="flex:1;padding:13px;border-radius:12px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:12px;cursor:pointer;">Abbrechen</button>
+      <button id="moodSave" style="flex:2;padding:13px;border-radius:12px;border:none;font-weight:bold;font-size:12px;cursor:pointer;color:#fff;background:#facc15;">Marker setzen</button>
+    </div>
+  </div>
+</div>
+<!-- GEDANKEN-MODAL -->
+<div id="thoughtModal" style="display:none;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;padding:24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:14px;">
+    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">💭 Gedanke</div>
+    <textarea id="thoughtText" placeholder="Was denkst du gerade?" style="width:100%;height:100px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
+    <div style="display:flex;gap:8px;">
+      <button id="thoughtCancel" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;">Abbrechen</button>
+      <button id="thoughtSave" style="flex:1;padding:12px;border-radius:10px;border:none;background:#12345f;color:#fff;font-weight:bold;font-size:11px;cursor:pointer;">Marker setzen</button>
+    </div>
+  </div>
+</div>
+<!-- WAHRNEHMUNG-MODAL -->
+<div id="senseModal" style="display:none;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;padding:24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:14px;">
+    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">👁 Wahrnehmung</div>
+    <textarea id="senseText" placeholder="Was nimmst du wahr?" style="width:100%;height:100px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
+    <div style="display:flex;gap:8px;">
+      <button id="senseCancel" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;">Abbrechen</button>
+      <button id="senseSave" style="flex:1;padding:12px;border-radius:10px;border:none;background:#3d633d;color:#fff;font-weight:bold;font-size:11px;cursor:pointer;">Marker setzen</button>
+    </div>
+  </div>
+</div>
+
+<script>
+window.addEventListener('load', function() {
+  const walkColors=['#e6194b','#3cb44b','#ffe119','#4363d8','#f58231','#911eb4','#42d4f4','#f032e6'];
+  const layerVisibility={route:true,mood:true,thought:true,sense:true,sound:true,voice:true,photo:true};
+  const mapLayers={route:[],mood:[],thought:[],sense:[],sound:[],voice:[],photo:[]};
+  let state={walks:JSON.parse(localStorage.getItem('psychogeo_walks')||'[]'),current:null,map:null,liveMarker:null,activeLayers:{},currentTile:null,archiveInkLayers:{}};
+  const audioBlobs={};
+  let currentTileUrl='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+  state.map=L.map('map',{zoomControl:false,maxZoom:22}).setView([47.23,9.61],17);
+  state.currentTile=L.tileLayer(currentTileUrl,{crossOrigin:true,maxZoom:22,maxNativeZoom:19}).addTo(state.map);
+
+  const drawer=document.getElementById('drawer');
+  const drawerTitle=document.getElementById('drawerTitle');
+  const panelNames={ansicht:'🗺 Ansicht',ebenen:'☰ Ebenen',archiv:'📂 Archiv'};
+  let currentPanel=null;
+  function openPanel(name){
+    ['ansicht','ebenen','archiv'].forEach(p=>document.getElementById('sec-'+p).style.display='none');
+    document.querySelectorAll('.panel-tab').forEach(t=>t.classList.remove('active'));
+    if(currentPanel===name){drawer.classList.remove('open');currentPanel=null;return;}
+    document.getElementById('sec-'+name).style.display='block';
+    drawerTitle.textContent=panelNames[name];
+    drawer.classList.add('open');currentPanel=name;
+    document.querySelector('.panel-tab[data-panel="'+name+'"]').classList.add('active');
+    // Archiv immer neu rendern wenn geöffnet
+    if(name==='archiv') renderArchive();
+  }
+  document.querySelectorAll('.panel-tab').forEach(b=>b.addEventListener('click',()=>openPanel(b.getAttribute('data-panel'))));
+  document.getElementById('drawerClose').addEventListener('click',()=>{drawer.classList.remove('open');document.querySelectorAll('.panel-tab').forEach(t=>t.classList.remove('active'));currentPanel=null;});
+
+  document.querySelectorAll('.layer-opt').forEach(btn=>{
+    btn.onclick=()=>{
+      if(btn.getAttribute('data-type')==='3d'){
+        open3DView();
+        document.querySelectorAll('.layer-opt').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        return;
+      }
+      const url=btn.getAttribute('data-url');currentTileUrl=url;
+      state.map.removeLayer(state.currentTile);
+      state.currentTile=L.tileLayer(url,{crossOrigin:true,maxZoom:22,maxNativeZoom:19}).addTo(state.map);
+      document.querySelectorAll('.layer-opt').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+    };
+  });
+
+  // ── 3D Ansicht ──
+  const MAPTILER_3D_KEY = 'DEIN_MAPTILER_KEY';
+  let map3dInstance = null;
+  function open3DView(){
+    const mapDiv=document.getElementById('map3d');
+    if(!mapDiv)return;
+    mapDiv.style.display='block';
+    document.getElementById('exit3d').style.display='block';
+    document.getElementById('map').style.display='none';
+    mapDiv.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#1a1a1a;color:#fff;font-size:13px;text-align:center;padding:20px;">🏔 3D Ansicht benötigt MapTiler API-Key.<br><br>Bitte MAPTILER_3D_KEY im Code eintragen.</div>';
+  }
+  document.getElementById('exit3d').onclick = () => {
+    document.getElementById('map3d').style.display='none';
+    document.getElementById('exit3d').style.display='none';
+    document.getElementById('map').style.display='block';
+    document.querySelectorAll('.layer-opt').forEach(b=>b.classList.remove('active'));
+    document.querySelector('.layer-opt[data-url="'+currentTileUrl+'"]')?.classList.add('active');
+  };
+
+  document.querySelectorAll('.layer-toggle-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const key=btn.getAttribute('data-layer');
+      const isActive=btn.classList.toggle('active');
+      layerVisibility[key]=isActive;
+      if(key==='route'){
+        if(state.inkLayer&&state.inkLayer._canvas)state.inkLayer._canvas.style.display=isActive?'':'none';
+        Object.values(state.archiveInkLayers).forEach(al=>{if(al._canvas)al._canvas.style.display=isActive?'':'none';});
+      } else {
+        mapLayers[key].forEach(l=>isActive?state.map.addLayer(l):state.map.removeLayer(l));
+      }
+    });
+  });
+
+  let stepCount=0,lastStepTime=0;
+  if(window.DeviceMotionEvent){
+    window.addEventListener('devicemotion',e=>{
+      if(!state.current)return;
+      const a=e.accelerationIncludingGravity;if(!a)return;
+      const mag=Math.sqrt(a.x*a.x+a.y*a.y+a.z*a.z),now=Date.now();
+      if(mag>13.5&&(now-lastStepTime)>550){stepCount++;lastStepTime=now;if(state.current)state.current.steps=stepCount;const el=document.getElementById('stepCount');if(el)el.textContent=stepCount.toLocaleString('de-DE');}
+    });
+  }
+
+  let lastPos=null,lastPosTime=null,smoothedSpeed=0;
+  function haversineDist(a,b){const R=6371000,tr=x=>x*Math.PI/180;const dLat=tr(b[0]-a[0]),dLon=tr(b[1]-a[1]);const h=Math.sin(dLat/2)**2+Math.cos(tr(a[0]))*Math.cos(tr(b[0]))*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
+  function speedToWeight(s){const t=Math.min(s/3.5,1);return Math.max(1,26*Math.pow(1-t,1.6));}
+  function speedToOpacity(s){const t=Math.min(s/3.5,1);return Math.max(0.04,0.92*Math.pow(1-t,1.4));}
+  function jitter(sc){return(Math.random()-0.5)*sc;}
+  function drawInkStroke(ctx,x1,y1,x2,y2,weight,opacity){
+    if(weight<0.5)return;
+    const alpha=Math.min(opacity,1),strokes=Math.max(1,Math.round(weight*0.7));
+    for(let s=0;s<strokes;s++){
+      const sp=weight*0.3,ox1=jitter(sp),oy1=jitter(sp),ox2=jitter(sp),oy2=jitter(sp);
+      const mx=(x1+x2)/2+jitter(weight*0.4),my=(y1+y2)/2+jitter(weight*0.4);
+      const w=weight*(0.75+Math.random()*0.5)/strokes;
+      ctx.beginPath();ctx.moveTo(x1+ox1,y1+oy1);ctx.quadraticCurveTo(mx,my,x2+ox2,y2+oy2);
+      ctx.lineWidth=w;ctx.lineCap='round';ctx.lineJoin='round';
+      ctx.strokeStyle='rgba(20,16,12,'+(alpha*(0.6+Math.random()*0.4)).toFixed(3)+')';ctx.stroke();
+    }
+    if(weight>4){const gc=Math.round(weight*1.2);for(let g=0;g<gc;g++){const t=Math.random(),gx=x1+(x2-x1)*t+jitter(weight*0.6),gy=y1+(y2-y1)*t+jitter(weight*0.6),gr=Math.random()*weight*0.18;ctx.beginPath();ctx.arc(gx,gy,gr,0,Math.PI*2);ctx.fillStyle='rgba(20,16,12,'+(alpha*Math.random()*0.5).toFixed(3)+')';ctx.fill();}}
+  }
+
+  // ── InkLayer: korrekte Leaflet-Canvas-Synchronisation ──
+  // Verwendet latLngToLayerPoint + CSS-Transform damit die Route beim
+  // Zoomen/Panning nie verschoben wird (gleiche Methode wie L.Canvas intern)
+  const InkLayer=L.Layer.extend({
+    initialize(){this._segments=[];this._canvas=null;this._ctx=null;},
+    onAdd(map){
+      this._map=map;
+      const c=document.createElement('canvas');
+      c.style.cssText='position:absolute;top:0;left:0;pointer-events:none;z-index:400;';
+      map.getPanes().overlayPane.appendChild(c);
+      this._canvas=c; this._ctx=c.getContext('2d');
+      // Auf alle Karten-Events reagieren — auch während Zoom-Animation
+      map.on('movestart move moveend zoomstart zoom zoomend viewreset resize',this._onMapMove,this);
+      this._reset();
+      return this;
+    },
+    onRemove(map){
+      map.getPanes().overlayPane.removeChild(this._canvas);
+      map.off('movestart move moveend zoomstart zoom zoomend viewreset resize',this._onMapMove,this);
+    },
+    _onMapMove(){this._reset();},
+    _reset(){
+      // Canvas-Größe auf gesamte Karte setzen
+      const sz=this._map.getSize();
+      const topLeft=this._map.containerPointToLayerPoint([0,0]);
+      // Canvas im overlayPane positionieren
+      L.DomUtil.setPosition(this._canvas, topLeft);
+      this._canvas.width=sz.x;
+      this._canvas.height=sz.y;
+      this._redraw();
+    },
+    // Leaflet-Koordinaten → Canvas-Pixel (korrekt über layerPoint)
+    _ll2px(ll){
+      const lp=this._map.latLngToLayerPoint(ll);
+      const origin=this._map.containerPointToLayerPoint([0,0]);
+      return {x: lp.x - origin.x, y: lp.y - origin.y};
+    },
+    addSegment(ll1,ll2,w,op){
+      this._segments.push({ll1,ll2,weight:w,opacity:op});
+      // Sofort zeichnen ohne alles neu zu rendern (Performance)
+      if(this._ctx){
+        const p1=this._ll2px(ll1),p2=this._ll2px(ll2);
+        drawInkStroke(this._ctx,p1.x,p1.y,p2.x,p2.y,w,op);
+      }
+    },
+    _redraw(){
+      if(!this._ctx)return;
+      this._ctx.clearRect(0,0,this._canvas.width,this._canvas.height);
+      this._segments.forEach(s=>{
+        const p1=this._ll2px(s.ll1),p2=this._ll2px(s.ll2);
+        drawInkStroke(this._ctx,p1.x,p1.y,p2.x,p2.y,s.weight,s.opacity);
+      });
+    },
+    clearSegments(){
+      this._segments=[];
+      if(this._ctx)this._ctx.clearRect(0,0,this._canvas.width,this._canvas.height);
+    },
+    getSegments(){return this._segments;}
+  });
+
+  let inkLayer=new InkLayer();inkLayer.addTo(state.map);state.inkLayer=inkLayer;
+
+  let smoothLat=null,smoothLng=null;
+  navigator.geolocation.watchPosition(pos=>{
+    if(pos.coords.accuracy>30)return;
+    const rawLat=pos.coords.latitude,rawLng=pos.coords.longitude;
+    if(smoothLat===null){smoothLat=rawLat;smoothLng=rawLng;}
+    else{smoothLat+=0.25*(rawLat-smoothLat);smoothLng+=0.25*(rawLng-smoothLng);}
+    const ll=[smoothLat,smoothLng],now=Date.now();
+    if(!state.liveMarker){
+      state.liveMarker=L.circleMarker(ll,{radius:6,fillColor:'#111',color:'#fff',weight:2,fillOpacity:1,zIndexOffset:1000}).addTo(state.map);
+      state.map.setView(ll,17);
+    } else {
+      state.liveMarker.setLatLng(ll);
+    }
+    if(state.current){
+      if(lastPos&&lastPosTime){
+        const dist=haversineDist(lastPos,ll);if(dist<3)return;
+        const dt=(now-lastPosTime)/1000,raw=dt>0?dist/dt:0;
+        smoothedSpeed=smoothedSpeed*0.7+raw*0.3;
+        const w=speedToWeight(smoothedSpeed),op=speedToOpacity(smoothedSpeed);
+        state.current.route.push(ll);
+        if(!state.current.segments)state.current.segments=[];
+        state.current.segments.push({ll1:lastPos,ll2:ll,weight:w,opacity:op});
+        if(layerVisibility.route)inkLayer.addSegment(lastPos,ll,w,op);
+        const se=document.getElementById('currentSpeed');if(se)se.textContent=(smoothedSpeed*3.6).toFixed(1)+' km/h';
+      } else state.current.route.push(ll);
+      lastPos=ll;lastPosTime=now;
+    }
+  },err=>console.warn('GPS:',err.code),{enableHighAccuracy:true,maximumAge:0,timeout:30000});
+
+  // Screen WakeLock: verhindert dass GPS abbricht wenn Bildschirm dunkel wird
+  let wakeLock=null;
+  async function requestWakeLock(){
+    try{if('wakeLock' in navigator){wakeLock=await navigator.wakeLock.request('screen');}}
+    catch(e){console.log('WakeLock nicht verfügbar:',e);}
+  }
+  async function releaseWakeLock(){
+    if(wakeLock){try{await wakeLock.release();}catch(e){}wakeLock=null;}
+  }
+  // WakeLock nach Tab-Wechsel neu anfordern
+  document.addEventListener('visibilitychange',async()=>{
+    if(document.visibilityState==='visible'&&state.current){await requestWakeLock();}
+  });
+
+  document.getElementById('btnStart').onclick=()=>{
+    stepCount=0;lastStepTime=0;smoothedSpeed=0;lastPos=null;lastPosTime=null;
+    document.getElementById('stepCount').textContent='0';
+    document.getElementById('currentSpeed').textContent='—';
+    inkLayer.clearSegments();
+    state.current={id:Date.now(),name:new Date().toLocaleString('de-DE'),route:[],segments:[],entries:[],steps:0,color:walkColors[state.walks.length%walkColors.length],reflection:{frei:'',moodRetro:3,moment:'',orte:'',nicht:'',ueber:''}};
+    requestWakeLock();
+    alert('Walk gestartet!');
+  };
+
+  document.getElementById('btnStop').onclick=()=>{if(!state.current)return alert('Kein aktiver Walk.');document.getElementById('walkNameInput').value='';document.getElementById('stopModal').classList.add('open');};
+  document.getElementById('modalCancel').onclick=()=>document.getElementById('stopModal').classList.remove('open');
+  document.getElementById('modalSave').onclick=()=>{
+    const nv=document.getElementById('walkNameInput').value.trim();if(nv)state.current.name=nv;
+    document.getElementById('stopModal').classList.remove('open');
+    inkLayer.clearSegments();
+    Object.keys(mapLayers).forEach(k=>{mapLayers[k].forEach(l=>{try{state.map.removeLayer(l);}catch(e){}});mapLayers[k]=[];});
+    if(!state.current.reflection)state.current.reflection={frei:'',moodRetro:3,moment:'',orte:'',nicht:'',ueber:''};
+    releaseWakeLock();    state.walks.push(state.current);saveWalks();state.current=null;renderArchive();openPanel('archiv');
+  };
+
+  function saveWalks(){
+    const ts=state.walks.map(w=>({...w,entries:w.entries.map(e=>{const c={...e};delete c.audioUrl;return c;})}));
+    localStorage.setItem('psychogeo_walks',JSON.stringify(ts));
+  }
+
+
+  function placeMarker(type,latLng,popupHTML){
+    mapLayers[type]=mapLayers[type]||[];
+    const m=L.marker(latLng).bindPopup(popupHTML);
+    mapLayers[type].push(m);
+    if(layerVisibility[type]!==false){m.addTo(state.map);m.openPopup();}
+    return m;
+  }
+  function requireWalk(){if(!state.current){alert('Erst START drücken!');return false;}return true;}
+  function getPos(){if(state.liveMarker)return state.liveMarker.getLatLng();const c=state.map.getCenter();return{lat:c.lat,lng:c.lng};}
+  function moodColor(v){if(v<=1)return'#3b82f6';if(v<=2)return'#22c55e';if(v<=3)return'#facc15';if(v<=4)return'#f97316';return'#ef4444';}
+  function makeDotIcon(color,size){size=size||20;return L.divIcon({className:'',html:'<div style="width:'+size+'px;height:'+size+'px;border-radius:50%;background:'+color+';border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,0.5),0 0 0 1px rgba(0,0,0,0.1);"></div>',iconSize:[size,size],iconAnchor:[size/2,size/2],popupAnchor:[0,-(size/2+4)]});}
+  function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+  const cameraModal=document.getElementById('cameraModal');
+  const cameraPreview=document.getElementById('cameraPreview');
+  const photoCanvas=document.getElementById('photoCanvas');
+  let cameraStream=null;
+  async function openCamera(){try{cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});cameraPreview.srcObject=cameraStream;cameraModal.classList.add('open');}catch(e){document.getElementById('photoInput').click();}}
+  function closeCamera(){if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}cameraModal.classList.remove('open');}
+  document.getElementById('closeCamera').onclick=closeCamera;
+  function placePhotoMarker(dataUrl,pos){
+    const ts=new Date().toLocaleTimeString();
+    const icon=L.divIcon({className:'',html:'<div style="width:26px;height:26px;border-radius:50%;border:2.5px solid #fff;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.4);background:#555;"><img src="'+dataUrl+'" style="width:100%;height:100%;object-fit:cover;"/></div>',iconSize:[26,26],iconAnchor:[13,13],popupAnchor:[0,-16]});
+    const popup='<img src="'+dataUrl+'" style="width:200px;border-radius:8px;"/><br><small>'+ts+'</small>';
+    const m=placeMarker('photo',pos,popup);m.setIcon(icon);return ts;
+  }
+  document.getElementById('captureBtn').onclick=()=>{if(!requireWalk()){closeCamera();return;}const pos=getPos();photoCanvas.width=cameraPreview.videoWidth;photoCanvas.height=cameraPreview.videoHeight;photoCanvas.getContext('2d').drawImage(cameraPreview,0,0);const dataUrl=photoCanvas.toDataURL('image/jpeg',0.7);const ts=placePhotoMarker(dataUrl,pos);state.current.entries.push({type:'photo',location:{lat:pos.lat,lng:pos.lng},timestamp:ts,dataUrl});closeCamera();};
+  document.getElementById('photoInput').onchange=function(){if(!this.files||!this.files[0]||!requireWalk())return;const pos=getPos();const reader=new FileReader();reader.onload=e=>{const dataUrl=e.target.result;const ts=placePhotoMarker(dataUrl,pos);state.current.entries.push({type:'photo',location:{lat:pos.lat,lng:pos.lng},timestamp:ts,dataUrl});};reader.readAsDataURL(this.files[0]);this.value='';};
+  document.getElementById('fabPhoto').onclick=()=>openCamera();
+
+  const audioModal=document.getElementById('audioModal');
+  const bars=document.querySelectorAll('.bar');
+  let mediaRecorder=null,audioChunks=[],audioType='voice',timerInterval=null,timerSec=0,audioContext=null,analyser=null,vizRaf=null;
+  function formatTime(s){return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
+  function startViz(stream){audioContext=new(window.AudioContext||window.webkitAudioContext)();analyser=audioContext.createAnalyser();analyser.fftSize=64;audioContext.createMediaStreamSource(stream).connect(analyser);const data=new Uint8Array(analyser.frequencyBinCount);function draw(){vizRaf=requestAnimationFrame(draw);analyser.getByteFrequencyData(data);bars.forEach((b,i)=>{const v=data[i*2]||0;b.style.height=Math.max(4,v*48/255)+'px';});}draw();}
+  function stopViz(){if(vizRaf)cancelAnimationFrame(vizRaf);if(audioContext){audioContext.close();audioContext=null;}bars.forEach(b=>b.style.height='8px');}
+  async function openAudioModal(type){
+    if(!requireWalk())return;audioType=type;
+    document.getElementById('audioStatus').textContent=type==='voice'?'🎙 Sprachnachricht aufnehmen...':'🔊 Umgebungssound aufnehmen...';
+    audioChunks=[];timerSec=0;document.getElementById('audioTimer').textContent='0:00';
+    try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});mediaRecorder=new MediaRecorder(stream);mediaRecorder.ondataavailable=e=>audioChunks.push(e.data);mediaRecorder.onstop=()=>finishRecording(stream);mediaRecorder.start();startViz(stream);timerInterval=setInterval(()=>{timerSec++;document.getElementById('audioTimer').textContent=formatTime(timerSec);},1000);audioModal.classList.add('open');}
+    catch(e){alert('Mikrofon-Zugriff verweigert.');}
+  }
+  function finishRecording(stream){
+    stream.getTracks().forEach(t=>t.stop());stopViz();clearInterval(timerInterval);audioModal.classList.remove('open');
+    const blob=new Blob(audioChunks,{type:MediaRecorder.isTypeSupported('audio/mp4')?'audio/mp4':'audio/webm'});
+    const url=URL.createObjectURL(blob);const pos=getPos();const ts=new Date().toLocaleTimeString();const dur=formatTime(timerSec);
+    const entryId='audio_'+Date.now();audioBlobs[entryId]=blob;
+    state.current.entries.push({type:audioType,location:{lat:pos.lat,lng:pos.lng},timestamp:ts,audioDuration:dur,audioUrl:url,entryId});
+    const color=audioType==='voice'?'#7c3aed':'#f97316';
+    const svgI=audioType==='voice'?'<line x1="8" y1="5" x2="8" y2="11" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/><line x1="5" y1="8" x2="11" y2="8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>':'<circle cx="8" cy="8" r="3" fill="none" stroke="#fff" stroke-width="1.8"/><line x1="8" y1="2" x2="8" y2="5" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>';
+    const icon=L.divIcon({className:'',html:'<div style="width:22px;height:22px;border-radius:50%;background:'+color+';border:2.5px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;"><svg width="16" height="16" viewBox="0 0 16 16">'+svgI+'</svg></div>',iconSize:[22,22],iconAnchor:[11,11],popupAnchor:[0,-14]});
+    const ph='<b>'+(audioType==='voice'?'Sprachnachricht':'Umgebungssound')+'</b><br><small>'+ts+' · '+dur+'</small><br><audio controls src="'+url+'" style="margin-top:6px;width:180px;"></audio>';
+    const m=placeMarker(audioType,pos,ph);m.setIcon(icon);
+  }
+  document.getElementById('stopAudioBtn').onclick=()=>{if(mediaRecorder&&mediaRecorder.state!=='inactive')mediaRecorder.stop();};
+  document.getElementById('closeAudio').onclick=()=>{if(mediaRecorder&&mediaRecorder.state!=='inactive')mediaRecorder.stop();};
+  document.getElementById('fabSound').onclick=()=>openAudioModal('sound');
+  document.getElementById('fabMsg').onclick=()=>openAudioModal('voice');
+
+  const moodModal=document.getElementById('moodModal');
+  const moodSlider=document.getElementById('moodSlider');
+  const moodValEl=document.getElementById('moodVal');
+  const moodThumb=document.getElementById('moodThumb');
+  const moodSaveBtn=document.getElementById('moodSave');
+  function updateMoodUI(v){const col=moodColor(v);moodValEl.textContent=v;moodValEl.style.color=col;moodThumb.style.borderColor=col;moodThumb.style.left=((v-1)/4*100)+'%';moodSaveBtn.style.background=col;}
+  updateMoodUI(3);
+  moodSlider.addEventListener('input',()=>updateMoodUI(parseInt(moodSlider.value)));
+  document.getElementById('moodCancel').addEventListener('click',()=>{moodModal.style.display='none';});
+  document.getElementById('moodSave').addEventListener('click',()=>{
+    if(!requireWalk())return;
+    const val=parseInt(moodSlider.value),col=moodColor(val),note=document.getElementById('moodText').value.trim();
+    const pos=getPos(),ts=new Date().toLocaleTimeString();
+    state.current.entries.push({type:'mood',location:{lat:pos.lat,lng:pos.lng},timestamp:ts,moodValue:val,markerColor:col,text:note});
+    const icon=L.divIcon({className:'',html:'<div style="width:22px;height:22px;border-radius:50%;background:'+col+';border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;"><span style="color:#fff;font-size:10px;font-weight:bold;">'+val+'</span></div>',iconSize:[22,22],iconAnchor:[11,11],popupAnchor:[0,-14]});
+    const popup='<div style="min-width:150px;padding:4px;"><b style="font-size:13px;">Stimmung</b><br><div style="margin:8px 0 4px;background:#eee;border-radius:6px;height:10px;overflow:hidden;"><div style="height:100%;width:'+((val-1)/4*100)+'%;background:'+col+';border-radius:6px;"></div></div><span style="font-size:22px;font-weight:bold;color:'+col+';">'+val+'</span><span style="font-size:12px;color:#aaa;"> / 100</span>'+(note?'<br><span style="font-size:11px;color:#555;margin-top:4px;display:block;">'+note+'</span>':'')+'<br><span style="font-size:10px;color:#bbb;">'+ts+'</span></div>';
+    mapLayers['mood']=mapLayers['mood']||[];const m=L.marker([pos.lat,pos.lng],{icon}).bindPopup(popup);mapLayers['mood'].push(m);
+    if(layerVisibility['mood']!==false){m.addTo(state.map);setTimeout(()=>m.openPopup(),100);}
+    moodModal.style.display='none';document.getElementById('moodText').value='';moodSlider.value=3;updateMoodUI(3);
+  });
+  document.getElementById('fabMood').addEventListener('click',()=>{if(!requireWalk())return;moodModal.style.display='flex';});
+
+  const thoughtModal=document.getElementById('thoughtModal');
+  document.getElementById('thoughtCancel').onclick=()=>{thoughtModal.style.display='none';};
+  document.getElementById('thoughtSave').onclick=()=>{
+    if(!requireWalk())return;const t=document.getElementById('thoughtText').value.trim();const pos=getPos();const ts=new Date().toLocaleTimeString();
+    state.current.entries.push({type:'thought',location:{lat:pos.lat,lng:pos.lng},timestamp:ts,text:t||'(kein Text)'});
+    const icon=makeDotIcon('#22c55e',20);const popup='<div style="min-width:140px;"><b>Gedanke</b><br><p style="margin:4px 0;font-size:12px;color:#333;">'+(t||'—')+'</p><small style="color:#aaa;">'+ts+'</small></div>';
+    mapLayers['thought']=mapLayers['thought']||[];const m=L.marker([pos.lat,pos.lng],{icon}).bindPopup(popup);mapLayers['thought'].push(m);
+    if(layerVisibility['thought']!==false){m.addTo(state.map);m.openPopup();}
+    thoughtModal.style.display='none';document.getElementById('thoughtText').value='';
+  };
+  document.getElementById('fabThought').onclick=()=>{if(!requireWalk())return;thoughtModal.style.display='flex';};
+
+  const senseModal=document.getElementById('senseModal');
+  document.getElementById('senseCancel').onclick=()=>{senseModal.style.display='none';};
+  document.getElementById('senseSave').onclick=()=>{
+    if(!requireWalk())return;const t=document.getElementById('senseText').value.trim();const pos=getPos();const ts=new Date().toLocaleTimeString();
+    state.current.entries.push({type:'sense',location:{lat:pos.lat,lng:pos.lng},timestamp:ts,text:t||'(keine Eingabe)'});
+    const icon=makeDotIcon('#f97316',20);const popup='<div style="min-width:140px;"><b>Wahrnehmung</b><br>'+(t?'<p style="margin:4px 0;font-size:12px;color:#333;">'+t+'</p>':'')+'<small style="color:#aaa;">'+ts+'</small></div>';
+    mapLayers['sense']=mapLayers['sense']||[];const m=L.marker([pos.lat,pos.lng],{icon}).bindPopup(popup);mapLayers['sense'].push(m);
+    if(layerVisibility['sense']!==false){m.addTo(state.map);m.openPopup();}
+    senseModal.style.display='none';document.getElementById('senseText').value='';
+  };
+  document.getElementById('fabSense').onclick=()=>{if(!requireWalk())return;senseModal.style.display='flex';};
+
+  function toggleWalk(id){
+    const walk=state.walks.find(w=>w.id==id);if(!walk)return;
+    const header=document.querySelector('.walk-header[data-id="'+id+'"]');
+    const actions=document.querySelector('.walk-actions[data-id="'+id+'"]');
+    if(state.activeLayers[id]){
+      state.map.removeLayer(state.activeLayers[id]);delete state.activeLayers[id];
+      if(state.archiveInkLayers[id]){state.map.removeLayer(state.archiveInkLayers[id]);delete state.archiveInkLayers[id];}
+      if(header)header.classList.remove('shown');if(actions)actions.classList.remove('open');
+    } else {
+      const group=L.layerGroup();
+      if(walk.segments&&walk.segments.length>0){
+        const ai=new InkLayer();ai.addTo(state.map);walk.segments.forEach(s=>ai.addSegment(s.ll1,s.ll2,s.weight,s.opacity));state.archiveInkLayers[id]=ai;if(!layerVisibility.route)ai._canvas.style.display='none';
+      } else if(walk.route&&walk.route.length>1){
+        const ai=new InkLayer();ai.addTo(state.map);for(let i=1;i<walk.route.length;i++)ai.addSegment(walk.route[i-1],walk.route[i],6,0.7);state.archiveInkLayers[id]=ai;if(!layerVisibility.route)ai._canvas.style.display='none';
+      }
+      walk.entries.forEach(e=>{
+        let popup='<b>'+(e.type||'').toUpperCase()+'</b><br>'+(e.text||e.audioDuration||'');
+        if(e.dataUrl)popup='<img src="'+e.dataUrl+'" style="width:180px;border-radius:6px;"/><br><small>'+(e.timestamp||'')+'</small>';
+        if(e.audioUrl)popup+='<br><audio controls src="'+e.audioUrl+'" style="width:180px;margin-top:4px;"></audio>';
+        const dc=e.type==='thought'?'#22c55e':e.type==='sense'?'#f97316':e.type==='mood'?(e.markerColor||walk.color):e.type==='voice'?'#7c3aed':e.type==='sound'?'#f97316':e.type==='photo'?'#555':walk.color;
+        const dr=(e.type==='mood'||e.type==='thought'||e.type==='sense')?7:5;
+        const dop=(e.type==='photo'||e.type==='voice'||e.type==='sound')?0.6:0.92;
+        L.circleMarker([e.location.lat,e.location.lng],{color:'#fff',weight:2,fillColor:dc,fillOpacity:0.95,radius:dr+1}).addTo(group).bindPopup(popup);
+      });
+      group.addTo(state.map);state.activeLayers[id]=group;
+      if(header)header.classList.add('shown');if(actions)actions.classList.add('open');
+      // Auto-Zoom: gesamte Route + Marker in den Blick nehmen
+      if(walk.route&&walk.route.length>1){
+        const bounds=L.latLngBounds(walk.route);
+        walk.entries.forEach(e=>{if(e.location)bounds.extend([e.location.lat,e.location.lng]);});
+        state.map.fitBounds(bounds,{padding:[60,60],maxZoom:17,animate:true,duration:0.8});
+      }
+    }
+  }
+  window.toggleWalk=toggleWalk;
+
+
+  // ── REFLEXION: Leaflet-Karte + Tuschelinie + Sprechblasen-Marker ──
+  let rqCurrentWalkId=null;
+  let verlaufMap=null;
+
+  function openVerlauf(walk){
+    rqCurrentWalkId=walk.id;
+    document.getElementById('verlaufTitle').textContent='Reflexion: '+walk.name;
+    document.getElementById('verlaufModal').classList.add('open');
+    document.getElementById('verlaufEntryCard').style.display='none';
+    document.getElementById('verlaufEntryCard').innerHTML='';
+    document.getElementById('verlaufInfo').textContent='';
+
+    // Reflexion laden
+    const ref=walk.reflection||{};
+    document.getElementById('rqFrei').value=ref.frei||'';
+    document.getElementById('rqMoment').value=ref.moment||'';
+    document.getElementById('rqOrte').value=ref.orte||'';
+    document.getElementById('rqNicht').value=ref.nicht||'';
+    document.getElementById('rqUeber').value=ref.ueber||'';
+    const mr=ref.moodRetro!==undefined?ref.moodRetro:3;
+    document.getElementById('rqMoodSlider').value=mr;
+    document.getElementById('rqMoodVal').textContent=mr;
+    document.getElementById('rqMoodVal').style.color=moodColor(mr);
+    document.getElementById('reflexionQPanel').style.display='flex';
+
+    const entries=walk.entries.filter(e=>e.location);
+    const route=walk.route||[];
+
+    if(route.length<2){
+      document.getElementById('verlaufInfo').textContent='Keine Route aufgezeichnet.';
+      return;
+    }
+
+    // Alte Karte entfernen
+    if(verlaufMap){verlaufMap.remove();verlaufMap=null;}
+    document.getElementById('verlaufMapDiv').innerHTML='';
+
+    // Leaflet-Karte
+    verlaufMap=L.map('verlaufMapDiv',{
+      zoomControl:true,
+      attributionControl:false,
+      dragging:true,
+      scrollWheelZoom:false,
+      touchZoom:true,
+      doubleClickZoom:true,
+      tap:false,
+      tapTolerance:20,
+      bounceAtZoomLimits:false,
+      zoomSnap:0.25,
+      zoomDelta:0.25
+    });
+    // Touch-Events direkt auf Map-Container erlauben
+    verlaufMap.getContainer().style.touchAction='none';
+
+    // Graustufen-Karte
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
+      maxZoom:19, subdomains:'abcd'
+    }).addTo(verlaufMap);
+
+    // ── Tuschlinie: gespeicherte Segmente direkt übernehmen ──
+    // walk.segments enthält ll1, ll2, weight, opacity — exakt wie auf der Hauptkarte
+    const inkCanvas=L.canvas({padding:0.5});
+    const segments=walk.segments||[];
+
+    if(segments.length>0){
+      // Jedes Segment als eigene Polyline mit originalem Gewicht + Transparenz
+      segments.forEach(s=>{
+        L.polyline([s.ll1,s.ll2],{
+          color:'rgba(14,10,4,'+Math.min(s.opacity,1)+')',
+          weight:s.weight,
+          lineCap:'round',
+          lineJoin:'round',
+          smoothFactor:0,
+          renderer:inkCanvas
+        }).addTo(verlaufMap);
+      });
+    } else if(route.length>1){
+      // Fallback: einfache Linie wenn keine Segmente gespeichert
+      L.polyline(route,{
+        color:'rgba(14,10,4,0.7)',
+        weight:4,lineCap:'round',lineJoin:'round'
+      }).addTo(verlaufMap);
+    }
+    // Unsichtbare Linie für fitBounds
+    const routeLine=L.polyline(route,{opacity:0,weight:0}).addTo(verlaufMap);
+
+    // Start/Ende
+    L.circleMarker(route[0],{
+      radius:7, fillColor:'#22c55e', color:'#fff', weight:2, fillOpacity:1
+    }).addTo(verlaufMap).bindTooltip('Start',{permanent:false});
+
+    L.circleMarker(route[route.length-1],{
+      radius:7, fillColor:'#ef4444', color:'#fff', weight:2, fillOpacity:1
+    }).addTo(verlaufMap).bindTooltip('Ende',{permanent:false});
+
+    // ── Eintrags-Marker als Sprechblasen (DivIcon) ──
+    const typeColor={mood:'#f97316',thought:'#1e3a6e',sense:'#2d5a2d',voice:'#7c3aed',sound:'#f58231',photo:'#2a2a2a'};
+    const typeIcon={mood:'🔋',thought:'💭',sense:'👁',voice:'💬',sound:'🎙',photo:'📸'};
+    const typeText={mood:'Stimmung',thought:'Gedanke',sense:'Wahrnehmung',voice:'Sprache',sound:'Sound',photo:'Foto'};
+
+    entries.forEach(e=>{
+      if(!e.location)return;
+      const col=typeColor[e.type]||'#555';
+      const ico=typeIcon[e.type]||'●';
+
+      // Inhalt der Blase
+      let inner='';
+      if(e.type==='mood'&&e.moodValue!=null){
+        inner=`<span style="font-size:15px;font-weight:bold;line-height:1;">${e.moodValue}</span><span style="font-size:8px;opacity:0.8;">/5</span>`;
+      } else if(e.text){
+        const short=e.text.substring(0,18)+(e.text.length>18?'…':'');
+        inner=`<span style="font-size:8px;line-height:1.3;">${escHtml(short)}</span>`;
+      } else {
+        inner=`<span style="font-size:14px;">${ico}</span>`;
+      }
+
+      const html=`
+        <div style="
+          position:relative;
+          background:${col};
+          color:#fff;
+          border:2px solid #fff;
+          border-radius:10px 10px 10px 0;
+          padding:5px 8px;
+          min-width:52px;
+          max-width:90px;
+          box-shadow:0 3px 10px rgba(0,0,0,0.35);
+          display:flex;
+          flex-direction:column;
+          align-items:center;
+          gap:1px;
+          cursor:pointer;
+          -webkit-tap-highlight-color:transparent;
+        ">
+          <div style="font-size:7px;font-weight:bold;opacity:0.85;text-transform:uppercase;letter-spacing:0.3px;white-space:nowrap;">${typeText[e.type]||e.type}</div>
+          <div style="display:flex;align-items:center;gap:3px;">${inner}</div>
+        </div>`;
+
+      const icon=L.divIcon({
+        className:'',
+        html,
+        iconSize:[null,null],
+        iconAnchor:[0,42],
+        popupAnchor:[45,-42]
+      });
+
+      // Popup mit vollem Inhalt
+      let popupHTML=`<div style="min-width:180px;font-size:12px;padding:2px;">
+        <div style="font-weight:bold;color:${col};margin-bottom:4px;">${ico} ${typeText[e.type]||e.type}</div>`;
+      if(e.type==='mood'&&e.moodValue!=null)
+        popupHTML+=`<div style="font-size:24px;font-weight:bold;color:${col};">${e.moodValue}<span style="font-size:12px;color:#aaa;"> /5</span></div>`;
+      if(e.text) popupHTML+=`<div style="margin-top:4px;color:#333;line-height:1.5;">${escHtml(e.text)}</div>`;
+      if(e.timestamp) popupHTML+=`<div style="font-size:10px;color:#aaa;margin-top:4px;">${e.timestamp}</div>`;
+      // Audio: audioUrl nur in-session verfügbar (nach Reload aus audioBlobs)
+      const aUrl=e.audioUrl||(e.entryId&&audioBlobs[e.entryId]?URL.createObjectURL(audioBlobs[e.entryId]):null);
+      if(aUrl) popupHTML+=`<audio controls src="${aUrl}" style="width:100%;margin-top:8px;height:36px;"></audio>`;
+      if(e.dataUrl) popupHTML+=`<img src="${e.dataUrl}" style="width:100%;border-radius:8px;margin-top:8px;max-height:200px;object-fit:cover;"/>`;
+      popupHTML+='</div>';
+
+      L.marker([e.location.lat,e.location.lng],{icon})
+        .addTo(verlaufMap)
+        .bindPopup(popupHTML,{maxWidth:260,closeButton:true,className:'vgl-popup'});
+    });
+
+    // Karte auf Route zoomen
+    verlaufMap.fitBounds(routeLine.getBounds(),{padding:[30,30]});
+    setTimeout(()=>verlaufMap.invalidateSize(),300);
+
+    document.getElementById('verlaufInfo').textContent=
+      `${entries.length} Einträge · Scrollen & Zoomen mit 2 Fingern · Marker antippen`;
+  }
+
+  document.getElementById('verlaufClose').onclick=()=>{
+    document.getElementById('verlaufModal').classList.remove('open');
+    if(verlaufMap){verlaufMap.remove();verlaufMap=null;}
+  };
+
+  document.getElementById('rqMoodSlider').addEventListener('input',function(){
+    const v=parseInt(this.value),col=moodColor(v);
+    document.getElementById('rqMoodVal').textContent=v;
+    document.getElementById('rqMoodVal').style.color=col;
+  });
+
+  document.getElementById('rqSaveBtn').onclick=()=>{
+    if(!rqCurrentWalkId)return;
+    const walk=state.walks.find(w=>w.id==rqCurrentWalkId);
+    if(!walk)return;
+    if(!walk.reflection)walk.reflection={};
+    walk.reflection.frei=document.getElementById('rqFrei').value;
+    walk.reflection.moodRetro=parseInt(document.getElementById('rqMoodSlider').value);
+    walk.reflection.moment=document.getElementById('rqMoment').value;
+    walk.reflection.orte=document.getElementById('rqOrte').value;
+    walk.reflection.nicht=document.getElementById('rqNicht').value;
+    walk.reflection.ueber=document.getElementById('rqUeber').value;
+    saveWalks();
+    const btn=document.getElementById('rqSaveBtn');
+    btn.textContent='✓ Gespeichert';btn.style.background='#16a34a';
+    setTimeout(()=>{btn.textContent='💾 Reflexion speichern';btn.style.background='#2563eb';},2000);
+  };
+
+  // ── WALK-VERGLEICH ──
+  let vergleichMaps={};
+  const selectedForVergleich=new Set();
+
+  function toggleVergleichSelect(id){
+    if(selectedForVergleich.has(id)) selectedForVergleich.delete(id);
+    else selectedForVergleich.add(id);
+    // Button sichtbar wenn mind. 2 ausgewählt
+    const btn=document.getElementById('btnVergleich');
+    if(btn) btn.style.display=selectedForVergleich.size>=2?'block':'none';
+    // Checkbox-Optik aktualisieren
+    const cb=document.querySelector(`.vgl-cb[data-id="${id}"]`);
+    if(cb) cb.checked=selectedForVergleich.has(id);
+  }
+
+  document.getElementById('btnVergleich').onclick=()=>openVergleich();
+
+  function openAnalyse(walk){
+    destroyAnalyseCharts();
+    document.getElementById('analyseWalkName').textContent='Auswertung: '+walk.name;
+    const moodEntries=walk.entries.filter(e=>e.type==='mood'&&e.moodValue!==undefined);
+    const aufgezWerte=moodEntries.map(e=>e.moodValue);
+    const avgAufgez=aufgezWerte.length?Math.round(aufgezWerte.reduce((a,b)=>a+b,0)/aufgezWerte.length):null;
+    const ref=walk.reflection||{};
+    const moodRetro=ref.moodRetro!==undefined?ref.moodRetro:null;
+    const diskrepanz=(avgAufgez!==null&&moodRetro!==null)?(moodRetro-avgAufgez):null;
+    document.getElementById('aStat1').textContent=avgAufgez!==null?avgAufgez:'—';
+    document.getElementById('aStat2').textContent=moodRetro!==null?moodRetro:'—';
+    document.getElementById('aStat3').textContent=diskrepanz!==null?(diskrepanz>=0?'+':'')+diskrepanz:'—';
+    document.getElementById('aStat3').style.color=diskrepanz>0?'#7c3aed':diskrepanz<0?'#dc2626':'#374151';
+    const chartLabels=moodEntries.length>0?moodEntries.map((e,i)=>e.timestamp||(i+1)+'.'):['—'];
+    const chartData=aufgezWerte.length>0?aufgezWerte:[0];
+    const erinData=chartData.map(v=>moodRetro!==null?Math.min(5,Math.max(1,Math.round(v*0.4+moodRetro*0.6))):v);
+    const chartOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:1,max:5,ticks:{color:'#888',font:{size:10}},grid:{color:'rgba(0,0,0,0.04)'}},x:{ticks:{color:'#888',font:{size:10}},grid:{display:false}}}};
+    analyseCharts.aufz=new Chart(document.getElementById('chartAufz').getContext('2d'),{type:'line',data:{labels:chartLabels,datasets:[{data:chartData,borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.08)',borderWidth:2,pointRadius:4,pointBackgroundColor:'#1D9E75',tension:0.4,fill:true}]},options:chartOpts});
+    analyseCharts.erin=new Chart(document.getElementById('chartErin').getContext('2d'),{type:'line',data:{labels:chartLabels,datasets:[{data:erinData,borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,0.08)',borderWidth:2,pointRadius:4,pointBackgroundColor:'#534AB7',tension:0.4,fill:true}]},options:chartOpts});
+    const db=document.getElementById('diskBars');db.innerHTML='';
+    if(chartData.length>=2){
+      const ss=Math.ceil(chartData.length/4);
+      for(let i=0;i<4;i++){
+        const seg=chartData.slice(i*ss,(i+1)*ss);const segE=erinData.slice(i*ss,(i+1)*ss);if(!seg.length)break;
+        const aS=seg.reduce((a,b)=>a+b,0)/seg.length;const aE=segE.reduce((a,b)=>a+b,0)/segE.length;
+        const diff=Math.round(aE-aS);const pct=Math.min(Math.abs(diff),50)*2;const col=diff>=0?'#22c55e':'#ef4444';
+        db.innerHTML+='<div class="disk-row"><div style="width:64px;font-size:10px;color:#6b7280;">Abschn. '+(i+1)+'</div><div class="disk-bar-bg"><div class="disk-bar-fill" style="width:'+pct+'%;background:'+col+';"></div></div><div style="font-size:10px;color:#6b7280;min-width:30px;text-align:right;">'+(diff>=0?'+':'')+diff+'</div></div>';
+      }
+    } else {
+      db.innerHTML='<div style="font-size:11px;color:#9ca3af;">Mind. 2 Stimmungsmarker für Segmentauswertung.</div>';
+    }
+    document.getElementById('refFreiDisplay').textContent=ref.frei||'(keine freie Reflexion)';
+    const rA=document.getElementById('refAnswersDisplay');
+    const fragen=[{l:'Stärkster Moment',v:ref.moment},{l:'Orte & Einflüsse',v:ref.orte},{l:'Nicht Aufgezeichnetes',v:ref.nicht},{l:'Überraschung',v:ref.ueber}];
+    rA.innerHTML=fragen.map(f=>f.v?'<div style="border-left:3px solid #e5e5e5;padding-left:8px;"><div style="font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;margin-bottom:2px;">'+f.l+'</div><div style="font-size:11px;color:#374151;">'+escHtml(f.v)+'</div></div>':'').join('');
+    document.getElementById('analyseModal').classList.add('open');
+  }
+
+  function openVergleich(){
+    if(selectedForVergleich.size<2) return;
+    const walks=Array.from(selectedForVergleich)
+      .map(id=>state.walks.find(w=>w.id==id)).filter(Boolean);
+
+    const overlay=document.getElementById('vglOverlay');
+    overlay.style.display='flex';
+    const list=document.getElementById('vglList');
+    list.innerHTML='';
+    document.getElementById('vglInfo').style.display='none';
+
+    walks.forEach((walk,wi)=>{
+      const ref=walk.reflection||{};
+      const moodE=walk.entries.filter(e=>e.type==='mood'&&e.moodValue!=null);
+      const avg=moodE.length?Math.round(moodE.reduce((a,b)=>a+b.moodValue,0)/moodE.length):null;
+
+      // Walk-Karte
+      const card=document.createElement('div');
+      card.style.cssText='background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);';
+
+      // Titel
+      const ttl=document.createElement('div');
+      ttl.style.cssText='display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #f0f0f0;';
+      ttl.innerHTML=
+        `<span style="width:10px;height:10px;border-radius:50%;background:${walk.color};flex-shrink:0;display:inline-block;"></span>`
+        +`<span style="color:#111;font-size:12px;font-weight:bold;flex:1;">${escHtml(walk.name)}</span>`
+        +(avg!=null?`<span style="color:${moodColor(avg)};font-size:11px;font-weight:bold;">${avg}/5</span>`:'')
+        +(ref.moodRetro!=null?`<span style="color:#aaa;font-size:10px;margin-left:4px;">↩${ref.moodRetro}/5</span>`:'');
+      card.appendChild(ttl);
+
+      // Canvas-Szene (horizontal scrollbar)
+      const scroller=document.createElement('div');
+      scroller.style.cssText='overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;background:#e8e5e0;';
+      const cv=document.createElement('canvas');
+      scroller.appendChild(cv);
+      card.appendChild(scroller);
+
+      // Einträge-Liste (vertikal, antippbar)
+      const entryList=document.createElement('div');
+      entryList.style.cssText='display:flex;flex-direction:column;';
+      walk.entries.forEach((e,ei)=>{
+        if(!e.location&&!e.text&&!e.audioUrl&&!e.dataUrl) return;
+        const TC={mood:'#ea580c',thought:'#2563eb',sense:'#16a34a',voice:'#7c3aed',sound:'#7c3aed',photo:'#374151'};
+        const TN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Wahrnehmung',voice:'💬 Sprache',sound:'🎙 Sound',photo:'📸 Foto'};
+        const col=TC[e.type]||'#555';
+        const row=document.createElement('div');
+        row.style.cssText='padding:10px 14px;border-bottom:1px solid #f5f5f5;cursor:pointer;';
+        // Header
+        let rHtml=`<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+          <span style="font-weight:bold;font-size:11px;color:${col};">${TN[e.type]||e.type}</span>`;
+        if(e.type==='mood'&&e.moodValue!=null)
+          rHtml+=`<span style="font-size:14px;font-weight:bold;color:${col};">${e.moodValue}/5</span>`;
+        if(e.timestamp)
+          rHtml+=`<span style="color:#aaa;font-size:10px;margin-left:auto;">${e.timestamp}</span>`;
+        rHtml+='</div>';
+        // Text
+        if(e.text) rHtml+=`<div style="font-size:12px;color:#333;line-height:1.5;">${escHtml(e.text)}</div>`;
+        // Audio
+        const aUrl=e.audioUrl||(e.entryId&&audioBlobs[e.entryId]?URL.createObjectURL(audioBlobs[e.entryId]):null);
+        if(aUrl) rHtml+=`<audio controls src="${aUrl}" style="width:100%;margin-top:6px;height:36px;"></audio>`;
+        // Foto-Vorschau
+        if(e.dataUrl) rHtml+=`<img src="${e.dataUrl}" style="width:100%;border-radius:8px;margin-top:6px;max-height:200px;object-fit:cover;"/>`;
+        row.innerHTML=rHtml;
+        entryList.appendChild(row);
+      });
+      if(entryList.children.length>0) card.appendChild(entryList);
+
+      if(ref.frei){
+        const q=document.createElement('div');
+        q.style.cssText='padding:8px 14px;font-size:10px;color:#aaa;font-style:italic;border-top:1px solid #f0f0f0;background:#fafafa;';
+        q.textContent='"'+ref.frei.substring(0,100)+(ref.frei.length>100?'…':'')+'"';
+        card.appendChild(q);
+      }
+      list.appendChild(card);
+
+      // Canvas zeichnen
+      setTimeout(()=>{
+        try{drawSkizze(cv,scroller,walk);}
+        catch(err){console.error('drawSkizze:',err);}
+      }, 60+wi*40);
+    });
+  }
+  function drawSkizze(canvas, scroller, walk){
+    const route=walk.route||[];
+    function hdist(a,b){const R=6371000,tr=x=>x*Math.PI/180,dLat=tr(b[0]-a[0]),dLon=tr(b[1]-a[1]),h=Math.sin(dLat/2)**2+Math.cos(tr(a[0]))*Math.cos(tr(b[0]))*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
+    const H=160, DPR=Math.min(window.devicePixelRatio||1,2);
+
+    if(route.length<2){
+      canvas.width=300*DPR; canvas.height=H*DPR;
+      canvas.style.cssText='width:300px;height:'+H+'px;display:block;';
+      const ctx=canvas.getContext('2d'); ctx.scale(DPR,DPR);
+      ctx.fillStyle='#e8e5e0'; ctx.fillRect(0,0,300,H);
+      ctx.fillStyle='#aaa'; ctx.font='12px sans-serif'; ctx.textAlign='center';
+      ctx.fillText('Keine Route',150,H/2); return;
+    }
+
+    const skip=Math.max(1,Math.floor(route.length/80));
+    const pts=route.filter((_,i)=>i%skip===0||i===route.length-1);
+    let cum=[0];
+    for(let i=1;i<pts.length;i++) cum.push(cum[i-1]+hdist(pts[i-1],pts[i]));
+    const totalDist=cum[cum.length-1]||1;
+    function nIdx(lat,lng){let b=0,bd=Infinity;pts.forEach((p,i)=>{const d=hdist([lat,lng],p);if(d<bd){bd=d;b=i;}});return b;}
+
+    const PAD=30;
+    const W=Math.max(window.innerWidth-24, Math.round(totalDist*0.3)+PAD*2, 400);
+    canvas.width=W*DPR; canvas.height=H*DPR;
+    canvas.style.cssText='width:'+W+'px;height:'+H+'px;display:block;';
+    const ctx=canvas.getContext('2d');
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+
+    function rx(d){return PAD+(d/totalDist)*(W-PAD*2);}
+    function rxI(i){return rx(cum[Math.min(i,cum.length-1)]);}
+    const RY=Math.round(H*0.68);
+
+    // Himmel
+    const skyG=ctx.createLinearGradient(0,0,0,RY);
+    skyG.addColorStop(0,'#c8c5c0'); skyG.addColorStop(1,'#dbd8d2');
+    ctx.fillStyle=skyG; ctx.fillRect(0,0,W,H);
+
+    // Berge
+    const lats=pts.map(p=>p[0]);
+    const minLat=Math.min(...lats), latSpan=Math.max(...lats)-minLat||0.001;
+    [H*0.20, H*0.11, H*0.02].forEach((off,li)=>{
+      ctx.beginPath(); ctx.moveTo(0,H);
+      const step=Math.max(1,Math.floor(pts.length/24));
+      pts.forEach((p,i)=>{
+        if(i%step!==0&&i!==pts.length-1)return;
+        ctx.lineTo(rxI(i), RY-off-(p[0]-minLat)/latSpan*H*0.16);
+      });
+      ctx.lineTo(W,H); ctx.closePath();
+      ctx.fillStyle='rgba(110,106,100,'+(0.45+li*0.18)+')'; ctx.fill();
+    });
+
+    // Boden (hell)
+    const grd=ctx.createLinearGradient(0,RY,0,H);
+    grd.addColorStop(0,'#c8c4bc'); grd.addColorStop(1,'#b8b4ac');
+    ctx.fillStyle=grd; ctx.fillRect(0,RY,W,H-RY);
+    for(let x=0;x<W;x+=3){
+      ctx.fillStyle='rgba(50,40,30,'+(0.03+Math.random()*0.06)+')';
+      ctx.fillRect(x,RY-(Math.random()*2),2,2);
+    }
+
+    // ── Tuschlinie DUNKEL auf hellem Boden ──
+    const segs=walk.segments||[];
+    if(segs.length>0){
+      segs.forEach(s=>{
+        if(!s.ll1||!s.ll2)return;
+        const x1=rxI(nIdx(s.ll1[0],s.ll1[1]));
+        const x2=rxI(nIdx(s.ll2[0],s.ll2[1]));
+        if(Math.abs(x2-x1)<0.2)return;
+        ctx.beginPath();
+        ctx.moveTo(x1+(Math.random()-0.5)*0.4, RY+(Math.random()-0.5)*0.3);
+        ctx.lineTo(x2+(Math.random()-0.5)*0.4, RY+(Math.random()-0.5)*0.3);
+        ctx.strokeStyle='rgba(15,10,5,'+Math.min(s.opacity*1.6,0.95)+')';
+        ctx.lineWidth=Math.max(2.5,s.weight*0.85);
+        ctx.lineCap='round'; ctx.stroke();
+      });
+    } else {
+      // Fallback
+      ctx.beginPath(); let f=true;
+      cum.forEach((_,j)=>{const x=rxI(j);f?(ctx.moveTo(x,RY),f=false):ctx.lineTo(x,RY);});
+      ctx.strokeStyle='rgba(15,10,5,0.85)'; ctx.lineWidth=4;
+      ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();
+    }
+
+    // Start/Ende
+    [{x:rx(0),c:'#16a34a'},{x:rx(totalDist),c:'#dc2626'}].forEach(({x,c})=>{
+      ctx.beginPath(); ctx.arc(x,RY,5,0,Math.PI*2);
+      ctx.fillStyle=c; ctx.fill();
+      ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+    });
+
+    // Marker (kleine Punkte auf der Linie)
+    const TC={mood:'#ea580c',thought:'#2563eb',sense:'#16a34a',voice:'#7c3aed',sound:'#7c3aed',photo:'#374151'};
+    const buckets={};
+    walk.entries.forEach(e=>{
+      if(!e.location)return;
+      const i=nIdx(e.location.lat,e.location.lng);
+      const x=rxI(i), col=TC[e.type]||'#555';
+      const bk=Math.round(x/50);
+      buckets[bk]=(buckets[bk]||0)+1;
+      const R=10, pinY=RY-14-(buckets[bk]-1)*26;
+      // Stiel
+      ctx.beginPath(); ctx.moveTo(x,RY-2); ctx.lineTo(x,pinY+R);
+      ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1; ctx.stroke();
+      // Punkt
+      ctx.beginPath(); ctx.arc(x,pinY,R,0,Math.PI*2);
+      ctx.fillStyle=col; ctx.fill();
+      ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke();
+    });
+  }
+  document.getElementById('vglClose').onclick=()=>{
+    document.getElementById('vglOverlay').style.display='none';
+  };
+  document.getElementById('vergleichClose').onclick=()=>{
+    document.getElementById('vergleichModal').style.display='none';
+    Object.values(vergleichMaps).forEach(m=>{try{m.remove();}catch(e){}});
+    vergleichMaps={};
+  };
+
+  function renderArchive(){
+    // Walks frisch aus localStorage laden (verhindert Verlust nach Reload)
+    try{
+      const saved=localStorage.getItem('psychogeo_walks');
+      if(saved){
+        const parsed=JSON.parse(saved);
+        if(parsed.length>0) state.walks=parsed;
+      }
+    }catch(e){}
+    const list=document.getElementById('archiveList');
+    if(!state.walks.length){list.innerHTML='<div style="font-size:11px;color:#999;">Noch keine Walks gespeichert.</div>';return;}
+    list.innerHTML='';
+    state.walks.forEach(w=>{
+      const item=document.createElement('div');item.className='walk-item';
+      const hasRef=w.reflection&&(w.reflection.frei||w.reflection.moment);
+
+      // Vergleich-Checkbox — als eigenes Input-Element erstellen
+      const cbRow=document.createElement('div');
+      cbRow.style.cssText='display:flex;align-items:center;padding:4px 10px 0;gap:6px;font-size:10px;color:#9ca3af;';
+      const cb=document.createElement('input');
+      cb.type='checkbox'; cb.style.cursor='pointer';
+      cb.checked=selectedForVergleich.has(w.id);
+      cb.addEventListener('change',()=>toggleVergleichSelect(w.id));
+      cbRow.appendChild(cb);
+      cbRow.appendChild(document.createTextNode(' Vergleich'));
+      item.appendChild(cbRow);
+
+      // Walk-Header
+      const header=document.createElement('div');
+      header.className='walk-header';
+      header.setAttribute('data-id',w.id);
+      header.innerHTML='<span class="color-dot" style="background:'+w.color+'"></span>'
+        +'<span class="walk-label">'+escHtml(w.name)
+        +(w.steps?'<br><span style="font-size:9px;color:#9ca3af;font-weight:normal;">👣 '
+          +(w.steps||0).toLocaleString('de-DE')+' Schritte'+(hasRef?' · ✍️':'')+' · '
+          +w.entries.length+' Eintr.</span>':'')
+        +'</span><span class="walk-badge">sichtbar</span>';
+      header.addEventListener('click',()=>toggleWalk(w.id));
+      item.appendChild(header);
+
+      // Aktions-Buttons
+      const actions=document.createElement('div');
+      actions.className='walk-actions';
+      actions.setAttribute('data-id',w.id);
+      const nameInput=document.createElement('input');
+      nameInput.className='walk-name-input'; nameInput.type='text';
+      nameInput.placeholder='Name ändern...'; nameInput.value=escHtml(w.name);
+      actions.appendChild(nameInput);
+      const btnRow=document.createElement('div');
+      btnRow.className='walk-btn-row';
+      [
+        {cls:'wb-save',  label:'✏️ Umbenennen'},
+        {cls:'wb-verlauf',label:'📋 Reflexion'},
+        {cls:'wb-analyse',label:'📊 Auswerten'},
+        {cls:'wb-export', label:'📦 Export'},
+        {cls:'wb-delete', label:'🗑'},
+      ].forEach(({cls,label})=>{
+        const btn=document.createElement('button');
+        btn.className='walk-btn '+cls; btn.textContent=label;
+        btnRow.appendChild(btn);
+      });
+      actions.appendChild(btnRow);
+      item.appendChild(actions);
+
+      // Button-Handler
+      actions.querySelector('.wb-save').onclick=()=>{
+        const n=nameInput.value.trim();if(!n)return;
+        w.name=n;header.querySelector('.walk-label').firstChild.textContent=n;saveWalks();
+      };
+      actions.querySelector('.wb-analyse').onclick=()=>openAnalyse(w);
+      actions.querySelector('.wb-verlauf').onclick=()=>openVerlauf(w);
+      actions.querySelector('.wb-export').onclick=()=>exportWalk(w);
+      actions.querySelector('.wb-delete').onclick=()=>{
+        if(!confirm('Walk "'+w.name+'" wirklich löschen?'))return;
+        if(state.activeLayers[w.id]){state.map.removeLayer(state.activeLayers[w.id]);delete state.activeLayers[w.id];}
+        if(state.archiveInkLayers[w.id]){state.map.removeLayer(state.archiveInkLayers[w.id]);delete state.archiveInkLayers[w.id];}
+        state.walks=state.walks.filter(x=>x.id!==w.id);saveWalks();renderArchive();
+      };
+
+      list.appendChild(item);
+    });
+    // Aktive Walks wieder als 'shown' markieren
+    Object.keys(state.activeLayers).forEach(id=>{
+      const h=list.querySelector('.walk-header[data-id="'+id+'"]');
+      const a=list.querySelector('.walk-actions[data-id="'+id+'"]');
+      if(h)h.classList.add('shown');
+      if(a)a.classList.add('open');
+    });
+  }
+
+  async function exportWalk(walk){
+    if(typeof JSZip==='undefined'){alert('JSZip nicht geladen.');return;}
+    const overlay=document.getElementById('exportOverlay');const msg=document.getElementById('exportMsg');overlay.classList.add('open');
+    try{
+      const zip=new JSZip();const folder=zip.folder(walk.name.replace(/[^a-zA-Z0-9äöüÄÖÜß _-]/g,'_'));
+      msg.textContent='Exportiere Daten...';
+      const ref=walk.reflection||{};
+      folder.file('walk_daten.json',JSON.stringify({name:walk.name,schritte:walk.steps||0,kartenansicht:currentTileUrl,route:walk.route,reflexion:{frei:ref.frei||'',moodRetro:ref.moodRetro!==undefined?ref.moodRetro:null,moment:ref.moment||'',orte:ref.orte||'',nichtErfasst:ref.nicht||'',ueberraschung:ref.ueber||''},entries:walk.entries.map(e=>({type:e.type,timestamp:e.timestamp,location:e.location,text:e.text||null,moodValue:e.moodValue||null,audioDuration:e.audioDuration||null}))},null,2));
+      let gpx='<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Begleitinstrument PRO">\n  <trk>\n    <n>'+escHtml(walk.name)+'</n>\n    <trkseg>\n';
+      walk.route.forEach(p=>{gpx+='      <trkpt lat="'+p[0]+'" lon="'+p[1]+'"></trkpt>\n';});
+      gpx+='    </trkseg>\n  </trk>\n</gpx>';
+      folder.file('route.gpx',gpx);
+      let pc=0;walk.entries.forEach(e=>{if(e.type==='photo'&&e.dataUrl){pc++;folder.file('foto_'+pc+'.jpg',e.dataUrl.split(',')[1],{base64:true});}});
+      let ac=0;walk.entries.forEach(e=>{if((e.type==='voice'||e.type==='sound')&&e.entryId&&audioBlobs[e.entryId]){ac++;folder.file((e.type==='voice'?'sprache':'sound')+'_'+ac+'.mp4',audioBlobs[e.entryId]);}});
+      if(ref.frei||ref.moment){folder.file('reflexion.txt','REFLEXION: '+walk.name+'\n'+'='.repeat(40)+'\n\nFreie Reflexion:\n'+(ref.frei||'—')+'\n\nStimmung retrospektiv: '+(ref.moodRetro!==undefined?ref.moodRetro+'/100':'—')+'\n\nStärkster Moment:\n'+(ref.moment||'—')+'\n\nOrte:\n'+(ref.orte||'—')+'\n\nNicht Erfasstes:\n'+(ref.nicht||'—')+'\n\nÜberraschung:\n'+(ref.ueber||'—')+'\n');}
+      msg.textContent='Erstelle Kartenbild...';
+      await takeMapSnapshot(walk,folder);
+      msg.textContent='Erstelle ZIP...';
+      const blob=await zip.generateAsync({type:'blob'},m=>{msg.textContent='Packe... '+Math.round(m.percent)+'%';});
+      const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=walk.name.replace(/[^a-zA-Z0-9äöüÄÖÜß _-]/g,'_')+'_export.zip';a.click();setTimeout(()=>URL.revokeObjectURL(url),5000);
+    }catch(err){alert('Export fehlgeschlagen: '+err.message);}finally{overlay.classList.remove('open');}
+  }
+
+  async function takeMapSnapshot(walk,folder){
+    try{
+      const W=1200,H=900,P=80;const route=walk.route||[];if(route.length<2){folder.file('karte.png','');return;}
+      let minLat=Infinity,maxLat=-Infinity,minLng=Infinity,maxLng=-Infinity;
+      route.forEach(([lat,lng])=>{minLat=Math.min(minLat,lat);maxLat=Math.max(maxLat,lat);minLng=Math.min(minLng,lng);maxLng=Math.max(maxLng,lng);});
+      const lS=maxLat-minLat||0.001,lnS=maxLng-minLng||0.001;
+      const sX=(W-P*2)/lnS,sY=(H-P*2)/lS,sc=Math.min(sX,sY);
+      function toXY(lat,lng){return{x:P+(lng-minLng)*sc,y:H-P-(lat-minLat)*sc};}
+      const canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;
+      const ctx=canvas.getContext('2d');ctx.fillStyle='#f8f6f1';ctx.fillRect(0,0,W,H);
+      ctx.strokeStyle='rgba(0,0,0,0.06)';ctx.lineWidth=1;
+      for(let x=0;x<W;x+=60){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+      for(let y=0;y<H;y+=60){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+      const segs=walk.segments||[];
+      if(segs.length>0){segs.forEach(s=>{const p1=toXY(s.ll1[0],s.ll1[1]),p2=toXY(s.ll2[0],s.ll2[1]);drawInkStroke(ctx,p1.x,p1.y,p2.x,p2.y,s.weight,s.opacity);});}
+      else{ctx.beginPath();route.forEach(([lat,lng],i)=>{const{x,y}=toXY(lat,lng);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});ctx.strokeStyle='rgba(20,16,12,0.7)';ctx.lineWidth=5;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();}
+      const dc={mood:null,thought:'#22c55e',sense:'#f97316',voice:'#7c3aed',sound:'#f97316',photo:'#555'};
+      walk.entries.forEach(e=>{if(!e.location)return;const col=e.type==='mood'?(e.markerColor||'#facc15'):(dc[e.type]||walk.color);const r=(e.type==='mood'||e.type==='thought'||e.type==='sense')?9:6;const{x,y}=toXY(e.location.lat,e.location.lng);ctx.beginPath();ctx.arc(x,y,r+2,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();if(e.text||e.moodValue!==undefined){ctx.font='11px sans-serif';ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillText(e.moodValue!==undefined?String(e.moodValue):(e.text||'').substring(0,20),x+r+3,y+4);}});
+      const sp=toXY(route[0][0],route[0][1]),ep=toXY(route[route.length-1][0],route[route.length-1][1]);
+      [sp,ep].forEach((pt,i)=>{ctx.beginPath();ctx.arc(pt.x,pt.y,8,0,Math.PI*2);ctx.fillStyle=i===0?'#22c55e':'#ef4444';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();});
+      const b64=canvas.toDataURL('image/png').split(',')[1];if(b64)folder.file('karte.png',b64,{base64:true});
+    }catch(err){console.error('Snapshot:',err);}
+  }
+
+  renderArchive();
+});
+</script>
+<!-- REFLEXIONS-MODAL -->
+<div id="verlaufModal">
+  <div id="verlaufBox" style="max-height:94vh;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;">
+    <div class="verlauf-header">
+      <div class="verlauf-title" id="verlaufTitle">Reflexion</div>
+      <button class="verlauf-close" id="verlaufClose">✕</button>
+    </div>
+    <div id="verlaufMapDiv" style="width:100%;height:280px;border-radius:10px;overflow:hidden;flex-shrink:0;touch-action:none;z-index:1;"></div>
+    <div id="verlaufEntryCard" style="background:#f5f5f5;border-radius:10px;padding:10px 12px;font-size:11px;color:#333;display:none;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
+    <div id="verlaufInfo" style="font-size:10px;color:#9ca3af;margin-top:4px;margin-bottom:8px;"></div>
+    <div id="reflexionQPanel" style="overflow-y:auto;display:none;flex-direction:column;gap:10px;padding-bottom:8px;">
+      <div style="font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;border-bottom:1px solid #e5e5e5;padding-bottom:6px;">Reflexion nach dem Walk</div>
+      <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #1D9E75;">
+        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Wie erinnerst du den Walk insgesamt?</div>
+        <textarea id="rqFrei" rows="3" placeholder="Freie Beschreibung..." style="width:100%;font-size:12px;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;font-family:sans-serif;background:#fff;"></textarea>
+      </div>
+      <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #7c3aed;">
+        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Stimmung rückblickend (1 = sehr tief · 5 = sehr hoch)</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <input type="range" id="rqMoodSlider" min="1" max="5" value="3" step="1" style="flex:1;"/>
+          <span id="rqMoodVal" style="font-size:16px;font-weight:bold;color:#facc15;min-width:30px;text-align:right;">3</span>
+        </div>
+      </div>
+      <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #f97316;">
+        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Welcher Moment blieb am stärksten in Erinnerung?</div>
+        <textarea id="rqMoment" rows="2" placeholder="Ort, Situation, Eindruck..." style="width:100%;font-size:12px;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;font-family:sans-serif;background:#fff;"></textarea>
+      </div>
+      <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #22c55e;">
+        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Orte die deine Stimmung beeinflusst haben?</div>
+        <textarea id="rqOrte" rows="2" placeholder="Park, Kreuzung, Lärm..." style="width:100%;font-size:12px;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;font-family:sans-serif;background:#fff;"></textarea>
+      </div>
+      <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #3b82f6;">
+        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Was war bedeutsam aber nicht aufgezeichnet?</div>
+        <textarea id="rqNicht" rows="2" placeholder="Was fehlt in den Daten?" style="width:100%;font-size:12px;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;font-family:sans-serif;background:#fff;"></textarea>
+      </div>
+      <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #BA7517;">
+        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Was überrascht dich beim Blick auf die Aufzeichnung?</div>
+        <textarea id="rqUeber" rows="2" placeholder="Diskrepanz, Überraschung..." style="width:100%;font-size:12px;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;font-family:sans-serif;background:#fff;"></textarea>
+      </div>
+      <button id="rqSaveBtn" style="width:100%;padding:13px;border-radius:10px;border:none;background:#2563eb;color:#fff;font-size:12px;font-weight:bold;cursor:pointer;">💾 Reflexion speichern</button>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- STIMMUNGS-MODAL -->
+<div id="moodModal" style="display:none;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;padding:28px 24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:16px;">
+    <div style="font-size:14px;font-weight:bold;color:#111;text-align:center;">🔋 Stimmung</div>
+    <div style="height:16px;border-radius:8px;background:linear-gradient(to right,#3b82f6,#22c55e,#facc15,#f97316,#ef4444);position:relative;">
+      <div id="moodThumb" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;background:#fff;border:3px solid #facc15;box-shadow:0 2px 8px rgba(0,0,0,0.3);pointer-events:none;"></div>
+    </div>
+    <input type="range" id="moodSlider" min="1" max="5" value="3" step="1" style="width:100%;margin:-8px 0;opacity:0;height:32px;cursor:pointer;"/>
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:#aaa;margin-top:-8px;"><span>1 — sehr tief</span><span>3 — neutral</span><span>5 — sehr hoch</span></div>
+    <div style="text-align:center;"><span id="moodVal" style="font-size:36px;font-weight:bold;color:#facc15;">3</span><span style="font-size:13px;color:#aaa;">/100</span></div>
+    <textarea id="moodText" placeholder="Notiz (optional)..." style="width:100%;height:56px;border-radius:10px;border:1.5px solid #e5e5e5;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
+    <div style="display:flex;gap:10px;">
+      <button id="moodCancel" style="flex:1;padding:13px;border-radius:12px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:12px;cursor:pointer;">Abbrechen</button>
+      <button id="moodSave" style="flex:2;padding:13px;border-radius:12px;border:none;font-weight:bold;font-size:12px;cursor:pointer;color:#fff;background:#facc15;">Marker setzen</button>
+    </div>
+  </div>
+</div>
+<!-- GEDANKEN-MODAL -->
+<div id="thoughtModal" style="display:none;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;padding:24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:14px;">
+    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">💭 Gedanke</div>
+    <textarea id="thoughtText" placeholder="Was denkst du gerade?" style="width:100%;height:100px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
+    <div style="display:flex;gap:8px;">
+      <button id="thoughtCancel" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;">Abbrechen</button>
+      <button id="thoughtSave" style="flex:1;padding:12px;border-radius:10px;border:none;background:#12345f;color:#fff;font-weight:bold;font-size:11px;cursor:pointer;">Marker setzen</button>
+    </div>
+  </div>
+</div>
+<!-- WAHRNEHMUNG-MODAL -->
+<div id="senseModal" style="display:none;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;padding:24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:14px;">
+    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">👁 Wahrnehmung</div>
+    <textarea id="senseText" placeholder="Was nimmst du wahr?" style="width:100%;height:100px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
+    <div style="display:flex;gap:8px;">
+      <button id="senseCancel" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;">Abbrechen</button>
+      <button id="senseSave" style="flex:1;padding:12px;border-radius:10px;border:none;background:#3d633d;color:#fff;font-weight:bold;font-size:11px;cursor:pointer;">Marker setzen</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- VERGLEICH-VOLLBILD -->
+<div id="vglOverlay" style="display:none;position:fixed;inset:0;z-index:5000;background:#f0ede8;flex-direction:column;overflow:hidden;">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#fff;flex-shrink:0;border-bottom:1px solid #e5e5e5;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+    <div style="color:#111;font-size:14px;font-weight:bold;">⚖️ Walk-Vergleich</div>
+    <button id="vglClose" style="padding:8px 18px;border-radius:8px;border:none;background:#f0f0f0;color:#333;font-size:12px;font-weight:bold;cursor:pointer;">✕ Schließen</button>
+  </div>
+  <div id="vglList" style="flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:12px;display:flex;flex-direction:column;gap:12px;background:#f0ede8;"></div>
+  <div id="vglInfo" style="display:none;background:#fff;color:#333;padding:12px 16px;font-size:12px;flex-shrink:0;border-top:1px solid #e5e5e5;max-height:150px;overflow-y:auto;box-shadow:0 -2px 8px rgba(0,0,0,0.06);"></div>
+</div>><!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <title>Begleitinstrument PRO</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" defer></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html,body{height:100%;overflow:hidden;font-family:sans-serif;}
+    #map{width:100%;height:100vh;z-index:1;}
+    #topBar{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:1000;display:flex;gap:8px;}
+    .btn{padding:10px 14px;border-radius:10px;font-weight:bold;font-size:10px;cursor:pointer;text-transform:uppercase;border:none;}
+    .btn-blue{background:#2563eb;color:#fff;}
+    .btn-red{background:#dc2626;color:#fff;}
+    .w-full{width:100%;}
+    #panelToggles{position:fixed;top:12px;right:12px;z-index:1001;display:flex;flex-direction:column;gap:6px;}
+    .panel-tab{padding:8px 12px;border-radius:10px;border:none;font-size:10px;font-weight:bold;text-transform:uppercase;cursor:pointer;background:#fff;color:#333;box-shadow:0 2px 8px rgba(0,0,0,0.15);transition:background 0.15s,color 0.15s;white-space:nowrap;}
+    .panel-tab.active{background:#2563eb;color:#fff;}
+    #drawer{position:fixed;top:0;right:-340px;width:320px;height:100vh;z-index:1002;background:#f5f5f5;box-shadow:-4px 0 20px rgba(0,0,0,0.15);transition:right 0.3s ease;display:flex;flex-direction:column;overflow:hidden;}
+    #drawer.open{right:0;}
+    #drawerHeader{background:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e5e5e5;flex-shrink:0;}
+    #drawerTitle{font-size:12px;font-weight:bold;text-transform:uppercase;color:#333;}
+    #drawerClose{width:28px;height:28px;border-radius:50%;border:none;background:#eee;cursor:pointer;font-size:14px;}
+    #drawerBody{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px;}
+    .section{background:#fff;border-radius:12px;padding:12px;border:1px solid #e5e5e5;}
+    .section-label{font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;border-bottom:1px solid #f0f0f0;padding-bottom:4px;margin-bottom:10px;}
+    .layer-opt{display:block;width:100%;text-align:left;padding:8px 10px;border-radius:6px;border:1px solid #ddd;cursor:pointer;font-size:11px;background:#fff;margin-bottom:4px;}
+    .layer-opt.active{background:#dbeafe;color:#1d4ed8;font-weight:bold;border-color:#1d4ed8;}
+    .layer-toggle-btn{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;border:1.5px solid #ddd;background:#f9f9f9;cursor:pointer;font-size:11px;font-weight:bold;color:#555;width:100%;margin-bottom:5px;transition:all 0.15s ease;}
+    .layer-toggle-btn.active{background:#dbeafe;border-color:#2563eb;color:#1d4ed8;}
+    .layer-toggle-btn .dot{width:8px;height:8px;border-radius:50%;background:#ccc;flex-shrink:0;}
+    .layer-toggle-btn.active .dot{background:#2563eb;}
+    .walk-item{background:#fff;border-radius:10px;border:1px solid #e5e5e5;margin-bottom:8px;overflow:hidden;}
+    .walk-header{display:flex;align-items:center;gap:8px;padding:9px 10px;cursor:pointer;transition:background 0.1s;}
+    .walk-header:hover{background:#f0f4ff;}
+    .walk-header.shown{background:#dbeafe;}
+    .color-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+    .walk-label{flex:1;font-size:11px;font-weight:bold;color:#333;}
+    .walk-badge{font-size:9px;font-weight:bold;color:#1d4ed8;background:#bfdbfe;padding:2px 6px;border-radius:10px;display:none;}
+    .walk-header.shown .walk-badge{display:block;}
+    .walk-actions{display:none;padding:0 10px 10px;gap:6px;flex-direction:column;}
+    .walk-actions.open{display:flex;}
+    .walk-name-input{width:100%;padding:6px 8px;border-radius:6px;border:1px solid #ddd;font-size:11px;margin-bottom:2px;}
+    .walk-btn-row{display:flex;gap:5px;flex-wrap:wrap;}
+    .walk-btn{flex:1;padding:7px 4px;border-radius:7px;border:none;font-size:9px;font-weight:bold;cursor:pointer;text-transform:uppercase;min-width:50px;}
+    .wb-save{background:#2563eb;color:#fff;}
+    .wb-export{background:#16a34a;color:#fff;}
+    .wb-analyse{background:#7c3aed;color:#fff;}
+    .wb-delete{background:#fee2e2;color:#dc2626;}
+    .wb-verlauf{background:#0e7490;color:#fff;}
+
+    /* Auswertungs-Modal — ohne Dritte-Sicht */
+    #analyseModal{position:fixed;inset:0;z-index:3500;background:rgba(0,0,0,0.82);display:none;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;}
+    #analyseModal.open{display:flex;}
+    #analyseBox{background:#f8f8f8;border-radius:20px;width:min(96vw,560px);padding:20px;display:flex;flex-direction:column;gap:14px;margin:auto;}
+    .analyse-header{display:flex;align-items:center;justify-content:space-between;}
+    .analyse-title{font-size:14px;font-weight:bold;color:#111;}
+    .analyse-close{width:28px;height:28px;border-radius:50%;border:none;background:#eee;cursor:pointer;font-size:14px;}
+    .a-card{background:#fff;border-radius:12px;padding:12px;border:1px solid #e5e5e5;}
+    .a-label{font-size:9px;font-weight:bold;text-transform:uppercase;color:#9ca3af;margin-bottom:8px;}
+    .stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+    .stat-box{background:#f0f4ff;border-radius:8px;padding:10px;text-align:center;}
+    .stat-val{font-size:20px;font-weight:bold;color:#1a1a1a;}
+    .stat-lbl{font-size:9px;color:#6b7280;text-transform:uppercase;margin-top:2px;}
+    .disk-row{display:flex;align-items:center;gap:8px;margin:5px 0;}
+    .disk-bar-bg{flex:1;height:7px;border-radius:4px;background:#f0f0f0;overflow:hidden;}
+    .disk-bar-fill{height:100%;border-radius:4px;}
+
+    /* Modals */
+    #cameraModal,#audioModal,#stopModal{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,0.88);display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
+    #cameraModal.open,#audioModal.open,#stopModal.open{display:flex;}
+    #cameraPreview{width:min(90vw,400px);border-radius:12px;background:#000;}
+    #captureBtn{padding:14px 32px;border-radius:50px;border:none;background:#fff;font-size:14px;font-weight:bold;cursor:pointer;}
+    #closeCamera,#closeAudio{position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:18px;width:36px;height:36px;border-radius:50%;cursor:pointer;}
+    #audioStatus{color:#fff;font-size:14px;font-weight:bold;text-align:center;}
+    #audioTimer{color:#ef4444;font-size:32px;font-weight:bold;}
+    #audioViz{display:flex;align-items:flex-end;gap:3px;height:48px;margin:8px 0;}
+    .bar{width:6px;background:#ef4444;border-radius:3px;transition:height 0.1s;}
+    #stopAudioBtn{padding:14px 32px;border-radius:50px;border:none;background:#ef4444;color:#fff;font-size:14px;font-weight:bold;cursor:pointer;}
+    #photoInput{display:none;}
+    #stopModal .modal-box{background:#fff;border-radius:16px;padding:24px;width:min(90vw,320px);display:flex;flex-direction:column;gap:12px;}
+    #stopModal h3{font-size:14px;font-weight:bold;color:#111;}
+    #stopModal p{font-size:11px;color:#666;}
+    #walkNameInput{width:100%;padding:10px 12px;border-radius:8px;border:1px solid #ddd;font-size:13px;}
+    .modal-btns{display:flex;gap:8px;}
+    .modal-btns button{flex:1;padding:11px;border-radius:8px;border:none;font-size:11px;font-weight:bold;cursor:pointer;text-transform:uppercase;}
+    #modalCancel{background:#f0f0f0;color:#555;}
+    #modalSave{background:#2563eb;color:#fff;}
+    #exportOverlay{position:fixed;inset:0;z-index:4000;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;}
+    #exportOverlay.open{display:flex;}
+    #exportBox{background:#fff;border-radius:14px;padding:24px 28px;text-align:center;min-width:200px;}
+    #exportMsg{font-size:13px;color:#333;margin-top:8px;}
+
+    /* ── MODERNES FAB-PANEL ── */
+    #fabGrid {
+      position: fixed;
+      bottom: 24px;
+      left: 16px;
+      z-index: 1001;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      background: rgba(255,255,255,0.78);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-radius: 26px;
+      border: 1px solid rgba(255,255,255,0.95);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.13), 0 1px 0 rgba(255,255,255,0.85) inset, 0 0 0 0.5px rgba(0,0,0,0.06);
+      padding: 10px 8px;
+    }
+    .fab {
+      position: relative;
+      width: 46px;
+      height: 46px;
+      border-radius: 15px;
+      border: none;
+      cursor: pointer;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      color: #1a1a1a;
+      transition: background 0.13s ease, transform 0.1s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .fab:hover { background: rgba(0,0,0,0.06); transform: scale(1.1); }
+    .fab:active { transform: scale(0.91); background: rgba(0,0,0,0.1); }
+    .fab::after {
+      content: attr(data-label);
+      position: absolute;
+      left: calc(100% + 12px);
+      top: 50%;
+      transform: translateY(-50%) translateX(-4px);
+      background: rgba(14,14,14,0.88);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1px;
+      padding: 5px 11px;
+      border-radius: 9px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.18s ease, transform 0.18s ease;
+    }
+    .fab:hover::after { opacity: 1; transform: translateY(-50%) translateX(0); }
+    .fab-divider {
+      width: 28px;
+      height: 1px;
+      background: rgba(0,0,0,0.08);
+      border-radius: 1px;
+      margin: 4px 0;
+      flex-shrink: 0;
+    }
+
+
+    /* Verlauf-Modal */
+    #verlaufModal{position:fixed;inset:0;z-index:3500;background:rgba(0,0,0,0.82);display:none;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;}
+    #verlaufModal.open{display:flex;}
+    #verlaufBox{background:#f8f8f8;border-radius:20px;width:min(96vw,640px);padding:20px;display:flex;flex-direction:column;gap:14px;margin:auto;}
+    .verlauf-header{display:flex;align-items:center;justify-content:space-between;}
+    .verlauf-title{font-size:14px;font-weight:bold;color:#111;}
+    .verlauf-close{width:28px;height:28px;border-radius:50%;border:none;background:#eee;cursor:pointer;font-size:14px;}
+    .verlauf-legend{display:flex;flex-wrap:wrap;gap:8px;font-size:10px;color:#555;}
+    .verlauf-legend span{display:flex;align-items:center;gap:4px;}
+    .verlauf-legend i{width:10px;height:10px;border-radius:50%;display:inline-block;}
+
+    .vgl-popup .leaflet-popup-content-wrapper{border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.2);}
+    .vgl-popup .leaflet-popup-content{margin:12px 14px;}
+    .vgl-walk-row{background:#fff;border-radius:14px;overflow:hidden;border:1px solid #e5e5e5;}
+    .vgl-map{width:100%;height:180px;border-radius:10px 10px 0 0;}
+    .vgl-body{padding:12px;}
+    .vgl-name{font-size:12px;font-weight:bold;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+    .vgl-stats{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+    .vgl-stat{background:#f0f4ff;border-radius:8px;padding:6px 10px;text-align:center;flex:1;min-width:60px;}
+    .vgl-stat-val{font-size:16px;font-weight:bold;color:#1a1a1a;}
+    .vgl-stat-lbl{font-size:8px;color:#6b7280;text-transform:uppercase;}
+    .vgl-ref{background:#f9f9f9;border-radius:8px;padding:8px;font-size:11px;color:#555;font-style:italic;margin-top:4px;}
+    #moodModal,#thoughtModal,#senseModal{position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,0.78);display:none;align-items:center;justify-content:center;}
+    #thoughtModal,#senseModal{z-index:2000;background:rgba(0,0,0,0.75);}
+  </style>
+</head>
+<body>
+<div id="map"></div>
+<div id="map3d" style="display:none;position:fixed;inset:0;z-index:2;"></div>
+<button id="exit3d" style="display:none;position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:1003;padding:10px 18px;border-radius:10px;border:none;background:rgba(0,0,0,0.75);color:#fff;font-size:11px;font-weight:bold;cursor:pointer;">✕ 3D verlassen</button>
+<div id="topBar">
+  <button id="btnStart" class="btn btn-blue">START</button>
+  <button id="btnStop" class="btn btn-red">STOP / SAVE</button>
+</div>
+<div id="panelToggles">
+  <button class="panel-tab" data-panel="ansicht">🗺 Ansicht</button>
+  <button class="panel-tab" data-panel="ebenen">☰ Ebenen</button>
+  <button class="panel-tab" data-panel="archiv">📂 Archiv</button>
+</div>
+<div id="drawer">
+  <div id="drawerHeader">
+    <span id="drawerTitle">Panel</span>
+    <button id="drawerClose">✕</button>
+  </div>
+  <div id="drawerBody">
+    <div class="section" id="sec-ansicht" style="display:none;">
+      <div class="section-label">Kartenansicht</div>
+      <button class="layer-opt active" data-url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png">Standard</button>
+      <button class="layer-opt" data-url="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}">Satellit</button>
+      <button class="layer-opt" data-url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png">Graustufen</button>
+      <button class="layer-opt" data-type="3d">🏔 3D Ansicht</button>
+    </div>
+    <div class="section" id="sec-ebenen" style="display:none;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        <div style="background:#f0f4ff;border-radius:10px;padding:10px 12px;text-align:center;">
+          <div style="font-size:9px;font-weight:bold;color:#6b7280;text-transform:uppercase;margin-bottom:4px;">Schritte</div>
+          <div id="stepCount" style="font-size:22px;font-weight:bold;color:#1a1a1a;">0</div>
+        </div>
+        <div style="background:#f0f4ff;border-radius:10px;padding:10px 12px;text-align:center;">
+          <div style="font-size:9px;font-weight:bold;color:#6b7280;text-transform:uppercase;margin-bottom:4px;">Tempo</div>
+          <div id="currentSpeed" style="font-size:18px;font-weight:bold;color:#1a1a1a;">—</div>
+        </div>
+      </div>
+      <div style="font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;border-bottom:1px solid #f0f0f0;padding-bottom:4px;margin-bottom:10px;">Ebenen</div>
+      <button class="layer-toggle-btn active" data-layer="route"><span class="dot"></span> Route</button>
+      <button class="layer-toggle-btn active" data-layer="photo"><span class="dot"></span> Fotos</button>
+      <button class="layer-toggle-btn active" data-layer="sound"><span class="dot"></span> Umgebungssound</button>
+      <button class="layer-toggle-btn active" data-layer="voice"><span class="dot"></span> Sprachnachricht</button>
+      <button class="layer-toggle-btn active" data-layer="sense"><span class="dot"></span> Wahrnehmung</button>
+      <button class="layer-toggle-btn active" data-layer="thought"><span class="dot"></span> Gedanken</button>
+      <button class="layer-toggle-btn active" data-layer="mood"><span class="dot"></span> Stimmung</button>
+    </div>
+    <div class="section" id="sec-archiv" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div class="section-label" style="border:none;padding:0;margin:0;">Walks</div>
+        <button id="btnVergleich" style="padding:6px 12px;border-radius:8px;border:none;background:#7c3aed;color:#fff;font-size:10px;font-weight:bold;cursor:pointer;display:none;">⚖️ Vergleichen</button>
+      </div>
+      <div id="archiveList"><div style="font-size:11px;color:#999;">Noch keine Walks gespeichert.</div></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODERNES FAB-PANEL — Reihenfolge: Foto, Sound, Sprache, Wahrnehmung, Gedanke, Stimmung -->
+<div id="fabGrid">
+  <button id="fabPhoto"   class="fab" data-label="Foto aufnehmen">📸</button>
+  <button id="fabSound"   class="fab" data-label="Umgebungssound">🎙</button>
+  <button id="fabMsg"     class="fab" data-label="Sprachnachricht">💬</button>
+  <div class="fab-divider"></div>
+  <button id="fabSense"   class="fab" data-label="Wahrnehmung">👁</button>
+  <button id="fabThought" class="fab" data-label="Gedanke">💭</button>
+  <div class="fab-divider"></div>
+  <button id="fabMood"    class="fab" data-label="Stimmung">🔋</button>
+</div>
+
+<div id="cameraModal">
+  <button id="closeCamera">✕</button>
+  <video id="cameraPreview" autoplay playsinline muted></video>
+  <button id="captureBtn">📸 Foto aufnehmen</button>
+  <canvas id="photoCanvas" style="display:none;"></canvas>
+</div>
+<div id="audioModal">
+  <button id="closeAudio">✕</button>
+  <div id="audioStatus">Aufnahme läuft...</div>
+  <div id="audioTimer">0:00</div>
+  <div id="audioViz">
+    <div class="bar" style="height:8px"></div><div class="bar" style="height:16px"></div>
+    <div class="bar" style="height:24px"></div><div class="bar" style="height:16px"></div>
+    <div class="bar" style="height:8px"></div><div class="bar" style="height:20px"></div>
+    <div class="bar" style="height:12px"></div><div class="bar" style="height:28px"></div>
+    <div class="bar" style="height:14px"></div><div class="bar" style="height:8px"></div>
+  </div>
+  <button id="stopAudioBtn">⏹ Aufnahme beenden</button>
+</div>
+<div id="stopModal">
+  <div class="modal-box">
+    <h3>Walk beenden &amp; speichern</h3>
+    <p>Gib deinem Walk einen Namen:</p>
+    <input id="walkNameInput" type="text" placeholder="z.B. Morgenspaziergang Zentrum"/>
+    <div class="modal-btns">
+      <button id="modalCancel">Abbrechen</button>
+      <button id="modalSave">💾 Speichern</button>
+    </div>
+  </div>
+</div>
+<div id="exportOverlay"><div id="exportBox"><div style="font-size:24px;">📦</div><div id="exportMsg">Exportiere...</div></div></div>
+<input type="file" id="photoInput" accept="image/*" capture="environment"/>
+
+<!-- AUSWERTUNGS-MODAL — nur Ich-Sicht -->
+<div id="analyseModal">
+  <div id="analyseBox">
+    <div class="analyse-header">
+      <div class="analyse-title" id="analyseWalkName">Auswertung</div>
+      <button class="analyse-close" id="analyseClose">✕</button>
+    </div>
+    <div class="stat-row" style="margin-bottom:12px;">
+      <div class="stat-box"><div class="stat-val" id="aStat1">—</div><div class="stat-lbl">Ø Stimmung (1-5)</div></div>
+      <div class="stat-box"><div class="stat-val" id="aStat2" style="color:#7c3aed;">—</div><div class="stat-lbl">Erinnert (1-5)</div></div>
+      <div class="stat-box"><div class="stat-val" id="aStat3">—</div><div class="stat-lbl">Diskrepanz</div></div>
+    </div>
+    <div class="a-card" style="margin-bottom:10px;">
+      <div class="a-label" style="color:#0F6E56;">Schicht 1 — Aufgezeichnete Stimmung</div>
+      <div style="position:relative;height:120px;"><canvas id="chartAufz"></canvas></div>
+    </div>
+    <div class="a-card" style="margin-bottom:10px;">
+      <div class="a-label" style="color:#534AB7;">Schicht 2 — Selbstreflexion</div>
+      <div style="position:relative;height:120px;"><canvas id="chartErin"></canvas></div>
+      <div style="background:#f5f3ff;border-radius:8px;padding:8px 10px;margin-top:8px;font-size:11px;color:#374151;font-style:italic;" id="refFreiDisplay">—</div>
+    </div>
+    <div class="a-card" style="margin-bottom:10px;">
+      <div class="a-label" style="color:#854F0B;">Diskrepanz pro Abschnitt</div>
+      <div id="diskBars"></div>
+      <div style="font-size:10px;color:#9ca3af;margin-top:6px;">Grün = Erinnerung höher als Aufzeichnung · Rot = niedriger · Skala 1–5</div>
+    </div>
+    <div class="a-card">
+      <div class="a-label">Reflexionsantworten</div>
+      <div id="refAnswersDisplay" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- STIMMUNGS-MODAL -->
+<div id="moodModal" style="display:none;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;padding:28px 24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:16px;">
+    <div style="font-size:14px;font-weight:bold;color:#111;text-align:center;">🔋 Stimmung</div>
+    <div style="height:16px;border-radius:8px;background:linear-gradient(to right,#3b82f6,#22c55e,#facc15,#f97316,#ef4444);position:relative;">
+      <div id="moodThumb" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;background:#fff;border:3px solid #facc15;box-shadow:0 2px 8px rgba(0,0,0,0.3);pointer-events:none;"></div>
+    </div>
+    <input type="range" id="moodSlider" min="1" max="5" value="3" step="1" style="width:100%;margin:-8px 0;opacity:0;height:32px;cursor:pointer;"/>
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:#aaa;margin-top:-8px;"><span>1 — sehr tief</span><span>3 — neutral</span><span>5 — sehr hoch</span></div>
+    <div style="text-align:center;"><span id="moodVal" style="font-size:36px;font-weight:bold;color:#facc15;">3</span><span style="font-size:13px;color:#aaa;">/100</span></div>
+    <textarea id="moodText" placeholder="Notiz (optional)..." style="width:100%;height:56px;border-radius:10px;border:1.5px solid #e5e5e5;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
+    <div style="display:flex;gap:10px;">
+      <button id="moodCancel" style="flex:1;padding:13px;border-radius:12px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:12px;cursor:pointer;">Abbrechen</button>
+      <button id="moodSave" style="flex:2;padding:13px;border-radius:12px;border:none;font-weight:bold;font-size:12px;cursor:pointer;color:#fff;background:#facc15;">Marker setzen</button>
+    </div>
+  </div>
+</div>
+<!-- GEDANKEN-MODAL -->
+<div id="thoughtModal" style="display:none;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;padding:24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:14px;">
+    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">💭 Gedanke</div>
+    <textarea id="thoughtText" placeholder="Was denkst du gerade?" style="width:100%;height:100px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
+    <div style="display:flex;gap:8px;">
+      <button id="thoughtCancel" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;">Abbrechen</button>
+      <button id="thoughtSave" style="flex:1;padding:12px;border-radius:10px;border:none;background:#12345f;color:#fff;font-weight:bold;font-size:11px;cursor:pointer;">Marker setzen</button>
+    </div>
+  </div>
+</div>
+<!-- WAHRNEHMUNG-MODAL -->
+<div id="senseModal" style="display:none;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;padding:24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:14px;">
+    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">👁 Wahrnehmung</div>
+    <textarea id="senseText" placeholder="Was nimmst du wahr?" style="width:100%;height:100px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
+    <div style="display:flex;gap:8px;">
+      <button id="senseCancel" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;">Abbrechen</button>
+      <button id="senseSave" style="flex:1;padding:12px;border-radius:10px;border:none;background:#3d633d;color:#fff;font-weight:bold;font-size:11px;cursor:pointer;">Marker setzen</button>
+    </div>
+  </div>
+</div>
+
+<script>
+window.addEventListener('load', function() {
+  const walkColors=['#e6194b','#3cb44b','#ffe119','#4363d8','#f58231','#911eb4','#42d4f4','#f032e6'];
+  const layerVisibility={route:true,mood:true,thought:true,sense:true,sound:true,voice:true,photo:true};
+  const mapLayers={route:[],mood:[],thought:[],sense:[],sound:[],voice:[],photo:[]};
+  let state={walks:JSON.parse(localStorage.getItem('psychogeo_walks')||'[]'),current:null,map:null,liveMarker:null,activeLayers:{},currentTile:null,archiveInkLayers:{}};
+  const audioBlobs={};
+  let currentTileUrl='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+  state.map=L.map('map',{zoomControl:false,maxZoom:22}).setView([47.23,9.61],17);
+  state.currentTile=L.tileLayer(currentTileUrl,{crossOrigin:true,maxZoom:22,maxNativeZoom:19}).addTo(state.map);
+
+  const drawer=document.getElementById('drawer');
+  const drawerTitle=document.getElementById('drawerTitle');
+  const panelNames={ansicht:'🗺 Ansicht',ebenen:'☰ Ebenen',archiv:'📂 Archiv'};
+  let currentPanel=null;
+  function openPanel(name){
+    ['ansicht','ebenen','archiv'].forEach(p=>document.getElementById('sec-'+p).style.display='none');
+    document.querySelectorAll('.panel-tab').forEach(t=>t.classList.remove('active'));
+    if(currentPanel===name){drawer.classList.remove('open');currentPanel=null;return;}
+    document.getElementById('sec-'+name).style.display='block';
+    drawerTitle.textContent=panelNames[name];
+    drawer.classList.add('open');currentPanel=name;
+    document.querySelector('.panel-tab[data-panel="'+name+'"]').classList.add('active');
+    // Archiv immer neu rendern wenn geöffnet
+    if(name==='archiv') renderArchive();
+  }
+  document.querySelectorAll('.panel-tab').forEach(b=>b.addEventListener('click',()=>openPanel(b.getAttribute('data-panel'))));
+  document.getElementById('drawerClose').addEventListener('click',()=>{drawer.classList.remove('open');document.querySelectorAll('.panel-tab').forEach(t=>t.classList.remove('active'));currentPanel=null;});
+
+  document.querySelectorAll('.layer-opt').forEach(btn=>{
+    btn.onclick=()=>{
+      if(btn.getAttribute('data-type')==='3d'){
+        open3DView();
+        document.querySelectorAll('.layer-opt').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        return;
+      }
+      const url=btn.getAttribute('data-url');currentTileUrl=url;
+      state.map.removeLayer(state.currentTile);
+      state.currentTile=L.tileLayer(url,{crossOrigin:true,maxZoom:22,maxNativeZoom:19}).addTo(state.map);
+      document.querySelectorAll('.layer-opt').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+    };
+  });
+
+  // ── 3D Ansicht ──
+  const MAPTILER_3D_KEY = 'DEIN_MAPTILER_KEY';
+  let map3dInstance = null;
+  function open3DView(){
+    const mapDiv=document.getElementById('map3d');
+    if(!mapDiv)return;
+    mapDiv.style.display='block';
+    document.getElementById('exit3d').style.display='block';
+    document.getElementById('map').style.display='none';
+    mapDiv.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#1a1a1a;color:#fff;font-size:13px;text-align:center;padding:20px;">🏔 3D Ansicht benötigt MapTiler API-Key.<br><br>Bitte MAPTILER_3D_KEY im Code eintragen.</div>';
+  }
+  document.getElementById('exit3d').onclick = () => {
+    document.getElementById('map3d').style.display='none';
+    document.getElementById('exit3d').style.display='none';
+    document.getElementById('map').style.display='block';
+    document.querySelectorAll('.layer-opt').forEach(b=>b.classList.remove('active'));
+    document.querySelector('.layer-opt[data-url="'+currentTileUrl+'"]')?.classList.add('active');
+  };
+
+  document.querySelectorAll('.layer-toggle-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const key=btn.getAttribute('data-layer');
+      const isActive=btn.classList.toggle('active');
+      layerVisibility[key]=isActive;
+      if(key==='route'){
+        if(state.inkLayer&&state.inkLayer._canvas)state.inkLayer._canvas.style.display=isActive?'':'none';
+        Object.values(state.archiveInkLayers).forEach(al=>{if(al._canvas)al._canvas.style.display=isActive?'':'none';});
+      } else {
+        mapLayers[key].forEach(l=>isActive?state.map.addLayer(l):state.map.removeLayer(l));
+      }
+    });
+  });
+
+  let stepCount=0,lastStepTime=0;
+  if(window.DeviceMotionEvent){
+    window.addEventListener('devicemotion',e=>{
+      if(!state.current)return;
+      const a=e.accelerationIncludingGravity;if(!a)return;
+      const mag=Math.sqrt(a.x*a.x+a.y*a.y+a.z*a.z),now=Date.now();
+      if(mag>13.5&&(now-lastStepTime)>550){stepCount++;lastStepTime=now;if(state.current)state.current.steps=stepCount;const el=document.getElementById('stepCount');if(el)el.textContent=stepCount.toLocaleString('de-DE');}
+    });
+  }
+
+  let lastPos=null,lastPosTime=null,smoothedSpeed=0;
+  function haversineDist(a,b){const R=6371000,tr=x=>x*Math.PI/180;const dLat=tr(b[0]-a[0]),dLon=tr(b[1]-a[1]);const h=Math.sin(dLat/2)**2+Math.cos(tr(a[0]))*Math.cos(tr(b[0]))*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
+  function speedToWeight(s){const t=Math.min(s/3.5,1);return Math.max(1,26*Math.pow(1-t,1.6));}
+  function speedToOpacity(s){const t=Math.min(s/3.5,1);return Math.max(0.04,0.92*Math.pow(1-t,1.4));}
+  function jitter(sc){return(Math.random()-0.5)*sc;}
+  function drawInkStroke(ctx,x1,y1,x2,y2,weight,opacity){
+    if(weight<0.5)return;
+    const alpha=Math.min(opacity,1),strokes=Math.max(1,Math.round(weight*0.7));
+    for(let s=0;s<strokes;s++){
+      const sp=weight*0.3,ox1=jitter(sp),oy1=jitter(sp),ox2=jitter(sp),oy2=jitter(sp);
+      const mx=(x1+x2)/2+jitter(weight*0.4),my=(y1+y2)/2+jitter(weight*0.4);
+      const w=weight*(0.75+Math.random()*0.5)/strokes;
+      ctx.beginPath();ctx.moveTo(x1+ox1,y1+oy1);ctx.quadraticCurveTo(mx,my,x2+ox2,y2+oy2);
+      ctx.lineWidth=w;ctx.lineCap='round';ctx.lineJoin='round';
+      ctx.strokeStyle='rgba(20,16,12,'+(alpha*(0.6+Math.random()*0.4)).toFixed(3)+')';ctx.stroke();
+    }
+    if(weight>4){const gc=Math.round(weight*1.2);for(let g=0;g<gc;g++){const t=Math.random(),gx=x1+(x2-x1)*t+jitter(weight*0.6),gy=y1+(y2-y1)*t+jitter(weight*0.6),gr=Math.random()*weight*0.18;ctx.beginPath();ctx.arc(gx,gy,gr,0,Math.PI*2);ctx.fillStyle='rgba(20,16,12,'+(alpha*Math.random()*0.5).toFixed(3)+')';ctx.fill();}}
+  }
+
+  // ── InkLayer: korrekte Leaflet-Canvas-Synchronisation ──
+  // Verwendet latLngToLayerPoint + CSS-Transform damit die Route beim
+  // Zoomen/Panning nie verschoben wird (gleiche Methode wie L.Canvas intern)
+  const InkLayer=L.Layer.extend({
+    initialize(){this._segments=[];this._canvas=null;this._ctx=null;},
+    onAdd(map){
+      this._map=map;
+      const c=document.createElement('canvas');
+      c.style.cssText='position:absolute;top:0;left:0;pointer-events:none;z-index:400;';
+      map.getPanes().overlayPane.appendChild(c);
+      this._canvas=c; this._ctx=c.getContext('2d');
+      // Auf alle Karten-Events reagieren — auch während Zoom-Animation
+      map.on('movestart move moveend zoomstart zoom zoomend viewreset resize',this._onMapMove,this);
+      this._reset();
+      return this;
+    },
+    onRemove(map){
+      map.getPanes().overlayPane.removeChild(this._canvas);
+      map.off('movestart move moveend zoomstart zoom zoomend viewreset resize',this._onMapMove,this);
+    },
+    _onMapMove(){this._reset();},
+    _reset(){
+      // Canvas-Größe auf gesamte Karte setzen
+      const sz=this._map.getSize();
+      const topLeft=this._map.containerPointToLayerPoint([0,0]);
+      // Canvas im overlayPane positionieren
+      L.DomUtil.setPosition(this._canvas, topLeft);
+      this._canvas.width=sz.x;
+      this._canvas.height=sz.y;
+      this._redraw();
+    },
+    // Leaflet-Koordinaten → Canvas-Pixel (korrekt über layerPoint)
+    _ll2px(ll){
+      const lp=this._map.latLngToLayerPoint(ll);
+      const origin=this._map.containerPointToLayerPoint([0,0]);
+      return {x: lp.x - origin.x, y: lp.y - origin.y};
+    },
+    addSegment(ll1,ll2,w,op){
+      this._segments.push({ll1,ll2,weight:w,opacity:op});
+      // Sofort zeichnen ohne alles neu zu rendern (Performance)
+      if(this._ctx){
+        const p1=this._ll2px(ll1),p2=this._ll2px(ll2);
+        drawInkStroke(this._ctx,p1.x,p1.y,p2.x,p2.y,w,op);
+      }
+    },
+    _redraw(){
+      if(!this._ctx)return;
+      this._ctx.clearRect(0,0,this._canvas.width,this._canvas.height);
+      this._segments.forEach(s=>{
+        const p1=this._ll2px(s.ll1),p2=this._ll2px(s.ll2);
+        drawInkStroke(this._ctx,p1.x,p1.y,p2.x,p2.y,s.weight,s.opacity);
+      });
+    },
+    clearSegments(){
+      this._segments=[];
+      if(this._ctx)this._ctx.clearRect(0,0,this._canvas.width,this._canvas.height);
+    },
+    getSegments(){return this._segments;}
+  });
+
+  let inkLayer=new InkLayer();inkLayer.addTo(state.map);state.inkLayer=inkLayer;
+
+  let smoothLat=null,smoothLng=null;
+  navigator.geolocation.watchPosition(pos=>{
+    if(pos.coords.accuracy>30)return;
+    const rawLat=pos.coords.latitude,rawLng=pos.coords.longitude;
+    if(smoothLat===null){smoothLat=rawLat;smoothLng=rawLng;}
+    else{smoothLat+=0.25*(rawLat-smoothLat);smoothLng+=0.25*(rawLng-smoothLng);}
+    const ll=[smoothLat,smoothLng],now=Date.now();
+    if(!state.liveMarker){
+      state.liveMarker=L.circleMarker(ll,{radius:6,fillColor:'#111',color:'#fff',weight:2,fillOpacity:1,zIndexOffset:1000}).addTo(state.map);
+      state.map.setView(ll,17);
+    } else {
+      state.liveMarker.setLatLng(ll);
+    }
+    if(state.current){
+      if(lastPos&&lastPosTime){
+        const dist=haversineDist(lastPos,ll);if(dist<3)return;
+        const dt=(now-lastPosTime)/1000,raw=dt>0?dist/dt:0;
+        smoothedSpeed=smoothedSpeed*0.7+raw*0.3;
+        const w=speedToWeight(smoothedSpeed),op=speedToOpacity(smoothedSpeed);
+        state.current.route.push(ll);
+        if(!state.current.segments)state.current.segments=[];
+        state.current.segments.push({ll1:lastPos,ll2:ll,weight:w,opacity:op});
+        if(layerVisibility.route)inkLayer.addSegment(lastPos,ll,w,op);
+        const se=document.getElementById('currentSpeed');if(se)se.textContent=(smoothedSpeed*3.6).toFixed(1)+' km/h';
+      } else state.current.route.push(ll);
+      lastPos=ll;lastPosTime=now;
+    }
+  },err=>console.warn('GPS:',err.code),{enableHighAccuracy:true,maximumAge:0,timeout:30000});
+
+  // Screen WakeLock: verhindert dass GPS abbricht wenn Bildschirm dunkel wird
+  let wakeLock=null;
+  async function requestWakeLock(){
+    try{if('wakeLock' in navigator){wakeLock=await navigator.wakeLock.request('screen');}}
+    catch(e){console.log('WakeLock nicht verfügbar:',e);}
+  }
+  async function releaseWakeLock(){
+    if(wakeLock){try{await wakeLock.release();}catch(e){}wakeLock=null;}
+  }
+  // WakeLock nach Tab-Wechsel neu anfordern
+  document.addEventListener('visibilitychange',async()=>{
+    if(document.visibilityState==='visible'&&state.current){await requestWakeLock();}
+  });
+
+  document.getElementById('btnStart').onclick=()=>{
+    stepCount=0;lastStepTime=0;smoothedSpeed=0;lastPos=null;lastPosTime=null;
+    document.getElementById('stepCount').textContent='0';
+    document.getElementById('currentSpeed').textContent='—';
+    inkLayer.clearSegments();
+    state.current={id:Date.now(),name:new Date().toLocaleString('de-DE'),route:[],segments:[],entries:[],steps:0,color:walkColors[state.walks.length%walkColors.length],reflection:{frei:'',moodRetro:3,moment:'',orte:'',nicht:'',ueber:''}};
+    requestWakeLock();
+    alert('Walk gestartet!');
+  };
+
+  document.getElementById('btnStop').onclick=()=>{if(!state.current)return alert('Kein aktiver Walk.');document.getElementById('walkNameInput').value='';document.getElementById('stopModal').classList.add('open');};
+  document.getElementById('modalCancel').onclick=()=>document.getElementById('stopModal').classList.remove('open');
+  document.getElementById('modalSave').onclick=()=>{
+    const nv=document.getElementById('walkNameInput').value.trim();if(nv)state.current.name=nv;
+    document.getElementById('stopModal').classList.remove('open');
+    inkLayer.clearSegments();
+    Object.keys(mapLayers).forEach(k=>{mapLayers[k].forEach(l=>{try{state.map.removeLayer(l);}catch(e){}});mapLayers[k]=[];});
+    if(!state.current.reflection)state.current.reflection={frei:'',moodRetro:3,moment:'',orte:'',nicht:'',ueber:''};
+    releaseWakeLock();    state.walks.push(state.current);saveWalks();state.current=null;renderArchive();openPanel('archiv');
+  };
+
+  function saveWalks(){
+    const ts=state.walks.map(w=>({...w,entries:w.entries.map(e=>{const c={...e};delete c.audioUrl;return c;})}));
+    localStorage.setItem('psychogeo_walks',JSON.stringify(ts));
+  }
+
+
+  function placeMarker(type,latLng,popupHTML){
+    mapLayers[type]=mapLayers[type]||[];
+    const m=L.marker(latLng).bindPopup(popupHTML);
+    mapLayers[type].push(m);
+    if(layerVisibility[type]!==false){m.addTo(state.map);m.openPopup();}
+    return m;
+  }
+  function requireWalk(){if(!state.current){alert('Erst START drücken!');return false;}return true;}
+  function getPos(){if(state.liveMarker)return state.liveMarker.getLatLng();const c=state.map.getCenter();return{lat:c.lat,lng:c.lng};}
+  function moodColor(v){if(v<=1)return'#3b82f6';if(v<=2)return'#22c55e';if(v<=3)return'#facc15';if(v<=4)return'#f97316';return'#ef4444';}
+  function makeDotIcon(color,size){size=size||20;return L.divIcon({className:'',html:'<div style="width:'+size+'px;height:'+size+'px;border-radius:50%;background:'+color+';border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,0.5),0 0 0 1px rgba(0,0,0,0.1);"></div>',iconSize:[size,size],iconAnchor:[size/2,size/2],popupAnchor:[0,-(size/2+4)]});}
+  function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+  const cameraModal=document.getElementById('cameraModal');
+  const cameraPreview=document.getElementById('cameraPreview');
+  const photoCanvas=document.getElementById('photoCanvas');
+  let cameraStream=null;
+  async function openCamera(){try{cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});cameraPreview.srcObject=cameraStream;cameraModal.classList.add('open');}catch(e){document.getElementById('photoInput').click();}}
+  function closeCamera(){if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}cameraModal.classList.remove('open');}
+  document.getElementById('closeCamera').onclick=closeCamera;
+  function placePhotoMarker(dataUrl,pos){
+    const ts=new Date().toLocaleTimeString();
+    const icon=L.divIcon({className:'',html:'<div style="width:26px;height:26px;border-radius:50%;border:2.5px solid #fff;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.4);background:#555;"><img src="'+dataUrl+'" style="width:100%;height:100%;object-fit:cover;"/></div>',iconSize:[26,26],iconAnchor:[13,13],popupAnchor:[0,-16]});
+    const popup='<img src="'+dataUrl+'" style="width:200px;border-radius:8px;"/><br><small>'+ts+'</small>';
+    const m=placeMarker('photo',pos,popup);m.setIcon(icon);return ts;
+  }
+  document.getElementById('captureBtn').onclick=()=>{if(!requireWalk()){closeCamera();return;}const pos=getPos();photoCanvas.width=cameraPreview.videoWidth;photoCanvas.height=cameraPreview.videoHeight;photoCanvas.getContext('2d').drawImage(cameraPreview,0,0);const dataUrl=photoCanvas.toDataURL('image/jpeg',0.7);const ts=placePhotoMarker(dataUrl,pos);state.current.entries.push({type:'photo',location:{lat:pos.lat,lng:pos.lng},timestamp:ts,dataUrl});closeCamera();};
+  document.getElementById('photoInput').onchange=function(){if(!this.files||!this.files[0]||!requireWalk())return;const pos=getPos();const reader=new FileReader();reader.onload=e=>{const dataUrl=e.target.result;const ts=placePhotoMarker(dataUrl,pos);state.current.entries.push({type:'photo',location:{lat:pos.lat,lng:pos.lng},timestamp:ts,dataUrl});};reader.readAsDataURL(this.files[0]);this.value='';};
+  document.getElementById('fabPhoto').onclick=()=>openCamera();
+
+  const audioModal=document.getElementById('audioModal');
+  const bars=document.querySelectorAll('.bar');
+  let mediaRecorder=null,audioChunks=[],audioType='voice',timerInterval=null,timerSec=0,audioContext=null,analyser=null,vizRaf=null;
+  function formatTime(s){return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
+  function startViz(stream){audioContext=new(window.AudioContext||window.webkitAudioContext)();analyser=audioContext.createAnalyser();analyser.fftSize=64;audioContext.createMediaStreamSource(stream).connect(analyser);const data=new Uint8Array(analyser.frequencyBinCount);function draw(){vizRaf=requestAnimationFrame(draw);analyser.getByteFrequencyData(data);bars.forEach((b,i)=>{const v=data[i*2]||0;b.style.height=Math.max(4,v*48/255)+'px';});}draw();}
+  function stopViz(){if(vizRaf)cancelAnimationFrame(vizRaf);if(audioContext){audioContext.close();audioContext=null;}bars.forEach(b=>b.style.height='8px');}
+  async function openAudioModal(type){
+    if(!requireWalk())return;audioType=type;
+    document.getElementById('audioStatus').textContent=type==='voice'?'🎙 Sprachnachricht aufnehmen...':'🔊 Umgebungssound aufnehmen...';
+    audioChunks=[];timerSec=0;document.getElementById('audioTimer').textContent='0:00';
+    try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});mediaRecorder=new MediaRecorder(stream);mediaRecorder.ondataavailable=e=>audioChunks.push(e.data);mediaRecorder.onstop=()=>finishRecording(stream);mediaRecorder.start();startViz(stream);timerInterval=setInterval(()=>{timerSec++;document.getElementById('audioTimer').textContent=formatTime(timerSec);},1000);audioModal.classList.add('open');}
+    catch(e){alert('Mikrofon-Zugriff verweigert.');}
+  }
+  function finishRecording(stream){
+    stream.getTracks().forEach(t=>t.stop());stopViz();clearInterval(timerInterval);audioModal.classList.remove('open');
+    const blob=new Blob(audioChunks,{type:MediaRecorder.isTypeSupported('audio/mp4')?'audio/mp4':'audio/webm'});
+    const url=URL.createObjectURL(blob);const pos=getPos();const ts=new Date().toLocaleTimeString();const dur=formatTime(timerSec);
+    const entryId='audio_'+Date.now();audioBlobs[entryId]=blob;
+    state.current.entries.push({type:audioType,location:{lat:pos.lat,lng:pos.lng},timestamp:ts,audioDuration:dur,audioUrl:url,entryId});
+    const color=audioType==='voice'?'#7c3aed':'#f97316';
+    const svgI=audioType==='voice'?'<line x1="8" y1="5" x2="8" y2="11" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/><line x1="5" y1="8" x2="11" y2="8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>':'<circle cx="8" cy="8" r="3" fill="none" stroke="#fff" stroke-width="1.8"/><line x1="8" y1="2" x2="8" y2="5" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>';
+    const icon=L.divIcon({className:'',html:'<div style="width:22px;height:22px;border-radius:50%;background:'+color+';border:2.5px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;"><svg width="16" height="16" viewBox="0 0 16 16">'+svgI+'</svg></div>',iconSize:[22,22],iconAnchor:[11,11],popupAnchor:[0,-14]});
+    const ph='<b>'+(audioType==='voice'?'Sprachnachricht':'Umgebungssound')+'</b><br><small>'+ts+' · '+dur+'</small><br><audio controls src="'+url+'" style="margin-top:6px;width:180px;"></audio>';
+    const m=placeMarker(audioType,pos,ph);m.setIcon(icon);
+  }
+  document.getElementById('stopAudioBtn').onclick=()=>{if(mediaRecorder&&mediaRecorder.state!=='inactive')mediaRecorder.stop();};
+  document.getElementById('closeAudio').onclick=()=>{if(mediaRecorder&&mediaRecorder.state!=='inactive')mediaRecorder.stop();};
+  document.getElementById('fabSound').onclick=()=>openAudioModal('sound');
+  document.getElementById('fabMsg').onclick=()=>openAudioModal('voice');
+
+  const moodModal=document.getElementById('moodModal');
+  const moodSlider=document.getElementById('moodSlider');
+  const moodValEl=document.getElementById('moodVal');
+  const moodThumb=document.getElementById('moodThumb');
+  const moodSaveBtn=document.getElementById('moodSave');
+  function updateMoodUI(v){const col=moodColor(v);moodValEl.textContent=v;moodValEl.style.color=col;moodThumb.style.borderColor=col;moodThumb.style.left=((v-1)/4*100)+'%';moodSaveBtn.style.background=col;}
+  updateMoodUI(3);
+  moodSlider.addEventListener('input',()=>updateMoodUI(parseInt(moodSlider.value)));
+  document.getElementById('moodCancel').addEventListener('click',()=>{moodModal.style.display='none';});
+  document.getElementById('moodSave').addEventListener('click',()=>{
+    if(!requireWalk())return;
+    const val=parseInt(moodSlider.value),col=moodColor(val),note=document.getElementById('moodText').value.trim();
+    const pos=getPos(),ts=new Date().toLocaleTimeString();
+    state.current.entries.push({type:'mood',location:{lat:pos.lat,lng:pos.lng},timestamp:ts,moodValue:val,markerColor:col,text:note});
+    const icon=L.divIcon({className:'',html:'<div style="width:22px;height:22px;border-radius:50%;background:'+col+';border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;"><span style="color:#fff;font-size:10px;font-weight:bold;">'+val+'</span></div>',iconSize:[22,22],iconAnchor:[11,11],popupAnchor:[0,-14]});
+    const popup='<div style="min-width:150px;padding:4px;"><b style="font-size:13px;">Stimmung</b><br><div style="margin:8px 0 4px;background:#eee;border-radius:6px;height:10px;overflow:hidden;"><div style="height:100%;width:'+((val-1)/4*100)+'%;background:'+col+';border-radius:6px;"></div></div><span style="font-size:22px;font-weight:bold;color:'+col+';">'+val+'</span><span style="font-size:12px;color:#aaa;"> / 100</span>'+(note?'<br><span style="font-size:11px;color:#555;margin-top:4px;display:block;">'+note+'</span>':'')+'<br><span style="font-size:10px;color:#bbb;">'+ts+'</span></div>';
+    mapLayers['mood']=mapLayers['mood']||[];const m=L.marker([pos.lat,pos.lng],{icon}).bindPopup(popup);mapLayers['mood'].push(m);
+    if(layerVisibility['mood']!==false){m.addTo(state.map);setTimeout(()=>m.openPopup(),100);}
+    moodModal.style.display='none';document.getElementById('moodText').value='';moodSlider.value=3;updateMoodUI(3);
+  });
+  document.getElementById('fabMood').addEventListener('click',()=>{if(!requireWalk())return;moodModal.style.display='flex';});
+
+  const thoughtModal=document.getElementById('thoughtModal');
+  document.getElementById('thoughtCancel').onclick=()=>{thoughtModal.style.display='none';};
+  document.getElementById('thoughtSave').onclick=()=>{
+    if(!requireWalk())return;const t=document.getElementById('thoughtText').value.trim();const pos=getPos();const ts=new Date().toLocaleTimeString();
+    state.current.entries.push({type:'thought',location:{lat:pos.lat,lng:pos.lng},timestamp:ts,text:t||'(kein Text)'});
+    const icon=makeDotIcon('#22c55e',20);const popup='<div style="min-width:140px;"><b>Gedanke</b><br><p style="margin:4px 0;font-size:12px;color:#333;">'+(t||'—')+'</p><small style="color:#aaa;">'+ts+'</small></div>';
+    mapLayers['thought']=mapLayers['thought']||[];const m=L.marker([pos.lat,pos.lng],{icon}).bindPopup(popup);mapLayers['thought'].push(m);
+    if(layerVisibility['thought']!==false){m.addTo(state.map);m.openPopup();}
+    thoughtModal.style.display='none';document.getElementById('thoughtText').value='';
+  };
+  document.getElementById('fabThought').onclick=()=>{if(!requireWalk())return;thoughtModal.style.display='flex';};
+
+  const senseModal=document.getElementById('senseModal');
+  document.getElementById('senseCancel').onclick=()=>{senseModal.style.display='none';};
+  document.getElementById('senseSave').onclick=()=>{
+    if(!requireWalk())return;const t=document.getElementById('senseText').value.trim();const pos=getPos();const ts=new Date().toLocaleTimeString();
+    state.current.entries.push({type:'sense',location:{lat:pos.lat,lng:pos.lng},timestamp:ts,text:t||'(keine Eingabe)'});
+    const icon=makeDotIcon('#f97316',20);const popup='<div style="min-width:140px;"><b>Wahrnehmung</b><br>'+(t?'<p style="margin:4px 0;font-size:12px;color:#333;">'+t+'</p>':'')+'<small style="color:#aaa;">'+ts+'</small></div>';
+    mapLayers['sense']=mapLayers['sense']||[];const m=L.marker([pos.lat,pos.lng],{icon}).bindPopup(popup);mapLayers['sense'].push(m);
+    if(layerVisibility['sense']!==false){m.addTo(state.map);m.openPopup();}
+    senseModal.style.display='none';document.getElementById('senseText').value='';
+  };
+  document.getElementById('fabSense').onclick=()=>{if(!requireWalk())return;senseModal.style.display='flex';};
+
+  function toggleWalk(id){
+    const walk=state.walks.find(w=>w.id==id);if(!walk)return;
+    const header=document.querySelector('.walk-header[data-id="'+id+'"]');
+    const actions=document.querySelector('.walk-actions[data-id="'+id+'"]');
+    if(state.activeLayers[id]){
+      state.map.removeLayer(state.activeLayers[id]);delete state.activeLayers[id];
+      if(state.archiveInkLayers[id]){state.map.removeLayer(state.archiveInkLayers[id]);delete state.archiveInkLayers[id];}
+      if(header)header.classList.remove('shown');if(actions)actions.classList.remove('open');
+    } else {
+      const group=L.layerGroup();
+      if(walk.segments&&walk.segments.length>0){
+        const ai=new InkLayer();ai.addTo(state.map);walk.segments.forEach(s=>ai.addSegment(s.ll1,s.ll2,s.weight,s.opacity));state.archiveInkLayers[id]=ai;if(!layerVisibility.route)ai._canvas.style.display='none';
+      } else if(walk.route&&walk.route.length>1){
+        const ai=new InkLayer();ai.addTo(state.map);for(let i=1;i<walk.route.length;i++)ai.addSegment(walk.route[i-1],walk.route[i],6,0.7);state.archiveInkLayers[id]=ai;if(!layerVisibility.route)ai._canvas.style.display='none';
+      }
+      walk.entries.forEach(e=>{
+        let popup='<b>'+(e.type||'').toUpperCase()+'</b><br>'+(e.text||e.audioDuration||'');
+        if(e.dataUrl)popup='<img src="'+e.dataUrl+'" style="width:180px;border-radius:6px;"/><br><small>'+(e.timestamp||'')+'</small>';
+        if(e.audioUrl)popup+='<br><audio controls src="'+e.audioUrl+'" style="width:180px;margin-top:4px;"></audio>';
+        const dc=e.type==='thought'?'#22c55e':e.type==='sense'?'#f97316':e.type==='mood'?(e.markerColor||walk.color):e.type==='voice'?'#7c3aed':e.type==='sound'?'#f97316':e.type==='photo'?'#555':walk.color;
+        const dr=(e.type==='mood'||e.type==='thought'||e.type==='sense')?7:5;
+        const dop=(e.type==='photo'||e.type==='voice'||e.type==='sound')?0.6:0.92;
+        L.circleMarker([e.location.lat,e.location.lng],{color:'#fff',weight:2,fillColor:dc,fillOpacity:0.95,radius:dr+1}).addTo(group).bindPopup(popup);
+      });
+      group.addTo(state.map);state.activeLayers[id]=group;
+      if(header)header.classList.add('shown');if(actions)actions.classList.add('open');
+      // Auto-Zoom: gesamte Route + Marker in den Blick nehmen
+      if(walk.route&&walk.route.length>1){
+        const bounds=L.latLngBounds(walk.route);
+        walk.entries.forEach(e=>{if(e.location)bounds.extend([e.location.lat,e.location.lng]);});
+        state.map.fitBounds(bounds,{padding:[60,60],maxZoom:17,animate:true,duration:0.8});
+      }
+    }
+  }
+  window.toggleWalk=toggleWalk;
+
+
+  // ── REFLEXION: Leaflet-Karte + Tuschelinie + Sprechblasen-Marker ──
+  let rqCurrentWalkId=null;
+  let verlaufMap=null;
+
+  function openVerlauf(walk){
+    rqCurrentWalkId=walk.id;
+    document.getElementById('verlaufTitle').textContent='Reflexion: '+walk.name;
+    document.getElementById('verlaufModal').classList.add('open');
+    document.getElementById('verlaufEntryCard').style.display='none';
+    document.getElementById('verlaufEntryCard').innerHTML='';
+    document.getElementById('verlaufInfo').textContent='';
+
+    // Reflexion laden
+    const ref=walk.reflection||{};
+    document.getElementById('rqFrei').value=ref.frei||'';
+    document.getElementById('rqMoment').value=ref.moment||'';
+    document.getElementById('rqOrte').value=ref.orte||'';
+    document.getElementById('rqNicht').value=ref.nicht||'';
+    document.getElementById('rqUeber').value=ref.ueber||'';
+    const mr=ref.moodRetro!==undefined?ref.moodRetro:3;
+    document.getElementById('rqMoodSlider').value=mr;
+    document.getElementById('rqMoodVal').textContent=mr;
+    document.getElementById('rqMoodVal').style.color=moodColor(mr);
+    document.getElementById('reflexionQPanel').style.display='flex';
+
+    const entries=walk.entries.filter(e=>e.location);
+    const route=walk.route||[];
+
+    if(route.length<2){
+      document.getElementById('verlaufInfo').textContent='Keine Route aufgezeichnet.';
+      return;
+    }
+
+    // Alte Karte entfernen
+    if(verlaufMap){verlaufMap.remove();verlaufMap=null;}
+    document.getElementById('verlaufMapDiv').innerHTML='';
+
+    // Leaflet-Karte
+    verlaufMap=L.map('verlaufMapDiv',{
+      zoomControl:true,
+      attributionControl:false,
+      dragging:true,
+      scrollWheelZoom:false,
+      touchZoom:true,
+      doubleClickZoom:true,
+      tap:false,
+      tapTolerance:20,
+      bounceAtZoomLimits:false,
+      zoomSnap:0.25,
+      zoomDelta:0.25
+    });
+    // Touch-Events direkt auf Map-Container erlauben
+    verlaufMap.getContainer().style.touchAction='none';
+
+    // Graustufen-Karte
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
+      maxZoom:19, subdomains:'abcd'
+    }).addTo(verlaufMap);
+
+    // ── Tuschlinie: gespeicherte Segmente direkt übernehmen ──
+    // walk.segments enthält ll1, ll2, weight, opacity — exakt wie auf der Hauptkarte
+    const inkCanvas=L.canvas({padding:0.5});
+    const segments=walk.segments||[];
+
+    if(segments.length>0){
+      // Jedes Segment als eigene Polyline mit originalem Gewicht + Transparenz
+      segments.forEach(s=>{
+        L.polyline([s.ll1,s.ll2],{
+          color:'rgba(14,10,4,'+Math.min(s.opacity,1)+')',
+          weight:s.weight,
+          lineCap:'round',
+          lineJoin:'round',
+          smoothFactor:0,
+          renderer:inkCanvas
+        }).addTo(verlaufMap);
+      });
+    } else if(route.length>1){
+      // Fallback: einfache Linie wenn keine Segmente gespeichert
+      L.polyline(route,{
+        color:'rgba(14,10,4,0.7)',
+        weight:4,lineCap:'round',lineJoin:'round'
+      }).addTo(verlaufMap);
+    }
+    // Unsichtbare Linie für fitBounds
+    const routeLine=L.polyline(route,{opacity:0,weight:0}).addTo(verlaufMap);
+
+    // Start/Ende
+    L.circleMarker(route[0],{
+      radius:7, fillColor:'#22c55e', color:'#fff', weight:2, fillOpacity:1
+    }).addTo(verlaufMap).bindTooltip('Start',{permanent:false});
+
+    L.circleMarker(route[route.length-1],{
+      radius:7, fillColor:'#ef4444', color:'#fff', weight:2, fillOpacity:1
+    }).addTo(verlaufMap).bindTooltip('Ende',{permanent:false});
+
+    // ── Eintrags-Marker als Sprechblasen (DivIcon) ──
+    const typeColor={mood:'#f97316',thought:'#1e3a6e',sense:'#2d5a2d',voice:'#7c3aed',sound:'#f58231',photo:'#2a2a2a'};
+    const typeIcon={mood:'🔋',thought:'💭',sense:'👁',voice:'💬',sound:'🎙',photo:'📸'};
+    const typeText={mood:'Stimmung',thought:'Gedanke',sense:'Wahrnehmung',voice:'Sprache',sound:'Sound',photo:'Foto'};
+
+    entries.forEach(e=>{
+      if(!e.location)return;
+      const col=typeColor[e.type]||'#555';
+      const ico=typeIcon[e.type]||'●';
+
+      // Inhalt der Blase
+      let inner='';
+      if(e.type==='mood'&&e.moodValue!=null){
+        inner=`<span style="font-size:15px;font-weight:bold;line-height:1;">${e.moodValue}</span><span style="font-size:8px;opacity:0.8;">/5</span>`;
+      } else if(e.text){
+        const short=e.text.substring(0,18)+(e.text.length>18?'…':'');
+        inner=`<span style="font-size:8px;line-height:1.3;">${escHtml(short)}</span>`;
+      } else {
+        inner=`<span style="font-size:14px;">${ico}</span>`;
+      }
+
+      const html=`
+        <div style="
+          position:relative;
+          background:${col};
+          color:#fff;
+          border:2px solid #fff;
+          border-radius:10px 10px 10px 0;
+          padding:5px 8px;
+          min-width:52px;
+          max-width:90px;
+          box-shadow:0 3px 10px rgba(0,0,0,0.35);
+          display:flex;
+          flex-direction:column;
+          align-items:center;
+          gap:1px;
+          cursor:pointer;
+          -webkit-tap-highlight-color:transparent;
+        ">
+          <div style="font-size:7px;font-weight:bold;opacity:0.85;text-transform:uppercase;letter-spacing:0.3px;white-space:nowrap;">${typeText[e.type]||e.type}</div>
+          <div style="display:flex;align-items:center;gap:3px;">${inner}</div>
+        </div>`;
+
+      const icon=L.divIcon({
+        className:'',
+        html,
+        iconSize:[null,null],
+        iconAnchor:[0,42],
+        popupAnchor:[45,-42]
+      });
+
+      // Popup mit vollem Inhalt
+      let popupHTML=`<div style="min-width:180px;font-size:12px;padding:2px;">
+        <div style="font-weight:bold;color:${col};margin-bottom:4px;">${ico} ${typeText[e.type]||e.type}</div>`;
+      if(e.type==='mood'&&e.moodValue!=null)
+        popupHTML+=`<div style="font-size:24px;font-weight:bold;color:${col};">${e.moodValue}<span style="font-size:12px;color:#aaa;"> /5</span></div>`;
+      if(e.text) popupHTML+=`<div style="margin-top:4px;color:#333;line-height:1.5;">${escHtml(e.text)}</div>`;
+      if(e.timestamp) popupHTML+=`<div style="font-size:10px;color:#aaa;margin-top:4px;">${e.timestamp}</div>`;
+      // Audio: audioUrl nur in-session verfügbar (nach Reload aus audioBlobs)
+      const aUrl=e.audioUrl||(e.entryId&&audioBlobs[e.entryId]?URL.createObjectURL(audioBlobs[e.entryId]):null);
+      if(aUrl) popupHTML+=`<audio controls src="${aUrl}" style="width:100%;margin-top:8px;height:36px;"></audio>`;
+      if(e.dataUrl) popupHTML+=`<img src="${e.dataUrl}" style="width:100%;border-radius:8px;margin-top:8px;max-height:200px;object-fit:cover;"/>`;
+      popupHTML+='</div>';
+
+      L.marker([e.location.lat,e.location.lng],{icon})
+        .addTo(verlaufMap)
+        .bindPopup(popupHTML,{maxWidth:260,closeButton:true,className:'vgl-popup'});
+    });
+
+    // Karte auf Route zoomen
+    verlaufMap.fitBounds(routeLine.getBounds(),{padding:[30,30]});
+    setTimeout(()=>verlaufMap.invalidateSize(),300);
+
+    document.getElementById('verlaufInfo').textContent=
+      `${entries.length} Einträge · Scrollen & Zoomen mit 2 Fingern · Marker antippen`;
+  }
+
+  document.getElementById('verlaufClose').onclick=()=>{
+    document.getElementById('verlaufModal').classList.remove('open');
+    if(verlaufMap){verlaufMap.remove();verlaufMap=null;}
+  };
+
+  document.getElementById('rqMoodSlider').addEventListener('input',function(){
+    const v=parseInt(this.value),col=moodColor(v);
+    document.getElementById('rqMoodVal').textContent=v;
+    document.getElementById('rqMoodVal').style.color=col;
+  });
+
+  document.getElementById('rqSaveBtn').onclick=()=>{
+    if(!rqCurrentWalkId)return;
+    const walk=state.walks.find(w=>w.id==rqCurrentWalkId);
+    if(!walk)return;
+    if(!walk.reflection)walk.reflection={};
+    walk.reflection.frei=document.getElementById('rqFrei').value;
+    walk.reflection.moodRetro=parseInt(document.getElementById('rqMoodSlider').value);
+    walk.reflection.moment=document.getElementById('rqMoment').value;
+    walk.reflection.orte=document.getElementById('rqOrte').value;
+    walk.reflection.nicht=document.getElementById('rqNicht').value;
+    walk.reflection.ueber=document.getElementById('rqUeber').value;
+    saveWalks();
+    const btn=document.getElementById('rqSaveBtn');
+    btn.textContent='✓ Gespeichert';btn.style.background='#16a34a';
+    setTimeout(()=>{btn.textContent='💾 Reflexion speichern';btn.style.background='#2563eb';},2000);
+  };
+
+  // ── WALK-VERGLEICH ──
+  let vergleichMaps={};
+  const selectedForVergleich=new Set();
+
+  function toggleVergleichSelect(id){
+    if(selectedForVergleich.has(id)) selectedForVergleich.delete(id);
+    else selectedForVergleich.add(id);
+    // Button sichtbar wenn mind. 2 ausgewählt
+    const btn=document.getElementById('btnVergleich');
+    if(btn) btn.style.display=selectedForVergleich.size>=2?'block':'none';
+    // Checkbox-Optik aktualisieren
+    const cb=document.querySelector(`.vgl-cb[data-id="${id}"]`);
+    if(cb) cb.checked=selectedForVergleich.has(id);
+  }
+
+  document.getElementById('btnVergleich').onclick=()=>openVergleich();
+
+  function openAnalyse(walk){
+    destroyAnalyseCharts();
+    document.getElementById('analyseWalkName').textContent='Auswertung: '+walk.name;
+    const moodEntries=walk.entries.filter(e=>e.type==='mood'&&e.moodValue!==undefined);
+    const aufgezWerte=moodEntries.map(e=>e.moodValue);
+    const avgAufgez=aufgezWerte.length?Math.round(aufgezWerte.reduce((a,b)=>a+b,0)/aufgezWerte.length):null;
+    const ref=walk.reflection||{};
+    const moodRetro=ref.moodRetro!==undefined?ref.moodRetro:null;
+    const diskrepanz=(avgAufgez!==null&&moodRetro!==null)?(moodRetro-avgAufgez):null;
+    document.getElementById('aStat1').textContent=avgAufgez!==null?avgAufgez:'—';
+    document.getElementById('aStat2').textContent=moodRetro!==null?moodRetro:'—';
+    document.getElementById('aStat3').textContent=diskrepanz!==null?(diskrepanz>=0?'+':'')+diskrepanz:'—';
+    document.getElementById('aStat3').style.color=diskrepanz>0?'#7c3aed':diskrepanz<0?'#dc2626':'#374151';
+    const chartLabels=moodEntries.length>0?moodEntries.map((e,i)=>e.timestamp||(i+1)+'.'):['—'];
+    const chartData=aufgezWerte.length>0?aufgezWerte:[0];
+    const erinData=chartData.map(v=>moodRetro!==null?Math.min(5,Math.max(1,Math.round(v*0.4+moodRetro*0.6))):v);
+    const chartOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:1,max:5,ticks:{color:'#888',font:{size:10}},grid:{color:'rgba(0,0,0,0.04)'}},x:{ticks:{color:'#888',font:{size:10}},grid:{display:false}}}};
+    analyseCharts.aufz=new Chart(document.getElementById('chartAufz').getContext('2d'),{type:'line',data:{labels:chartLabels,datasets:[{data:chartData,borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.08)',borderWidth:2,pointRadius:4,pointBackgroundColor:'#1D9E75',tension:0.4,fill:true}]},options:chartOpts});
+    analyseCharts.erin=new Chart(document.getElementById('chartErin').getContext('2d'),{type:'line',data:{labels:chartLabels,datasets:[{data:erinData,borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,0.08)',borderWidth:2,pointRadius:4,pointBackgroundColor:'#534AB7',tension:0.4,fill:true}]},options:chartOpts});
+    const db=document.getElementById('diskBars');db.innerHTML='';
+    if(chartData.length>=2){
+      const ss=Math.ceil(chartData.length/4);
+      for(let i=0;i<4;i++){
+        const seg=chartData.slice(i*ss,(i+1)*ss);const segE=erinData.slice(i*ss,(i+1)*ss);if(!seg.length)break;
+        const aS=seg.reduce((a,b)=>a+b,0)/seg.length;const aE=segE.reduce((a,b)=>a+b,0)/segE.length;
+        const diff=Math.round(aE-aS);const pct=Math.min(Math.abs(diff),50)*2;const col=diff>=0?'#22c55e':'#ef4444';
+        db.innerHTML+='<div class="disk-row"><div style="width:64px;font-size:10px;color:#6b7280;">Abschn. '+(i+1)+'</div><div class="disk-bar-bg"><div class="disk-bar-fill" style="width:'+pct+'%;background:'+col+';"></div></div><div style="font-size:10px;color:#6b7280;min-width:30px;text-align:right;">'+(diff>=0?'+':'')+diff+'</div></div>';
+      }
+    } else {
+      db.innerHTML='<div style="font-size:11px;color:#9ca3af;">Mind. 2 Stimmungsmarker für Segmentauswertung.</div>';
+    }
+    document.getElementById('refFreiDisplay').textContent=ref.frei||'(keine freie Reflexion)';
+    const rA=document.getElementById('refAnswersDisplay');
+    const fragen=[{l:'Stärkster Moment',v:ref.moment},{l:'Orte & Einflüsse',v:ref.orte},{l:'Nicht Aufgezeichnetes',v:ref.nicht},{l:'Überraschung',v:ref.ueber}];
+    rA.innerHTML=fragen.map(f=>f.v?'<div style="border-left:3px solid #e5e5e5;padding-left:8px;"><div style="font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;margin-bottom:2px;">'+f.l+'</div><div style="font-size:11px;color:#374151;">'+escHtml(f.v)+'</div></div>':'').join('');
+    document.getElementById('analyseModal').classList.add('open');
+  }
+
+  function openVergleich(){
+    if(selectedForVergleich.size<2) return;
+    const walks=Array.from(selectedForVergleich)
+      .map(id=>state.walks.find(w=>w.id==id)).filter(Boolean);
+
+    const overlay=document.getElementById('vglOverlay');
+    overlay.style.display='flex';
+    const list=document.getElementById('vglList');
+    list.innerHTML='';
+    document.getElementById('vglInfo').style.display='none';
+
+    walks.forEach((walk,wi)=>{
+      const ref=walk.reflection||{};
+      const moodE=walk.entries.filter(e=>e.type==='mood'&&e.moodValue!=null);
+      const avg=moodE.length?Math.round(moodE.reduce((a,b)=>a+b.moodValue,0)/moodE.length):null;
+
+      // Walk-Karte
+      const card=document.createElement('div');
+      card.style.cssText='background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);';
+
+      // Titel
+      const ttl=document.createElement('div');
+      ttl.style.cssText='display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #f0f0f0;';
+      ttl.innerHTML=
+        `<span style="width:10px;height:10px;border-radius:50%;background:${walk.color};flex-shrink:0;display:inline-block;"></span>`
+        +`<span style="color:#111;font-size:12px;font-weight:bold;flex:1;">${escHtml(walk.name)}</span>`
+        +(avg!=null?`<span style="color:${moodColor(avg)};font-size:11px;font-weight:bold;">${avg}/5</span>`:'')
+        +(ref.moodRetro!=null?`<span style="color:#aaa;font-size:10px;margin-left:4px;">↩${ref.moodRetro}/5</span>`:'');
+      card.appendChild(ttl);
+
+      // Canvas-Szene (horizontal scrollbar)
+      const scroller=document.createElement('div');
+      scroller.style.cssText='overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;background:#e8e5e0;';
+      const cv=document.createElement('canvas');
+      scroller.appendChild(cv);
+      card.appendChild(scroller);
+
+      // Einträge-Liste (vertikal, antippbar)
+      const entryList=document.createElement('div');
+      entryList.style.cssText='display:flex;flex-direction:column;';
+      walk.entries.forEach((e,ei)=>{
+        if(!e.location&&!e.text&&!e.audioUrl&&!e.dataUrl) return;
+        const TC={mood:'#ea580c',thought:'#2563eb',sense:'#16a34a',voice:'#7c3aed',sound:'#7c3aed',photo:'#374151'};
+        const TN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Wahrnehmung',voice:'💬 Sprache',sound:'🎙 Sound',photo:'📸 Foto'};
+        const col=TC[e.type]||'#555';
+        const row=document.createElement('div');
+        row.style.cssText='padding:10px 14px;border-bottom:1px solid #f5f5f5;cursor:pointer;';
+        // Header
+        let rHtml=`<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+          <span style="font-weight:bold;font-size:11px;color:${col};">${TN[e.type]||e.type}</span>`;
+        if(e.type==='mood'&&e.moodValue!=null)
+          rHtml+=`<span style="font-size:14px;font-weight:bold;color:${col};">${e.moodValue}/5</span>`;
+        if(e.timestamp)
+          rHtml+=`<span style="color:#aaa;font-size:10px;margin-left:auto;">${e.timestamp}</span>`;
+        rHtml+='</div>';
+        // Text
+        if(e.text) rHtml+=`<div style="font-size:12px;color:#333;line-height:1.5;">${escHtml(e.text)}</div>`;
+        // Audio
+        const aUrl=e.audioUrl||(e.entryId&&audioBlobs[e.entryId]?URL.createObjectURL(audioBlobs[e.entryId]):null);
+        if(aUrl) rHtml+=`<audio controls src="${aUrl}" style="width:100%;margin-top:6px;height:36px;"></audio>`;
+        // Foto-Vorschau
+        if(e.dataUrl) rHtml+=`<img src="${e.dataUrl}" style="width:100%;border-radius:8px;margin-top:6px;max-height:200px;object-fit:cover;"/>`;
+        row.innerHTML=rHtml;
+        entryList.appendChild(row);
+      });
+      if(entryList.children.length>0) card.appendChild(entryList);
+
+      if(ref.frei){
+        const q=document.createElement('div');
+        q.style.cssText='padding:8px 14px;font-size:10px;color:#aaa;font-style:italic;border-top:1px solid #f0f0f0;background:#fafafa;';
+        q.textContent='"'+ref.frei.substring(0,100)+(ref.frei.length>100?'…':'')+'"';
+        card.appendChild(q);
+      }
+      list.appendChild(card);
+
+      // Canvas zeichnen
+      setTimeout(()=>{
+        try{drawSkizze(cv,scroller,walk);}
+        catch(err){console.error('drawSkizze:',err);}
+      }, 60+wi*40);
+    });
+  }
+  function drawSkizze(canvas, scroller, walk){
+    const route=walk.route||[];
+    function hdist(a,b){const R=6371000,tr=x=>x*Math.PI/180,dLat=tr(b[0]-a[0]),dLon=tr(b[1]-a[1]),h=Math.sin(dLat/2)**2+Math.cos(tr(a[0]))*Math.cos(tr(b[0]))*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
+    const H=160, DPR=Math.min(window.devicePixelRatio||1,2);
+
+    if(route.length<2){
+      canvas.width=300*DPR; canvas.height=H*DPR;
+      canvas.style.cssText='width:300px;height:'+H+'px;display:block;';
+      const ctx=canvas.getContext('2d'); ctx.scale(DPR,DPR);
+      ctx.fillStyle='#e8e5e0'; ctx.fillRect(0,0,300,H);
+      ctx.fillStyle='#aaa'; ctx.font='12px sans-serif'; ctx.textAlign='center';
+      ctx.fillText('Keine Route',150,H/2); return;
+    }
+
+    const skip=Math.max(1,Math.floor(route.length/80));
+    const pts=route.filter((_,i)=>i%skip===0||i===route.length-1);
+    let cum=[0];
+    for(let i=1;i<pts.length;i++) cum.push(cum[i-1]+hdist(pts[i-1],pts[i]));
+    const totalDist=cum[cum.length-1]||1;
+    function nIdx(lat,lng){let b=0,bd=Infinity;pts.forEach((p,i)=>{const d=hdist([lat,lng],p);if(d<bd){bd=d;b=i;}});return b;}
+
+    const PAD=30;
+    const W=Math.max(window.innerWidth-24, Math.round(totalDist*0.3)+PAD*2, 400);
+    canvas.width=W*DPR; canvas.height=H*DPR;
+    canvas.style.cssText='width:'+W+'px;height:'+H+'px;display:block;';
+    const ctx=canvas.getContext('2d');
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+
+    function rx(d){return PAD+(d/totalDist)*(W-PAD*2);}
+    function rxI(i){return rx(cum[Math.min(i,cum.length-1)]);}
+    const RY=Math.round(H*0.68);
+
+    // Himmel
+    const skyG=ctx.createLinearGradient(0,0,0,RY);
+    skyG.addColorStop(0,'#c8c5c0'); skyG.addColorStop(1,'#dbd8d2');
+    ctx.fillStyle=skyG; ctx.fillRect(0,0,W,H);
+
+    // Berge
+    const lats=pts.map(p=>p[0]);
+    const minLat=Math.min(...lats), latSpan=Math.max(...lats)-minLat||0.001;
+    [H*0.20, H*0.11, H*0.02].forEach((off,li)=>{
+      ctx.beginPath(); ctx.moveTo(0,H);
+      const step=Math.max(1,Math.floor(pts.length/24));
+      pts.forEach((p,i)=>{
+        if(i%step!==0&&i!==pts.length-1)return;
+        ctx.lineTo(rxI(i), RY-off-(p[0]-minLat)/latSpan*H*0.16);
+      });
+      ctx.lineTo(W,H); ctx.closePath();
+      ctx.fillStyle='rgba(110,106,100,'+(0.45+li*0.18)+')'; ctx.fill();
+    });
+
+    // Boden (hell)
+    const grd=ctx.createLinearGradient(0,RY,0,H);
+    grd.addColorStop(0,'#c8c4bc'); grd.addColorStop(1,'#b8b4ac');
+    ctx.fillStyle=grd; ctx.fillRect(0,RY,W,H-RY);
+    for(let x=0;x<W;x+=3){
+      ctx.fillStyle='rgba(50,40,30,'+(0.03+Math.random()*0.06)+')';
+      ctx.fillRect(x,RY-(Math.random()*2),2,2);
+    }
+
+    // ── Tuschlinie DUNKEL auf hellem Boden ──
+    const segs=walk.segments||[];
+    if(segs.length>0){
+      segs.forEach(s=>{
+        if(!s.ll1||!s.ll2)return;
+        const x1=rxI(nIdx(s.ll1[0],s.ll1[1]));
+        const x2=rxI(nIdx(s.ll2[0],s.ll2[1]));
+        if(Math.abs(x2-x1)<0.2)return;
+        ctx.beginPath();
+        ctx.moveTo(x1+(Math.random()-0.5)*0.4, RY+(Math.random()-0.5)*0.3);
+        ctx.lineTo(x2+(Math.random()-0.5)*0.4, RY+(Math.random()-0.5)*0.3);
+        ctx.strokeStyle='rgba(15,10,5,'+Math.min(s.opacity*1.6,0.95)+')';
+        ctx.lineWidth=Math.max(2.5,s.weight*0.85);
+        ctx.lineCap='round'; ctx.stroke();
+      });
+    } else {
+      // Fallback
+      ctx.beginPath(); let f=true;
+      cum.forEach((_,j)=>{const x=rxI(j);f?(ctx.moveTo(x,RY),f=false):ctx.lineTo(x,RY);});
+      ctx.strokeStyle='rgba(15,10,5,0.85)'; ctx.lineWidth=4;
+      ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();
+    }
+
+    // Start/Ende
+    [{x:rx(0),c:'#16a34a'},{x:rx(totalDist),c:'#dc2626'}].forEach(({x,c})=>{
+      ctx.beginPath(); ctx.arc(x,RY,5,0,Math.PI*2);
+      ctx.fillStyle=c; ctx.fill();
+      ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+    });
+
+    // Marker (kleine Punkte auf der Linie)
+    const TC={mood:'#ea580c',thought:'#2563eb',sense:'#16a34a',voice:'#7c3aed',sound:'#7c3aed',photo:'#374151'};
+    const buckets={};
+    walk.entries.forEach(e=>{
+      if(!e.location)return;
+      const i=nIdx(e.location.lat,e.location.lng);
+      const x=rxI(i), col=TC[e.type]||'#555';
+      const bk=Math.round(x/50);
+      buckets[bk]=(buckets[bk]||0)+1;
+      const R=10, pinY=RY-14-(buckets[bk]-1)*26;
+      // Stiel
+      ctx.beginPath(); ctx.moveTo(x,RY-2); ctx.lineTo(x,pinY+R);
+      ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1; ctx.stroke();
+      // Punkt
+      ctx.beginPath(); ctx.arc(x,pinY,R,0,Math.PI*2);
+      ctx.fillStyle=col; ctx.fill();
+      ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke();
+    });
+  }
+  document.getElementById('vglClose').onclick=()=>{
+    document.getElementById('vglOverlay').style.display='none';
+  };
+  document.getElementById('vergleichClose').onclick=()=>{
+    document.getElementById('vergleichModal').style.display='none';
+    Object.values(vergleichMaps).forEach(m=>{try{m.remove();}catch(e){}});
+    vergleichMaps={};
+  };
+
+  function renderArchive(){
+    // Walks frisch aus localStorage laden (verhindert Verlust nach Reload)
+    try{
+      const saved=localStorage.getItem('psychogeo_walks');
+      if(saved){
+        const parsed=JSON.parse(saved);
+        if(parsed.length>0) state.walks=parsed;
+      }
+    }catch(e){}
+    const list=document.getElementById('archiveList');
+    if(!state.walks.length){list.innerHTML='<div style="font-size:11px;color:#999;">Noch keine Walks gespeichert.</div>';return;}
+    list.innerHTML='';
+    state.walks.forEach(w=>{
+      const item=document.createElement('div');item.className='walk-item';
+      const hasRef=w.reflection&&(w.reflection.frei||w.reflection.moment);
+
+      // Vergleich-Checkbox — als eigenes Input-Element erstellen
+      const cbRow=document.createElement('div');
+      cbRow.style.cssText='display:flex;align-items:center;padding:4px 10px 0;gap:6px;font-size:10px;color:#9ca3af;';
+      const cb=document.createElement('input');
+      cb.type='checkbox'; cb.style.cursor='pointer';
+      cb.checked=selectedForVergleich.has(w.id);
+      cb.addEventListener('change',()=>toggleVergleichSelect(w.id));
+      cbRow.appendChild(cb);
+      cbRow.appendChild(document.createTextNode(' Vergleich'));
+      item.appendChild(cbRow);
+
+      // Walk-Header
+      const header=document.createElement('div');
+      header.className='walk-header';
+      header.setAttribute('data-id',w.id);
+      header.innerHTML='<span class="color-dot" style="background:'+w.color+'"></span>'
+        +'<span class="walk-label">'+escHtml(w.name)
+        +(w.steps?'<br><span style="font-size:9px;color:#9ca3af;font-weight:normal;">👣 '
+          +(w.steps||0).toLocaleString('de-DE')+' Schritte'+(hasRef?' · ✍️':'')+' · '
+          +w.entries.length+' Eintr.</span>':'')
+        +'</span><span class="walk-badge">sichtbar</span>';
+      header.addEventListener('click',()=>toggleWalk(w.id));
+      item.appendChild(header);
+
+      // Aktions-Buttons
+      const actions=document.createElement('div');
+      actions.className='walk-actions';
+      actions.setAttribute('data-id',w.id);
+      const nameInput=document.createElement('input');
+      nameInput.className='walk-name-input'; nameInput.type='text';
+      nameInput.placeholder='Name ändern...'; nameInput.value=escHtml(w.name);
+      actions.appendChild(nameInput);
+      const btnRow=document.createElement('div');
+      btnRow.className='walk-btn-row';
+      [
+        {cls:'wb-save',  label:'✏️ Umbenennen'},
+        {cls:'wb-verlauf',label:'📋 Reflexion'},
+        {cls:'wb-analyse',label:'📊 Auswerten'},
+        {cls:'wb-export', label:'📦 Export'},
+        {cls:'wb-delete', label:'🗑'},
+      ].forEach(({cls,label})=>{
+        const btn=document.createElement('button');
+        btn.className='walk-btn '+cls; btn.textContent=label;
+        btnRow.appendChild(btn);
+      });
+      actions.appendChild(btnRow);
+      item.appendChild(actions);
+
+      // Button-Handler
+      actions.querySelector('.wb-save').onclick=()=>{
+        const n=nameInput.value.trim();if(!n)return;
+        w.name=n;header.querySelector('.walk-label').firstChild.textContent=n;saveWalks();
+      };
+      actions.querySelector('.wb-analyse').onclick=()=>openAnalyse(w);
+      actions.querySelector('.wb-verlauf').onclick=()=>openVerlauf(w);
+      actions.querySelector('.wb-export').onclick=()=>exportWalk(w);
+      actions.querySelector('.wb-delete').onclick=()=>{
+        if(!confirm('Walk "'+w.name+'" wirklich löschen?'))return;
+        if(state.activeLayers[w.id]){state.map.removeLayer(state.activeLayers[w.id]);delete state.activeLayers[w.id];}
+        if(state.archiveInkLayers[w.id]){state.map.removeLayer(state.archiveInkLayers[w.id]);delete state.archiveInkLayers[w.id];}
+        state.walks=state.walks.filter(x=>x.id!==w.id);saveWalks();renderArchive();
+      };
+
+      list.appendChild(item);
+    });
+    // Aktive Walks wieder als 'shown' markieren
+    Object.keys(state.activeLayers).forEach(id=>{
+      const h=list.querySelector('.walk-header[data-id="'+id+'"]');
+      const a=list.querySelector('.walk-actions[data-id="'+id+'"]');
+      if(h)h.classList.add('shown');
+      if(a)a.classList.add('open');
     });
   }
 
