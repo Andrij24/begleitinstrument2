@@ -1236,9 +1236,11 @@ window.addEventListener('load', function() {
        {cls:'wb-analyse',label:'📊 Auswerten',col:'#16a34a'}
       ].forEach(({cls,label,col})=>{
         const btn=document.createElement('button');
-        btn.className='walk-btn '+cls;
+        btn.setAttribute('data-cls',cls);
+        btn.style.cssText='flex:1;padding:8px 4px;font-size:11px;border-radius:8px;'
+          +'border:1.5px solid '+col+';background:#fff;color:'+col+';font-weight:bold;'
+          +'cursor:pointer;-webkit-tap-highlight-color:transparent;';
         btn.textContent=label;
-        btn.style.cssText='flex:1;padding:7px 4px;font-size:11px;border-radius:8px;border:1.5px solid '+col+';background:#fff;color:'+col+';font-weight:bold;cursor:pointer;';
         quickRow.appendChild(btn);
       });
       // Vergleich-Checkbox als Button
@@ -1279,8 +1281,8 @@ window.addEventListener('load', function() {
       item.appendChild(actions);
 
       // Button-Handler
-      quickRow.querySelector('.wb-verlauf').onclick=()=>openVerlauf(w);
-      quickRow.querySelector('.wb-analyse').onclick=()=>openAnalyse(w);
+      quickRow.querySelector('[data-cls="wb-verlauf"]').onclick=()=>openVerlauf(w);
+      quickRow.querySelector('[data-cls="wb-analyse"]').onclick=()=>openAnalyse(w);
       actions.querySelector('.wb-save').onclick=()=>{
         const n=nameInput.value.trim();if(!n)return;
         w.name=n;header.querySelector('.walk-label').firstChild.textContent=n;saveWalks();
