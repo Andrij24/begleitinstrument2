@@ -976,266 +976,180 @@ window.addEventListener('load', function() {
       const moodE=walk.entries.filter(e=>e.type==='mood'&&e.moodValue!=null);
       const avg=moodE.length?Math.round(moodE.reduce((a,b)=>a+b.moodValue,0)/moodE.length):null;
 
+      // Walk-Karte
       const card=document.createElement('div');
-      card.style.cssText='background:#fff;border-radius:12px;overflow:hidden;margin-bottom:4px;box-shadow:0 2px 8px rgba(0,0,0,0.08);';
+      card.style.cssText='background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);';
 
+      // Titel
       const ttl=document.createElement('div');
-      ttl.style.cssText='display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fff;';
-      ttl.innerHTML=`<span style="width:10px;height:10px;border-radius:50%;background:${walk.color};flex-shrink:0;display:inline-block;"></span>`
+      ttl.style.cssText='display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #f0f0f0;';
+      ttl.innerHTML=
+        `<span style="width:10px;height:10px;border-radius:50%;background:${walk.color};flex-shrink:0;display:inline-block;"></span>`
         +`<span style="color:#111;font-size:12px;font-weight:bold;flex:1;">${escHtml(walk.name)}</span>`
         +(avg!=null?`<span style="color:${moodColor(avg)};font-size:11px;font-weight:bold;">${avg}/5</span>`:'')
         +(ref.moodRetro!=null?`<span style="color:#aaa;font-size:10px;margin-left:4px;">↩${ref.moodRetro}/5</span>`:'');
       card.appendChild(ttl);
 
+      // Canvas-Szene (horizontal scrollbar)
       const scroller=document.createElement('div');
-      scroller.style.cssText='overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;background:#f0ede8;';
+      scroller.style.cssText='overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;background:#e8e5e0;';
       const cv=document.createElement('canvas');
       scroller.appendChild(cv);
       card.appendChild(scroller);
 
+      // Einträge-Liste (vertikal, antippbar)
+      const entryList=document.createElement('div');
+      entryList.style.cssText='display:flex;flex-direction:column;';
+      walk.entries.forEach((e,ei)=>{
+        if(!e.location&&!e.text&&!e.audioUrl&&!e.dataUrl) return;
+        const TC={mood:'#ea580c',thought:'#2563eb',sense:'#16a34a',voice:'#7c3aed',sound:'#7c3aed',photo:'#374151'};
+        const TN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Wahrnehmung',voice:'💬 Sprache',sound:'🎙 Sound',photo:'📸 Foto'};
+        const col=TC[e.type]||'#555';
+        const row=document.createElement('div');
+        row.style.cssText='padding:10px 14px;border-bottom:1px solid #f5f5f5;cursor:pointer;';
+        // Header
+        let rHtml=`<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+          <span style="font-weight:bold;font-size:11px;color:${col};">${TN[e.type]||e.type}</span>`;
+        if(e.type==='mood'&&e.moodValue!=null)
+          rHtml+=`<span style="font-size:14px;font-weight:bold;color:${col};">${e.moodValue}/5</span>`;
+        if(e.timestamp)
+          rHtml+=`<span style="color:#aaa;font-size:10px;margin-left:auto;">${e.timestamp}</span>`;
+        rHtml+='</div>';
+        // Text
+        if(e.text) rHtml+=`<div style="font-size:12px;color:#333;line-height:1.5;">${escHtml(e.text)}</div>`;
+        // Audio
+        const aUrl=e.audioUrl||(e.entryId&&audioBlobs[e.entryId]?URL.createObjectURL(audioBlobs[e.entryId]):null);
+        if(aUrl) rHtml+=`<audio controls src="${aUrl}" style="width:100%;margin-top:6px;height:36px;"></audio>`;
+        // Foto-Vorschau
+        if(e.dataUrl) rHtml+=`<img src="${e.dataUrl}" style="width:100%;border-radius:8px;margin-top:6px;max-height:200px;object-fit:cover;"/>`;
+        row.innerHTML=rHtml;
+        entryList.appendChild(row);
+      });
+      if(entryList.children.length>0) card.appendChild(entryList);
+
       if(ref.frei){
         const q=document.createElement('div');
-        q.style.cssText='padding:6px 12px;font-size:10px;color:#888;font-style:italic;border-top:1px solid #f0f0f0;background:#fafafa;';
-        q.textContent='"'+ref.frei.substring(0,80)+(ref.frei.length>80?'…':'')+'"';
+        q.style.cssText='padding:8px 14px;font-size:10px;color:#aaa;font-style:italic;border-top:1px solid #f0f0f0;background:#fafafa;';
+        q.textContent='"'+ref.frei.substring(0,100)+(ref.frei.length>100?'…':'')+'"';
         card.appendChild(q);
       }
       list.appendChild(card);
+
+      // Canvas zeichnen
       setTimeout(()=>{
         try{drawSkizze(cv,scroller,walk);}
-        catch(err){
-          console.error('drawSkizze error:',err);
-          const ctx=cv.getContext('2d');
-          cv.width=300;cv.height=100;
-          cv.style.cssText='width:300px;height:100px;display:block;';
-          ctx.fillStyle='#f5f5f5';ctx.fillRect(0,0,300,100);
-          ctx.fillStyle='#aaa';ctx.font='11px sans-serif';ctx.textAlign='center';
-          ctx.fillText('Fehler beim Laden',150,50);
-        }
+        catch(err){console.error('drawSkizze:',err);}
       }, 60+wi*40);
     });
   }
-
   function drawSkizze(canvas, scroller, walk){
-    const entries=walk.entries.filter(e=>e.location);
     const route=walk.route||[];
-
     function hdist(a,b){const R=6371000,tr=x=>x*Math.PI/180,dLat=tr(b[0]-a[0]),dLon=tr(b[1]-a[1]),h=Math.sin(dLat/2)**2+Math.cos(tr(a[0]))*Math.cos(tr(b[0]))*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
-
-    const H=200;
-    const DPR=Math.min(window.devicePixelRatio||1,2);
-
-    // Canvas sofort sichtbar machen mit Ladeanzeige
-    const initW=Math.max(window.innerWidth-24,300);
-    canvas.width=initW*DPR; canvas.height=H*DPR;
-    canvas.style.cssText='width:'+initW+'px;height:'+H+'px;display:block;';
-    const ctx=canvas.getContext('2d');
-    ctx.scale(DPR,DPR);
-    ctx.fillStyle='#e8e5e0';
-    ctx.fillRect(0,0,initW,H);
-    ctx.fillStyle='#999';
-    ctx.font='12px sans-serif';
-    ctx.textAlign='center';
-    ctx.fillText('Lade...', initW/2, H/2);
+    const H=160, DPR=Math.min(window.devicePixelRatio||1,2);
 
     if(route.length<2){
-      ctx.fillStyle='#aaa';
-      ctx.fillText('Keine Route aufgezeichnet', initW/2, H/2);
-      return;
+      canvas.width=300*DPR; canvas.height=H*DPR;
+      canvas.style.cssText='width:300px;height:'+H+'px;display:block;';
+      const ctx=canvas.getContext('2d'); ctx.scale(DPR,DPR);
+      ctx.fillStyle='#e8e5e0'; ctx.fillRect(0,0,300,H);
+      ctx.fillStyle='#aaa'; ctx.font='12px sans-serif'; ctx.textAlign='center';
+      ctx.fillText('Keine Route',150,H/2); return;
     }
 
-    const skip=Math.max(1,Math.floor(route.length/100));
+    const skip=Math.max(1,Math.floor(route.length/80));
     const pts=route.filter((_,i)=>i%skip===0||i===route.length-1);
     let cum=[0];
     for(let i=1;i<pts.length;i++) cum.push(cum[i-1]+hdist(pts[i-1],pts[i]));
     const totalDist=cum[cum.length-1]||1;
+    function nIdx(lat,lng){let b=0,bd=Infinity;pts.forEach((p,i)=>{const d=hdist([lat,lng],p);if(d<bd){bd=d;b=i;}});return b;}
 
-    function nIdx(lat,lng){
-      let b=0,bd=Infinity;
-      pts.forEach((p,i)=>{const d=hdist([lat,lng],p);if(d<bd){bd=d;b=i;}});
-      return b;
-    }
-
-    const PAD=44;
-    const W=Math.max(initW, Math.round(totalDist*0.38)+PAD*2, 500);
-
-    // Canvas auf finale Breite setzen
+    const PAD=30;
+    const W=Math.max(window.innerWidth-24, Math.round(totalDist*0.3)+PAD*2, 400);
     canvas.width=W*DPR; canvas.height=H*DPR;
-    canvas.style.width=W+'px';
+    canvas.style.cssText='width:'+W+'px;height:'+H+'px;display:block;';
+    const ctx=canvas.getContext('2d');
     ctx.setTransform(DPR,0,0,DPR,0,0);
 
     function rx(d){return PAD+(d/totalDist)*(W-PAD*2);}
     function rxI(i){return rx(cum[Math.min(i,cum.length-1)]);}
-    const RY=Math.round(H*0.72);
+    const RY=Math.round(H*0.68);
 
-    // Alle Draw-Operationen in einer Funktion
-    function draw(hlMarker){
-      // Himmel
-      ctx.fillStyle='#dbd8d2';
-      ctx.fillRect(0,0,W,H);
-      // Hellerer Gradient oben
-      const skyG=ctx.createLinearGradient(0,0,0,RY);
-      skyG.addColorStop(0,'#cac7c2');
-      skyG.addColorStop(1,'#dbd8d2');
-      ctx.fillStyle=skyG;
-      ctx.fillRect(0,0,W,RY);
+    // Himmel
+    const skyG=ctx.createLinearGradient(0,0,0,RY);
+    skyG.addColorStop(0,'#c8c5c0'); skyG.addColorStop(1,'#dbd8d2');
+    ctx.fillStyle=skyG; ctx.fillRect(0,0,W,H);
 
-      // Bergsilhouetten
-      const lats=pts.map(p=>p[0]);
-      const minLat=Math.min(...lats), latSpan=Math.max(...lats)-minLat||0.001;
-      function mtn(off,alpha){
-        ctx.beginPath(); ctx.moveTo(0,H);
-        const step=Math.max(1,Math.floor(pts.length/28));
-        pts.forEach((p,i)=>{
-          if(i%step!==0&&i!==pts.length-1)return;
-          ctx.lineTo(rxI(i), RY-off-(p[0]-minLat)/latSpan*H*0.18);
-        });
-        ctx.lineTo(W,H); ctx.closePath();
-        ctx.fillStyle='rgba(120,115,108,'+alpha+')';
-        ctx.fill();
-      }
-      mtn(H*0.22, 0.45);
-      mtn(H*0.12, 0.62);
-      mtn(H*0.02, 0.80);
-
-      // Boden (hell, sandfarben)
-      const grd=ctx.createLinearGradient(0,RY,0,H);
-      grd.addColorStop(0,'#c5c1b8');
-      grd.addColorStop(1,'#b0aca4');
-      ctx.fillStyle=grd;
-      ctx.fillRect(0,RY,W,H-RY);
-
-      // Bodentextur
-      for(let x=0;x<W;x+=3){
-        ctx.fillStyle='rgba(60,50,40,'+(0.03+Math.random()*0.07)+')';
-        ctx.fillRect(x,RY-(Math.random()*2.5),2,2.5);
-      }
-
-      // Tuschlinie (dunkel auf hellem Boden)
-      const segs=walk.segments||[];
-      if(segs.length>0){
-        segs.forEach(s=>{
-          if(!s.ll1||!s.ll2)return;
-          const x1=rxI(nIdx(s.ll1[0],s.ll1[1]));
-          const x2=rxI(nIdx(s.ll2[0],s.ll2[1]));
-          if(Math.abs(x2-x1)<0.3)return;
-          ctx.beginPath();
-          ctx.moveTo(x1+(Math.random()-0.5)*0.5, RY+(Math.random()-0.5)*0.4);
-          ctx.lineTo(x2+(Math.random()-0.5)*0.5, RY+(Math.random()-0.5)*0.4);
-          ctx.strokeStyle='rgba(20,14,8,'+Math.min(s.opacity*1.5,0.95)+')';
-          ctx.lineWidth=Math.max(3,s.weight*0.9);
-          ctx.lineCap='round'; ctx.stroke();
-        });
-      } else {
-        [5,3,1.5].forEach((lw,i)=>{
-          ctx.beginPath(); let f=true;
-          cum.forEach((_,j)=>{
-            const x=rxI(j)+(Math.random()-0.5)*0.4;
-            f?(ctx.moveTo(x,RY),f=false):ctx.lineTo(x,RY);
-          });
-          ctx.strokeStyle='rgba(20,14,8,'+(i===0?0.88:i===1?0.52:0.22)+')';
-          ctx.lineWidth=lw; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();
-        });
-      }
-
-      // Start/Ende
-      [{x:rx(0),c:'#16a34a'},{x:rx(totalDist),c:'#dc2626'}].forEach(({x,c})=>{
-        ctx.beginPath(); ctx.arc(x,RY,5,0,Math.PI*2);
-        ctx.fillStyle=c; ctx.fill();
-        ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+    // Berge
+    const lats=pts.map(p=>p[0]);
+    const minLat=Math.min(...lats), latSpan=Math.max(...lats)-minLat||0.001;
+    [H*0.20, H*0.11, H*0.02].forEach((off,li)=>{
+      ctx.beginPath(); ctx.moveTo(0,H);
+      const step=Math.max(1,Math.floor(pts.length/24));
+      pts.forEach((p,i)=>{
+        if(i%step!==0&&i!==pts.length-1)return;
+        ctx.lineTo(rxI(i), RY-off-(p[0]-minLat)/latSpan*H*0.16);
       });
+      ctx.lineTo(W,H); ctx.closePath();
+      ctx.fillStyle='rgba(110,106,100,'+(0.45+li*0.18)+')'; ctx.fill();
+    });
 
-      // Marker
-      markers.forEach(m=>drawPin(m, m===hlMarker));
+    // Boden (hell)
+    const grd=ctx.createLinearGradient(0,RY,0,H);
+    grd.addColorStop(0,'#c8c4bc'); grd.addColorStop(1,'#b8b4ac');
+    ctx.fillStyle=grd; ctx.fillRect(0,RY,W,H-RY);
+    for(let x=0;x<W;x+=3){
+      ctx.fillStyle='rgba(50,40,30,'+(0.03+Math.random()*0.06)+')';
+      ctx.fillRect(x,RY-(Math.random()*2),2,2);
     }
 
-    // Marker berechnen
+    // ── Tuschlinie DUNKEL auf hellem Boden ──
+    const segs=walk.segments||[];
+    if(segs.length>0){
+      segs.forEach(s=>{
+        if(!s.ll1||!s.ll2)return;
+        const x1=rxI(nIdx(s.ll1[0],s.ll1[1]));
+        const x2=rxI(nIdx(s.ll2[0],s.ll2[1]));
+        if(Math.abs(x2-x1)<0.2)return;
+        ctx.beginPath();
+        ctx.moveTo(x1+(Math.random()-0.5)*0.4, RY+(Math.random()-0.5)*0.3);
+        ctx.lineTo(x2+(Math.random()-0.5)*0.4, RY+(Math.random()-0.5)*0.3);
+        ctx.strokeStyle='rgba(15,10,5,'+Math.min(s.opacity*1.6,0.95)+')';
+        ctx.lineWidth=Math.max(2.5,s.weight*0.85);
+        ctx.lineCap='round'; ctx.stroke();
+      });
+    } else {
+      // Fallback
+      ctx.beginPath(); let f=true;
+      cum.forEach((_,j)=>{const x=rxI(j);f?(ctx.moveTo(x,RY),f=false):ctx.lineTo(x,RY);});
+      ctx.strokeStyle='rgba(15,10,5,0.85)'; ctx.lineWidth=4;
+      ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();
+    }
+
+    // Start/Ende
+    [{x:rx(0),c:'#16a34a'},{x:rx(totalDist),c:'#dc2626'}].forEach(({x,c})=>{
+      ctx.beginPath(); ctx.arc(x,RY,5,0,Math.PI*2);
+      ctx.fillStyle=c; ctx.fill();
+      ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+    });
+
+    // Marker (kleine Punkte auf der Linie)
     const TC={mood:'#ea580c',thought:'#2563eb',sense:'#16a34a',voice:'#7c3aed',sound:'#7c3aed',photo:'#374151'};
-    const TL={mood:'Stimmung',thought:'Gedanke',sense:'Wahrnehm.',voice:'Sprache',sound:'Sound',photo:'Foto'};
-    const TI={mood:'●',thought:'◆',sense:'▲',voice:'▶',sound:'◉',photo:'■'};
-    const buckets={}, markers=[];
-    entries.forEach(e=>{
+    const buckets={};
+    walk.entries.forEach(e=>{
       if(!e.location)return;
       const i=nIdx(e.location.lat,e.location.lng);
       const x=rxI(i), col=TC[e.type]||'#555';
-      const bk=Math.round(x/65);
+      const bk=Math.round(x/50);
       buckets[bk]=(buckets[bk]||0)+1;
-      const R=18, pinY=RY-22-(buckets[bk]-1)*46;
-      markers.push({e,x,pinY,R,col,label:TL[e.type]||e.type,icon:TI[e.type]||'●'});
-    });
-
-    function drawPin(m,hl){
-      const{x,pinY,R,col}=m;
-      ctx.beginPath(); ctx.moveTo(x,RY-3); ctx.lineTo(x,pinY+R+3);
-      ctx.strokeStyle=hl?col:'rgba(30,22,14,0.35)';
-      ctx.lineWidth=hl?2.5:1.5; ctx.stroke();
-      ctx.save();
-      if(hl){ctx.shadowColor='rgba(255,180,0,0.7)';ctx.shadowBlur=10;}
+      const R=10, pinY=RY-14-(buckets[bk]-1)*26;
+      // Stiel
+      ctx.beginPath(); ctx.moveTo(x,RY-2); ctx.lineTo(x,pinY+R);
+      ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1; ctx.stroke();
+      // Punkt
       ctx.beginPath(); ctx.arc(x,pinY,R,0,Math.PI*2);
-      ctx.fillStyle=hl?col:col+'e0'; ctx.fill();
-      ctx.restore();
-      ctx.beginPath(); ctx.arc(x,pinY,R,0,Math.PI*2);
-      ctx.strokeStyle='rgba(255,255,255,'+(hl?0.95:0.85)+')';
-      ctx.lineWidth=hl?2.5:2; ctx.stroke();
-      if(hl){ctx.beginPath();ctx.arc(x,pinY,R+5,0,Math.PI*2);ctx.strokeStyle='rgba(255,180,0,0.5)';ctx.lineWidth=3;ctx.stroke();}
-      ctx.fillStyle='#fff'; ctx.textAlign='center';
-      if(m.e.type==='mood'&&m.e.moodValue!=null){
-        ctx.font='bold 13px sans-serif'; ctx.fillText(m.e.moodValue,x,pinY+5);
-      } else {
-        ctx.font='bold 10px sans-serif'; ctx.fillText(m.icon,x,pinY+4);
-      }
-      ctx.fillStyle=hl?col:'rgba(30,22,14,0.7)';
-      ctx.font=(hl?8:7)+'px sans-serif';
-      ctx.fillText(m.label.substring(0,8).toUpperCase(),x,pinY+R+11);
-    }
-
-    // Zeichnen
-    draw(null);
-
-    // Hit-Test
-    function hitTest(cx,cy){
-      const rect=canvas.getBoundingClientRect();
-      const sx=W/rect.width, sy=H/rect.height;
-      const px=(cx-rect.left)*sx, py=(cy-rect.top)*sy;
-      for(let i=markers.length-1;i>=0;i--){
-        const m=markers[i],dx=px-m.x,dy=py-m.pinY;
-        if(dx*dx+dy*dy<=m.R*m.R*3.5)return m;
-      }
-      return null;
-    }
-
-    function showVglInfo(m){
-      const info=document.getElementById('vglInfo');
-      info.style.display='block';
-      const TN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Wahrnehmung',
-                voice:'💬 Sprachnachricht',sound:'🎙 Umgebungssound',photo:'📸 Foto'};
-      let html='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">'
-        +'<span style="font-weight:bold;font-size:13px;color:'+m.col+';">'+(TN[m.e.type]||m.e.type)+'</span>';
-      if(m.e.type==='mood'&&m.e.moodValue!=null)
-        html+='<span style="font-size:18px;font-weight:bold;color:#ea580c;margin-left:4px;">'+m.e.moodValue+'/5</span>';
-      if(m.e.timestamp)
-        html+='<span style="color:#888;font-size:10px;margin-left:auto;">'+m.e.timestamp+'</span>';
-      html+='</div>';
-      if(m.e.text)
-        html+='<div style="color:#333;font-size:12px;line-height:1.5;margin-bottom:6px;">'+escHtml(m.e.text)+'</div>';
-      const aUrl=m.e.audioUrl||(m.e.entryId&&audioBlobs[m.e.entryId]
-        ?URL.createObjectURL(audioBlobs[m.e.entryId]):null);
-      if(aUrl)
-        html+='<audio controls src="'+aUrl+'" style="width:100%;height:36px;margin-bottom:6px;"></audio>';
-      if(m.e.dataUrl)
-        html+='<img src="'+m.e.dataUrl+'" style="max-width:100%;max-height:120px;border-radius:8px;object-fit:cover;"/>';
-      info.innerHTML=html;
-    }
-
-    canvas.addEventListener('click',ev=>{
-      const m=hitTest(ev.clientX,ev.clientY);
-      if(m){draw(m);showVglInfo(m);}
+      ctx.fillStyle=col; ctx.fill();
+      ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke();
     });
-    canvas.addEventListener('touchend',ev=>{
-      ev.preventDefault();
-      const t=ev.changedTouches[0];
-      const m=hitTest(t.clientX,t.clientY);
-      if(m){draw(m);showVglInfo(m);}
-    },{passive:false});
   }
   document.getElementById('vglClose').onclick=()=>{
     document.getElementById('vglOverlay').style.display='none';
