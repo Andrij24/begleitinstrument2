@@ -987,7 +987,13 @@ window.addEventListener('load', function() {
 
   document.getElementById('btnVergleich').onclick=()=>openVergleich();
 
-  function openAnalyse(walk){
+  let analyseCharts={};
+  function destroyAnalyseCharts(){
+    Object.values(analyseCharts).forEach(c=>{try{c.destroy();}catch(e){}});
+    analyseCharts={};
+  }
+
+    function openAnalyse(walk){
     destroyAnalyseCharts();
     document.getElementById('analyseWalkName').textContent='Auswertung: '+walk.name;
     const moodEntries=walk.entries.filter(e=>e.type==='mood'&&e.moodValue!==undefined);
@@ -1219,11 +1225,16 @@ window.addEventListener('load', function() {
   document.getElementById('vglClose').onclick=()=>{
     document.getElementById('vglOverlay').style.display='none';
   };
-  document.getElementById('vergleichClose').onclick=()=>{
-    document.getElementById('vergleichModal').style.display='none';
-    Object.values(vergleichMaps).forEach(m=>{try{m.remove();}catch(e){}});
-    vergleichMaps={};
-  };
+  // vergleichModal removed — vglOverlay is used instead
+  // Keep handler in case old references exist
+  if(document.getElementById('vergleichClose')){
+    document.getElementById('vergleichClose').onclick=()=>{
+      const vm=document.getElementById('vergleichModal');
+      if(vm) vm.style.display='none';
+      Object.values(vergleichMaps).forEach(m=>{try{m.remove();}catch(e){}});
+      vergleichMaps={};
+    };
+  }
 
   function renderArchive(){
     // Walks frisch aus localStorage laden (verhindert Verlust nach Reload)
@@ -1396,6 +1407,9 @@ window.addEventListener('load', function() {
     <div id="verlaufMapDiv" style="width:100%;flex:1;min-height:0;overflow:hidden;touch-action:none;z-index:1;border-radius:0;"></div>
     <div id="verlaufEntryCard" style="background:#f5f5f5;border-radius:10px;padding:10px 12px;font-size:11px;color:#333;display:none;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
     <div id="verlaufInfo" style="font-size:10px;color:#9ca3af;margin-top:4px;margin-bottom:8px;"></div>
+    <div id="verlaufEntries" style="display:none;flex-direction:column;overflow-y:auto;background:#111;padding:14px;">
+      <!-- Einträge werden per JS befüllt -->
+    </div>
     <div id="reflexionQPanel" style="overflow-y:auto;display:none;flex-direction:column;gap:10px;padding-bottom:8px;">
       <div style="font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;border-bottom:1px solid #e5e5e5;padding-bottom:6px;">Reflexion nach dem Walk</div>
       <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #1D9E75;">
