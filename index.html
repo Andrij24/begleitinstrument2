@@ -451,8 +451,8 @@ window.addEventListener('load', function() {
 
   let lastPos=null,lastPosTime=null,smoothedSpeed=0;
   function haversineDist(a,b){const R=6371000,tr=x=>x*Math.PI/180;const dLat=tr(b[0]-a[0]),dLon=tr(b[1]-a[1]);const h=Math.sin(dLat/2)**2+Math.cos(tr(a[0]))*Math.cos(tr(b[0]))*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
-  function speedToWeight(s){const t=Math.min(s/3.5,1);return Math.max(1,26*Math.pow(1-t,1.6));}
-  function speedToOpacity(s){const t=Math.min(s/3.5,1);return Math.max(0.04,0.92*Math.pow(1-t,1.4));}
+  function speedToWeight(s){const t=Math.min(s/2.0,1);return Math.max(1.5,24*Math.pow(1-t,1.4));}
+  function speedToOpacity(s){const t=Math.min(s/2.0,1);return Math.max(0.06,0.88*Math.pow(1-t,1.2));}
   function jitter(sc){return(Math.random()-0.5)*sc;}
   function drawInkStroke(ctx,x1,y1,x2,y2,weight,opacity){
     if(weight<0.5)return;
@@ -545,9 +545,22 @@ window.addEventListener('load', function() {
     }
     if(state.current){
       if(lastPos&&lastPosTime){
-        const dist=haversineDist(lastPos,ll);if(dist<3)return;
-        const dt=(now-lastPosTime)/1000,raw=dt>0?dist/dt:0;
-        smoothedSpeed=smoothedSpeed*0.7+raw*0.3;
+        const dist=haversineDist(lastPos,ll);
+        const dt=(now-lastPosTime)/1000;
+
+        // Mindestdistanz: 1m statt 3m — feiner für langsames Gehen/Stehenbleiben
+        if(dist<1) return;
+
+        // Rohe Geschwindigkeit aus Distanz/Zeit
+        const raw=dt>0?dist/dt:0;
+
+        // Schnellere Reaktion: 0.5/0.5 statt 0.7/0.3
+        // Dadurch reagiert die Tuschebreite schneller auf Tempo-Änderungen
+        smoothedSpeed=smoothedSpeed*0.5+raw*0.5;
+
+        // Beim Stehenbleiben (dist sehr klein) Geschwindigkeit schnell auf 0 drücken
+        if(dist<1.5 && dt>2) smoothedSpeed=smoothedSpeed*0.3;
+
         const w=speedToWeight(smoothedSpeed),op=speedToOpacity(smoothedSpeed);
         state.current.route.push(ll);
         if(!state.current.segments)state.current.segments=[];
@@ -1502,7 +1515,7 @@ window.addEventListener('load', function() {
     <div id="reflexionQPanel" style="overflow-y:auto;display:none;flex-direction:column;gap:10px;padding-bottom:8px;">
       <div style="font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;border-bottom:1px solid #e5e5e5;padding-bottom:6px;">Reflexion nach dem Walk</div>
       <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #1D9E75;">
-        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Wie fühlst du dich nach dem Spaziergang?</div>
+        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Wie erinnerst du den Walk insgesamt?</div>
         <textarea id="rqFrei" rows="3" placeholder="Freie Beschreibung..." style="width:100%;font-size:12px;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;font-family:sans-serif;background:#fff;"></textarea>
       </div>
       <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #7c3aed;">
