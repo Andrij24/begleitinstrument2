@@ -652,7 +652,11 @@ window.addEventListener('load', function() {
     const color=audioType==='voice'?'#7c3aed':'#f97316';
     const svgI=audioType==='voice'?'<line x1="8" y1="5" x2="8" y2="11" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/><line x1="5" y1="8" x2="11" y2="8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>':'<circle cx="8" cy="8" r="3" fill="none" stroke="#fff" stroke-width="1.8"/><line x1="8" y1="2" x2="8" y2="5" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>';
     const icon=L.divIcon({className:'',html:'<div style="width:22px;height:22px;border-radius:50%;background:'+color+';border:2.5px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;"><svg width="16" height="16" viewBox="0 0 16 16">'+svgI+'</svg></div>',iconSize:[22,22],iconAnchor:[11,11],popupAnchor:[0,-14]});
-    const ph='<b>'+(audioType==='voice'?'Sprachnachricht':'Umgebungssound')+'</b><br><small>'+ts+' · '+dur+'</small><br><audio controls src="'+url+'" style="margin-top:6px;width:180px;"></audio>';
+    const ph='<div style="min-width:200px;padding:4px;">'
+      +'<b style="font-size:13px;color:'+color+';">'+(audioType==='voice'?'💬 Sprachnachricht':'🎙 Umgebungssound')+'</b>'
+      +'<div style="font-size:10px;color:#aaa;margin:4px 0;">'+ts+' · '+dur+'</div>'
+      +'<audio controls src="'+url+'" style="width:100%;margin-top:6px;height:40px;"></audio>'
+      +'</div>';
     const m=placeMarker(audioType,pos,ph);m.setIcon(icon);
   }
   document.getElementById('stopAudioBtn').onclick=()=>{if(mediaRecorder&&mediaRecorder.state!=='inactive')mediaRecorder.stop();};
@@ -722,9 +726,18 @@ window.addEventListener('load', function() {
         const ai=new InkLayer();ai.addTo(state.map);for(let i=1;i<walk.route.length;i++)ai.addSegment(walk.route[i-1],walk.route[i],6,0.7);state.archiveInkLayers[id]=ai;if(!layerVisibility.route)ai._canvas.style.display='none';
       }
       walk.entries.forEach(e=>{
-        let popup='<b>'+(e.type||'').toUpperCase()+'</b><br>'+(e.text||e.audioDuration||'');
+        const eTN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Wahrnehmung',
+                  voice:'💬 Sprachnachricht',sound:'🎙 Umgebungssound',photo:'📸 Foto'};
+        let popup='<div style="min-width:180px;font-size:12px;padding:2px;">'
+          +'<b style="color:#333;">'+( eTN[e.type]||(e.type||'').toUpperCase())+'</b>';
+        if(e.timestamp) popup+='<div style="font-size:10px;color:#aaa;margin:3px 0;">'+e.timestamp+(e.audioDuration?' · '+e.audioDuration:'')+'</div>';
+        if(e.text) popup+='<div style="margin-top:4px;color:#333;">'+escHtml(e.text)+'</div>';
+        if(e.moodValue!=null) popup+='<div style="font-size:24px;font-weight:bold;color:#f97316;margin:4px 0;">'+e.moodValue+'/5</div>';
+        popup+='__AUDIO__</div>';
         if(e.dataUrl)popup='<img src="'+e.dataUrl+'" style="width:180px;border-radius:6px;"/><br><small>'+(e.timestamp||'')+'</small>';
-        if(e.audioUrl)popup+='<br><audio controls src="'+e.audioUrl+'" style="width:180px;margin-top:4px;"></audio>';
+        const eAurl=e.audioUrl||(e.entryId&&audioBlobs[e.entryId]?URL.createObjectURL(audioBlobs[e.entryId]):null);
+        const eAudio=eAurl?'<audio controls src="'+eAurl+'" style="width:100%;margin-top:8px;height:40px;"></audio>':'';
+        popup=popup.replace('__AUDIO__',eAudio);
         const dc=e.type==='thought'?'#22c55e':e.type==='sense'?'#f97316':e.type==='mood'?(e.markerColor||walk.color):e.type==='voice'?'#7c3aed':e.type==='sound'?'#f97316':e.type==='photo'?'#555':walk.color;
         const dr=(e.type==='mood'||e.type==='thought'||e.type==='sense')?7:5;
         const dop=(e.type==='photo'||e.type==='voice'||e.type==='sound')?0.6:0.92;
@@ -1407,7 +1420,34 @@ window.addEventListener('load', function() {
       folder.file('route.gpx',gpx);
       let pc=0;walk.entries.forEach(e=>{if(e.type==='photo'&&e.dataUrl){pc++;folder.file('foto_'+pc+'.jpg',e.dataUrl.split(',')[1],{base64:true});}});
       let ac=0;walk.entries.forEach(e=>{if((e.type==='voice'||e.type==='sound')&&e.entryId&&audioBlobs[e.entryId]){ac++;folder.file((e.type==='voice'?'sprache':'sound')+'_'+ac+'.mp4',audioBlobs[e.entryId]);}});
-      if(ref.frei||ref.moment){folder.file('reflexion.txt','REFLEXION: '+walk.name+'\n'+'='.repeat(40)+'\n\nFreie Reflexion:\n'+(ref.frei||'—')+'\n\nStimmung retrospektiv: '+(ref.moodRetro!==undefined?ref.moodRetro+'/100':'—')+'\n\nStärkster Moment:\n'+(ref.moment||'—')+'\n\nOrte:\n'+(ref.orte||'—')+'\n\nNicht Erfasstes:\n'+(ref.nicht||'—')+'\n\nÜberraschung:\n'+(ref.ueber||'—')+'\n');}
+      // ── Reflexion.txt ──
+      if(ref.frei||ref.moment){
+        folder.file('reflexion.txt',
+          'REFLEXION: '+walk.name+'\n'+'='.repeat(40)+'\n'
+          +'\nFreie Reflexion:\n'+(ref.frei||'—')
+          +'\n\nStimmung retrospektiv: '+(ref.moodRetro!==undefined?ref.moodRetro+'/5':'—')
+          +'\n\nStärkster Moment:\n'+(ref.moment||'—')
+          +'\n\nOrte & Einflüsse:\n'+(ref.orte||'—')
+          +'\n\nNicht Erfasstes:\n'+(ref.nicht||'—')
+          +'\n\nÜberraschung:\n'+(ref.ueber||'—')+'\n'
+        );
+      }
+      // ── Eintraege.txt — alle Texteingaben exportieren ──
+      const textEntries=walk.entries.filter(e=>e.text||(e.type==='mood'&&e.moodValue!=null));
+      if(textEntries.length>0){
+        let txt='EINTRÄGE: '+walk.name+'\n'+'='.repeat(40)+'\n';
+        const typeNames={mood:'Stimmung',thought:'Gedanke',sense:'Wahrnehmung',voice:'Sprachnachricht',sound:'Umgebungssound',photo:'Foto'};
+        textEntries.forEach((e,i)=>{
+          txt+='\n['+(i+1)+'] '+(typeNames[e.type]||e.type).toUpperCase();
+          if(e.timestamp) txt+=' | '+e.timestamp;
+          if(e.location) txt+=' | GPS: '+e.location.lat.toFixed(6)+', '+e.location.lng.toFixed(6);
+          txt+='\n';
+          if(e.type==='mood'&&e.moodValue!=null) txt+='Stimmung: '+e.moodValue+'/5\n';
+          if(e.text) txt+=e.text+'\n';
+          if(e.audioDuration) txt+='Audio-Dauer: '+e.audioDuration+'\n';
+        });
+        folder.file('eintraege.txt',txt);
+      }
       msg.textContent='Erstelle Kartenbild...';
       await takeMapSnapshot(walk,folder);
       msg.textContent='Erstelle ZIP...';
@@ -1462,7 +1502,7 @@ window.addEventListener('load', function() {
     <div id="reflexionQPanel" style="overflow-y:auto;display:none;flex-direction:column;gap:10px;padding-bottom:8px;">
       <div style="font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;border-bottom:1px solid #e5e5e5;padding-bottom:6px;">Reflexion nach dem Walk</div>
       <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #1D9E75;">
-        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Wie erinnerst du den Walk insgesamt?</div>
+        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Wie fühlst du dich nach dem Spaziergang?</div>
         <textarea id="rqFrei" rows="3" placeholder="Freie Beschreibung..." style="width:100%;font-size:12px;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;font-family:sans-serif;background:#fff;"></textarea>
       </div>
       <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #7c3aed;">
