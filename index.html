@@ -619,7 +619,28 @@ window.addEventListener('load', function() {
   };
 
   function saveWalks(){
-    const ts=state.walks.map(w=>({...w,entries:w.entries.map(e=>{const c={...e};delete c.audioUrl;return c;})}));
+    const ts=state.walks.map(w=>({...w,entries:w.entries.map(e=>{
+      const c={...e};
+      delete c.audioUrl; // ObjectURL ist session-only
+      // Audio als base64 mitspeichern wenn vorhanden
+      if(e.entryId&&audioBlobs[e.entryId]&&!c.audioBase64){
+        try{
+          const reader=new FileReader();
+          reader.onload=ev=>{
+            c.audioBase64=ev.target.result;
+            // Nochmal speichern mit base64
+            const walks2=state.walks.map(w2=>({...w2,entries:w2.entries.map(e2=>{
+              const d={...e2};delete d.audioUrl;
+              if(e2.entryId===e.entryId&&audioBlobs[e2.entryId])d.audioBase64=ev.target.result;
+              return d;
+            })}));
+            localStorage.setItem('psychogeo_walks',JSON.stringify(walks2));
+          };
+          reader.readAsDataURL(audioBlobs[e.entryId]);
+        }catch(ex){}
+      }
+      return c;
+    })}));
     localStorage.setItem('psychogeo_walks',JSON.stringify(ts));
   }
 
@@ -759,7 +780,7 @@ window.addEventListener('load', function() {
         if(e.moodValue!=null) popup+='<div style="font-size:24px;font-weight:bold;color:#f97316;margin:4px 0;">'+e.moodValue+'/5</div>';
         popup+='__AUDIO__</div>';
         if(e.dataUrl)popup='<img src="'+e.dataUrl+'" style="width:180px;border-radius:6px;"/><br><small>'+(e.timestamp||'')+'</small>';
-        const eAurl=e.audioUrl||(e.entryId&&audioBlobs[e.entryId]?URL.createObjectURL(audioBlobs[e.entryId]):null);
+        const eAurl=e.audioUrl||(e.entryId&&audioBlobs[e.entryId]?URL.createObjectURL(audioBlobs[e.entryId]):null)||e.audioBase64||null;
         const eAudio=eAurl?'<audio controls src="'+eAurl+'" style="width:100%;margin-top:8px;height:40px;"></audio>':'';
         popup=popup.replace('__AUDIO__',eAudio);
         const dc=e.type==='thought'?'#22c55e':e.type==='sense'?'#f97316':e.type==='mood'?(e.markerColor||walk.color):e.type==='voice'?'#7c3aed':e.type==='sound'?'#f97316':e.type==='photo'?'#555':walk.color;
@@ -931,7 +952,7 @@ window.addEventListener('load', function() {
         popupHTML+=`<div style="font-size:28px;font-weight:bold;color:${col};margin:4px 0;">${e.moodValue}<span style="font-size:13px;color:#aaa;"> /5</span></div>`;
       if(e.text) popupHTML+=`<div style="margin-top:6px;color:#222;line-height:1.6;font-size:13px;">${escHtml(e.text)}</div>`;
       if(e.timestamp) popupHTML+=`<div style="font-size:10px;color:#aaa;margin-top:6px;">${e.timestamp}</div>`;
-      const aUrl=e.audioUrl||(e.entryId&&audioBlobs[e.entryId]?URL.createObjectURL(audioBlobs[e.entryId]):null);
+      const aUrl=e.audioUrl||(e.entryId&&audioBlobs[e.entryId]?URL.createObjectURL(audioBlobs[e.entryId]):null)||e.audioBase64||null;
       if(aUrl) popupHTML+=`<audio controls src="${aUrl}" style="width:100%;margin-top:10px;height:40px;"></audio>`;
       if(e.dataUrl) popupHTML+=`<img src="${e.dataUrl}" style="width:100%;border-radius:8px;margin-top:10px;max-height:220px;object-fit:cover;"/>`;
       popupHTML+='</div>';
@@ -951,7 +972,7 @@ window.addEventListener('load', function() {
             h+='<span style="color:#888;font-size:10px;margin-left:auto;">'+e.timestamp+'</span>';
           h+='</div>';
           if(e.text) h+='<div style="font-size:13px;color:#ccc;line-height:1.6;margin-bottom:8px;">'+escHtml(e.text)+'</div>';
-          const aUrl=e.audioUrl||(e.entryId&&audioBlobs[e.entryId]?URL.createObjectURL(audioBlobs[e.entryId]):null);
+          const aUrl=e.audioUrl||(e.entryId&&audioBlobs[e.entryId]?URL.createObjectURL(audioBlobs[e.entryId]):null)||e.audioBase64||null;
           if(aUrl) h+='<audio controls src="'+aUrl+'" style="width:100%;margin-bottom:8px;height:40px;"></audio>';
           if(e.dataUrl) h+='<img src="'+e.dataUrl+'" style="width:100%;border-radius:8px;max-height:200px;object-fit:cover;"/>';
           card.innerHTML=h;
@@ -1198,7 +1219,7 @@ window.addEventListener('load', function() {
         if(best.type==='mood'&&best.moodValue!=null)
           html+='<div style="font-size:22px;font-weight:bold;color:'+col2+';margin:4px 0;">'+best.moodValue+'<span style="font-size:11px;color:#aaa;">/5</span></div>';
         if(best.text) html+='<div style="margin-top:4px;color:#333;line-height:1.5;">'+escHtml(best.text)+'</div>';
-        const aUrl=best.audioUrl||(best.entryId&&audioBlobs[best.entryId]?URL.createObjectURL(audioBlobs[best.entryId]):null);
+        const aUrl=best.audioUrl||(best.entryId&&audioBlobs[best.entryId]?URL.createObjectURL(audioBlobs[best.entryId]):null)||best.audioBase64||null;
         if(aUrl) html+='<audio controls src="'+aUrl+'" style="width:100%;margin-top:6px;height:36px;"></audio>';
         if(best.dataUrl) html+='<img src="'+best.dataUrl+'" style="width:100%;border-radius:6px;margin-top:6px;max-height:80px;object-fit:cover;"/>';
         html+='</div>';
@@ -1634,13 +1655,52 @@ window.addEventListener('load', function() {
       const zip=new JSZip();const folder=zip.folder(walk.name.replace(/[^a-zA-Z0-9äöüÄÖÜß _-]/g,'_'));
       msg.textContent='Exportiere Daten...';
       const ref=walk.reflection||{};
-      folder.file('walk_daten.json',JSON.stringify({name:walk.name,schritte:walk.steps||0,kartenansicht:currentTileUrl,route:walk.route,reflexion:{frei:ref.frei||'',moodRetro:ref.moodRetro!==undefined?ref.moodRetro:null,moment:ref.moment||'',orte:ref.orte||'',nichtErfasst:ref.nicht||'',ueberraschung:ref.ueber||''},entries:walk.entries.map(e=>({type:e.type,timestamp:e.timestamp,location:e.location,text:e.text||null,moodValue:e.moodValue||null,audioDuration:e.audioDuration||null}))},null,2));
+      folder.file('walk_daten.json',JSON.stringify({
+        name:walk.name,
+        schritte:walk.steps||0,
+        farbe:walk.color||null,
+        kartenansicht:currentTileUrl,
+        route:walk.route,
+        segmente:(walk.segments||[]).map(s=>({ll1:s.ll1,ll2:s.ll2,weight:s.weight,opacity:s.opacity})),
+        reflexion:{
+          frei:ref.frei||'',
+          moodRetro:ref.moodRetro!==undefined?ref.moodRetro:null,
+          moment:ref.moment||'',
+          orte:ref.orte||'',
+          nichtErfasst:ref.nicht||'',
+          ueberraschung:ref.ueber||''
+        },
+        entries:walk.entries.map(e=>({
+          type:e.type,
+          entryId:e.entryId||null,
+          timestamp:e.timestamp||null,
+          location:e.location||null,
+          text:e.text||null,
+          moodValue:e.moodValue!=null?e.moodValue:null,
+          markerColor:e.markerColor||null,
+          audioDuration:e.audioDuration||null,
+          hasAudio:!!(e.audioUrl||e.audioBase64||(e.entryId&&audioBlobs[e.entryId])),
+          hasPhoto:!!e.dataUrl
+        }))
+      },null,2));
       let gpx='<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Begleitinstrument PRO">\n  <trk>\n    <n>'+escHtml(walk.name)+'</n>\n    <trkseg>\n';
       walk.route.forEach(p=>{gpx+='      <trkpt lat="'+p[0]+'" lon="'+p[1]+'"></trkpt>\n';});
       gpx+='    </trkseg>\n  </trk>\n</gpx>';
       folder.file('route.gpx',gpx);
       let pc=0;walk.entries.forEach(e=>{if(e.type==='photo'&&e.dataUrl){pc++;folder.file('foto_'+pc+'.jpg',e.dataUrl.split(',')[1],{base64:true});}});
-      let ac=0;walk.entries.forEach(e=>{if((e.type==='voice'||e.type==='sound')&&e.entryId&&audioBlobs[e.entryId]){ac++;folder.file((e.type==='voice'?'sprache':'sound')+'_'+ac+'.mp4',audioBlobs[e.entryId]);}});
+      let ac=0;walk.entries.forEach(e=>{
+        if(e.type==='voice'||e.type==='sound'){
+          ac++;
+          const fname=(e.type==='voice'?'sprache':'sound')+'_'+ac;
+          if(e.entryId&&audioBlobs[e.entryId]){
+            folder.file(fname+'.mp4',audioBlobs[e.entryId]);
+          } else if(e.audioBase64){
+            // base64 DataURL → binary
+            const b64=e.audioBase64.split(',')[1];
+            if(b64) folder.file(fname+'.mp4',b64,{base64:true});
+          }
+        }
+      });
       // ── Reflexion.txt ──
       if(ref.frei||ref.moment){
         folder.file('reflexion.txt',
