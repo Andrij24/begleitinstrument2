@@ -54,7 +54,7 @@
     .wb-verlauf{background:#0e7490;color:#fff;}
 
     /* Auswertungs-Modal — ohne Dritte-Sicht */
-    #analyseModal{position:fixed;inset:0;z-index:3500;background:rgba(0,0,0,0.82);display:none;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;}
+    #analyseModal{position:fixed;inset:0;z-index:4500;background:rgba(0,0,0,0.82);display:none;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;}
     #analyseModal.open{display:flex;}
     #analyseBox{background:#f8f8f8;border-radius:20px;width:min(96vw,560px);padding:20px;display:flex;flex-direction:column;gap:14px;margin:auto;}
     .analyse-header{display:flex;align-items:center;justify-content:space-between;}
@@ -294,6 +294,11 @@
     <div class="analyse-header">
       <div class="analyse-title" id="analyseWalkName">Auswertung</div>
       <button class="analyse-close" id="analyseClose">✕</button>
+    </div>
+    <div id="analyseHinweis" style="background:#f0f4ff;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:#374151;line-height:1.6;">
+      <b style="color:#2563eb;">Wie funktioniert die Auswertung?</b><br>
+      Schicht 1 zeigt deine <b>aufgezeichneten Stimmungswerte</b> (1–5) während des Walks. Schicht 2 zeigt wie du den Walk <b>im Nachhinein erinnerst</b> (Reflexionsfrage). Die <b>Diskrepanz</b> zeigt die Differenz — was hat das Gedächtnis verändert?<br>
+      <span style="color:#9ca3af;font-size:10px;">Tipp: Setze während des Walks mehrere 🔋 Stimmungsmarker für aussagekräftige Grafiken.</span>
     </div>
     <div class="stat-row" style="margin-bottom:12px;">
       <div class="stat-box"><div class="stat-val" id="aStat1">—</div><div class="stat-lbl">Ø Stimmung (1-5)</div></div>
@@ -1054,7 +1059,16 @@ window.addEventListener('load', function() {
     const rA=document.getElementById('refAnswersDisplay');
     const fragen=[{l:'Stärkster Moment',v:ref.moment},{l:'Orte & Einflüsse',v:ref.orte},{l:'Nicht Aufgezeichnetes',v:ref.nicht},{l:'Überraschung',v:ref.ueber}];
     rA.innerHTML=fragen.map(f=>f.v?'<div style="border-left:3px solid #e5e5e5;padding-left:8px;"><div style="font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;margin-bottom:2px;">'+f.l+'</div><div style="font-size:11px;color:#374151;">'+escHtml(f.v)+'</div></div>':'').join('');
+    // Drawer schließen damit X nicht verdeckt wird
+    document.getElementById('drawer').classList.remove('open');
+    document.querySelectorAll('.panel-tab').forEach(t=>t.classList.remove('active'));
     document.getElementById('analyseModal').classList.add('open');
+    document.getElementById('drawer').classList.remove('open');
+    document.querySelectorAll('.panel-tab').forEach(t=>t.classList.remove('active'));
+    // Drawer schließen damit das X nicht verdeckt wird
+    document.getElementById('drawer').classList.remove('open');
+    document.querySelectorAll('.panel-tab').forEach(t=>t.classList.remove('active'));
+    currentPanel=null;
   }
 
   function openVergleich(){
@@ -1515,7 +1529,7 @@ window.addEventListener('load', function() {
     <div id="reflexionQPanel" style="overflow-y:auto;display:none;flex-direction:column;gap:10px;padding-bottom:8px;">
       <div style="font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;border-bottom:1px solid #e5e5e5;padding-bottom:6px;">Reflexion nach dem Walk</div>
       <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #1D9E75;">
-        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Wie erinnerst du den Walk insgesamt?</div>
+        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Wie würdest du deinen Spaziergang beschreiben?</div>
         <textarea id="rqFrei" rows="3" placeholder="Freie Beschreibung..." style="width:100%;font-size:12px;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;font-family:sans-serif;background:#fff;"></textarea>
       </div>
       <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #7c3aed;">
@@ -1526,15 +1540,15 @@ window.addEventListener('load', function() {
         </div>
       </div>
       <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #f97316;">
-        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Welcher Moment blieb am stärksten in Erinnerung?</div>
+        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Kannst du ein Ereignis oder Moment beschreiben der dir vom Spaziergang im Gedächnis geblieben ist?</div>
         <textarea id="rqMoment" rows="2" placeholder="Ort, Situation, Eindruck..." style="width:100%;font-size:12px;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;font-family:sans-serif;background:#fff;"></textarea>
       </div>
       <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #22c55e;">
-        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Orte die deine Stimmung beeinflusst haben?</div>
+        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Orte oder Personen die deine Stimmung beeinflusst haben?</div>
         <textarea id="rqOrte" rows="2" placeholder="Park, Kreuzung, Lärm..." style="width:100%;font-size:12px;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;font-family:sans-serif;background:#fff;"></textarea>
       </div>
       <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #3b82f6;">
-        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Was war bedeutsam aber nicht aufgezeichnet?</div>
+        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Wurde etwas nicht aufgezeicht was wichtig gewesen wäre?</div>
         <textarea id="rqNicht" rows="2" placeholder="Was fehlt in den Daten?" style="width:100%;font-size:12px;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;font-family:sans-serif;background:#fff;"></textarea>
       </div>
       <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #BA7517;">
