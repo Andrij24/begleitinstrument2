@@ -778,6 +778,7 @@ window.addEventListener('load', function() {
 
   // ── REFLEXION: Leaflet-Karte + Tuschelinie + Sprechblasen-Marker ──
   let rqCurrentWalkId=null;
+  let verlaufShowingMap=true;
   let verlaufMap=null;
 
   function openVerlauf(walk){
@@ -785,6 +786,14 @@ window.addEventListener('load', function() {
     document.getElementById('verlaufTitle').textContent='Reflexion: '+walk.name;
     document.getElementById('verlaufModal').classList.add('open');
     document.getElementById('verlaufEntryCard').style.display='none';
+    document.getElementById('verlaufEntryCard').innerHTML='';
+    document.getElementById('verlaufInfo').textContent='';
+    // Immer mit Karte starten
+    verlaufShowingMap=true;
+    document.getElementById('verlaufMapDiv').style.display='';
+    document.getElementById('reflexionQPanel').style.display='none';
+    const vft=document.getElementById('verlaufFragenToggle');
+    if(vft){vft.textContent='📝 Fragen';vft.style.background='#2563eb';}
     // Panel-Tabs verstecken damit sie das X nicht verdecken
     document.getElementById('panelToggles').style.display='none';
     document.getElementById('fabGrid').style.display='none';
@@ -966,17 +975,29 @@ window.addEventListener('load', function() {
   }
 
   document.getElementById('verlaufFragenToggle').onclick=()=>{
-    const el=document.getElementById('verlaufEntries');
+    verlaufShowingMap=!verlaufShowingMap;
     const btn=document.getElementById('verlaufFragenToggle');
-    if(el.style.display==='none'||el.style.display===''){
-      el.style.display='flex';
-      btn.textContent='🗺 Karte';
-      btn.style.background='#374151';
-    } else {
-      el.style.display='none';
+    const mapDiv=document.getElementById('verlaufMapDiv');
+    const card=document.getElementById('verlaufEntryCard');
+    const info=document.getElementById('verlaufInfo');
+    const panel=document.getElementById('reflexionQPanel');
+    if(verlaufShowingMap){
+      // Karte zeigen
+      mapDiv.style.display='';
+      card.style.display=card.innerHTML?'block':'none';
+      info.style.display='';
+      panel.style.display='none';
       btn.textContent='📝 Fragen';
       btn.style.background='#2563eb';
-      setTimeout(()=>verlaufMap&&verlaufMap.invalidateSize(),100);
+      setTimeout(()=>verlaufMap&&verlaufMap.invalidateSize(),150);
+    } else {
+      // Fragen zeigen
+      mapDiv.style.display='none';
+      card.style.display='none';
+      info.style.display='none';
+      panel.style.display='flex';
+      btn.textContent='🗺 Karte';
+      btn.style.background='#374151';
     }
   };
   document.getElementById('verlaufClose').onclick=()=>{
