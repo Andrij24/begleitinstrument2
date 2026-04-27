@@ -182,6 +182,10 @@
     .vgl-stat-val{font-size:16px;font-weight:bold;color:#1a1a1a;}
     .vgl-stat-lbl{font-size:8px;color:#6b7280;text-transform:uppercase;}
     .vgl-ref{background:#f9f9f9;border-radius:8px;padding:8px;font-size:11px;color:#555;font-style:italic;margin-top:4px;}
+    @keyframes bounceDown{
+      0%,100%{transform:translateY(0);}
+      50%{transform:translateY(5px);}
+    }
     #moodModal,#thoughtModal,#senseModal{position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,0.78);display:none;align-items:center;justify-content:center;}
     #thoughtModal,#senseModal{z-index:2000;background:rgba(0,0,0,0.75);}
   </style>
@@ -788,12 +792,8 @@ window.addEventListener('load', function() {
     document.getElementById('verlaufEntryCard').style.display='none';
     document.getElementById('verlaufEntryCard').innerHTML='';
     document.getElementById('verlaufInfo').textContent='';
-    // Immer mit Karte starten
+    // Karte immer sichtbar, Fragen scrollen darunter
     verlaufShowingMap=true;
-    document.getElementById('verlaufMapDiv').style.display='';
-    document.getElementById('reflexionQPanel').style.display='none';
-    const vft=document.getElementById('verlaufFragenToggle');
-    if(vft){vft.textContent='📝 Fragen';vft.style.background='#2563eb';}
     // Panel-Tabs verstecken damit sie das X nicht verdecken
     document.getElementById('panelToggles').style.display='none';
     document.getElementById('fabGrid').style.display='none';
@@ -974,32 +974,10 @@ window.addEventListener('load', function() {
       `${entries.length} Einträge · Zoomen mit 2 Fingern oder +/− · Marker antippen`;
   }
 
-  document.getElementById('verlaufFragenToggle').onclick=()=>{
-    verlaufShowingMap=!verlaufShowingMap;
-    const btn=document.getElementById('verlaufFragenToggle');
-    const mapDiv=document.getElementById('verlaufMapDiv');
-    const card=document.getElementById('verlaufEntryCard');
-    const info=document.getElementById('verlaufInfo');
-    const panel=document.getElementById('reflexionQPanel');
-    if(verlaufShowingMap){
-      // Karte zeigen
-      mapDiv.style.display='';
-      card.style.display=card.innerHTML?'block':'none';
-      info.style.display='';
-      panel.style.display='none';
-      btn.textContent='📝 Fragen';
-      btn.style.background='#2563eb';
-      setTimeout(()=>verlaufMap&&verlaufMap.invalidateSize(),150);
-    } else {
-      // Fragen zeigen
-      mapDiv.style.display='none';
-      card.style.display='none';
-      info.style.display='none';
-      panel.style.display='flex';
-      btn.textContent='🗺 Karte';
-      btn.style.background='#374151';
-    }
-  };
+  document.getElementById('verlaufFragenToggle')&&(document.getElementById('verlaufFragenToggle').onclick=()=>{
+    // Scroll zu Reflexionsfragen
+    document.getElementById('reflexionQPanel').scrollIntoView({behavior:'smooth'});
+  });
   document.getElementById('verlaufClose').onclick=()=>{
     document.getElementById('verlaufModal').classList.remove('open');
     if(verlaufMap){verlaufMap.remove();verlaufMap=null;}
@@ -1728,21 +1706,31 @@ window.addEventListener('load', function() {
 </script>
 <!-- REFLEXIONS-MODAL -->
 <div id="verlaufModal">
-  <div id="verlaufBox" style="width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden;background:#111;">
-    <div class="verlauf-header">
+  <div id="verlaufBox" style="width:100%;height:100%;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;background:#111;">
+    <div class="verlauf-header" style="position:sticky;top:0;z-index:20;">
       <div class="verlauf-title" id="verlaufTitle">Reflexion</div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <button id="verlaufFragenToggle" style="padding:6px 12px;border-radius:8px;border:none;background:#2563eb;color:#fff;font-size:11px;font-weight:bold;cursor:pointer;">📝 Fragen</button>
-        <button class="verlauf-close" id="verlaufClose">✕</button>
-      </div>
+      <button class="verlauf-close" id="verlaufClose">✕</button>
     </div>
-    <div id="verlaufMapDiv" style="width:100%;flex:1;min-height:0;overflow:hidden;touch-action:none;z-index:1;border-radius:0;"></div>
-    <div id="verlaufEntryCard" style="background:#f5f5f5;border-radius:10px;padding:10px 12px;font-size:11px;color:#333;display:none;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
-    <div id="verlaufInfo" style="font-size:10px;color:#9ca3af;margin-top:4px;margin-bottom:8px;"></div>
-    <div id="verlaufEntries" style="display:none;flex-direction:column;overflow-y:auto;background:#111;padding:14px;">
-      <!-- Einträge werden per JS befüllt -->
+
+    <!-- Karte: feste Höhe 55vh -->
+    <div id="verlaufMapDiv" style="width:100%;height:55vh;min-height:260px;flex-shrink:0;overflow:hidden;touch-action:none;z-index:1;"></div>
+
+    <!-- Eintrag-Popup nach Marker-Tap -->
+    <div id="verlaufEntryCard" style="background:#1e1e1e;border-top:2px solid #2563eb;padding:10px 14px;font-size:11px;color:#ddd;display:none;flex-shrink:0;"></div>
+    <div id="verlaufInfo" style="font-size:10px;color:#6b7280;padding:6px 14px 2px;flex-shrink:0;"></div>
+
+    <!-- Scroll-Hinweis -->
+    <div id="verlaufScrollHint" style="display:flex;flex-direction:column;align-items:center;padding:10px 14px 6px;flex-shrink:0;cursor:pointer;" onclick="document.getElementById('reflexionQPanel').scrollIntoView({behavior:'smooth'});">
+      <div style="font-size:10px;color:#9ca3af;margin-bottom:4px;">Nach unten scrollen für Reflexionsfragen</div>
+      <div style="font-size:20px;animation:bounceDown 1.5s infinite;">↓</div>
     </div>
-    <div id="reflexionQPanel" style="overflow-y:auto;display:none;flex-direction:column;gap:10px;padding-bottom:8px;">
+
+    <!-- Trennlinie -->
+    <div style="height:1px;background:rgba(255,255,255,0.08);flex-shrink:0;"></div>
+
+    <!-- Reflexionsfragen direkt darunter -->
+    <div id="verlaufEntries" style="display:none;"></div>
+    <div id="reflexionQPanel" style="display:flex;flex-direction:column;gap:10px;padding:14px 14px 40px;background:#f5f5f5;flex-shrink:0;">
       <div style="font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;border-bottom:1px solid #e5e5e5;padding-bottom:6px;">Reflexion nach dem Walk</div>
       <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #1D9E75;">
         <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Wie erinnerst du den Walk insgesamt?</div>
