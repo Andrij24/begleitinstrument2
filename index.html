@@ -233,10 +233,11 @@
       <button class="layer-toggle-btn active" data-layer="mood"><span class="dot"></span> Stimmung</button>
     </div>
     <div class="section" id="sec-archiv" style="display:none;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
         <div class="section-label" style="border:none;padding:0;margin:0;">Walks</div>
-        <button id="btnVergleich" style="padding:6px 12px;border-radius:8px;border:none;background:#7c3aed;color:#fff;font-size:10px;font-weight:bold;cursor:pointer;display:none;">⚖️ Vergleichen starten</button>
+        <button id="btnVergleich" style="padding:8px 14px;border-radius:8px;border:none;background:#7c3aed;color:#fff;font-size:11px;font-weight:bold;cursor:pointer;display:none;">⚖️ Vergleich starten</button>
       </div>
+      <div id="vglHint" style="font-size:10px;color:#9ca3af;margin-bottom:8px;">Tippe bei 2 oder mehr Walks auf ⚖️ um sie zu vergleichen.</div>
       <div id="archiveList"><div style="font-size:11px;color:#999;">Noch keine Walks gespeichert.</div></div>
     </div>
 
@@ -1008,10 +1009,20 @@ window.addEventListener('load', function() {
   function toggleVergleichSelect(id){
     if(selectedForVergleich.has(id)) selectedForVergleich.delete(id);
     else selectedForVergleich.add(id);
-    // Button sichtbar wenn mind. 2 ausgewählt
+    const n=selectedForVergleich.size;
     const btn=document.getElementById('btnVergleich');
-    if(btn) btn.style.display=selectedForVergleich.size>=2?'block':'none';
-    // Checkbox-Optik aktualisieren
+    const hint=document.getElementById('vglHint');
+    if(btn){
+      btn.style.display=n>=2?'block':'none';
+      btn.textContent='⚖️ Vergleich starten ('+n+')';
+    }
+    if(hint){
+      if(n===0) hint.textContent='Tippe bei 2 oder mehr Walks auf ⚖️ um sie zu vergleichen.';
+      else if(n===1) hint.textContent='Noch einen Walk mit ⚖️ auswählen…';
+      else hint.textContent=n+' Walks ausgewählt — jetzt vergleichen!';
+      hint.style.color=n>=2?'#7c3aed':'#9ca3af';
+      hint.style.fontWeight=n>=2?'bold':'normal';
+    }
     const cb=document.querySelector(`.vgl-cb[data-id="${id}"]`);
     if(cb) cb.checked=selectedForVergleich.has(id);
   }
@@ -1079,6 +1090,9 @@ window.addEventListener('load', function() {
 
     const overlay=document.getElementById('vglOverlay');
     overlay.style.display='flex';
+    // Drawer schließen
+    document.getElementById('drawer').classList.remove('open');
+    document.querySelectorAll('.panel-tab').forEach(t=>t.classList.remove('active'));
     const list=document.getElementById('vglList');
     list.innerHTML='';
     const info=document.getElementById('vglInfo');
@@ -1310,6 +1324,12 @@ window.addEventListener('load', function() {
   }
   document.getElementById('vglClose').onclick=()=>{
     document.getElementById('vglOverlay').style.display='none';
+    selectedForVergleich.clear();
+    const h=document.getElementById('vglHint');
+    if(h){h.textContent='Tippe bei 2 oder mehr Walks auf ⚖️ um sie zu vergleichen.';h.style.color='#9ca3af';h.style.fontWeight='normal';}
+    const b=document.getElementById('btnVergleich');
+    if(b) b.style.display='none';
+    renderArchive();
   };
   // vergleichModal removed — vglOverlay is used instead
   // Keep handler in case old references exist
@@ -1430,7 +1450,17 @@ window.addEventListener('load', function() {
     });
     // btnVergleich sichtbar wenn mind. 2 ausgewählt
     const bvBtn=document.getElementById('btnVergleich');
-    if(bvBtn) bvBtn.style.display=selectedForVergleich.size>=2?'block':'none';
+    const bvHint=document.getElementById('vglHint');
+    const bvN=selectedForVergleich.size;
+    if(bvBtn){
+      bvBtn.style.display=bvN>=2?'block':'none';
+      bvBtn.textContent='⚖️ Vergleich starten ('+bvN+')';
+    }
+    if(bvHint){
+      if(bvN===0) bvHint.textContent='Tippe bei 2 oder mehr Walks auf ⚖️ um sie zu vergleichen.';
+      else if(bvN===1) bvHint.textContent='Noch einen Walk mit ⚖️ auswählen…';
+      else{bvHint.textContent=bvN+' Walks ausgewählt — jetzt vergleichen!';bvHint.style.color='#7c3aed';bvHint.style.fontWeight='bold';}
+    }
   }
 
   async function exportWalk(walk){
@@ -1529,7 +1559,7 @@ window.addEventListener('load', function() {
     <div id="reflexionQPanel" style="overflow-y:auto;display:none;flex-direction:column;gap:10px;padding-bottom:8px;">
       <div style="font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;border-bottom:1px solid #e5e5e5;padding-bottom:6px;">Reflexion nach dem Walk</div>
       <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #1D9E75;">
-        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Wie würdest du deinen Spaziergang beschreiben?</div>
+        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Wie erinnerst du den Walk insgesamt?</div>
         <textarea id="rqFrei" rows="3" placeholder="Freie Beschreibung..." style="width:100%;font-size:12px;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;font-family:sans-serif;background:#fff;"></textarea>
       </div>
       <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #7c3aed;">
@@ -1540,15 +1570,15 @@ window.addEventListener('load', function() {
         </div>
       </div>
       <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #f97316;">
-        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Kannst du ein Ereignis oder Moment beschreiben der dir vom Spaziergang im Gedächnis geblieben ist?</div>
+        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Welcher Moment blieb am stärksten in Erinnerung?</div>
         <textarea id="rqMoment" rows="2" placeholder="Ort, Situation, Eindruck..." style="width:100%;font-size:12px;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;font-family:sans-serif;background:#fff;"></textarea>
       </div>
       <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #22c55e;">
-        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Orte oder Personen die deine Stimmung beeinflusst haben?</div>
+        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Orte die deine Stimmung beeinflusst haben?</div>
         <textarea id="rqOrte" rows="2" placeholder="Park, Kreuzung, Lärm..." style="width:100%;font-size:12px;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;font-family:sans-serif;background:#fff;"></textarea>
       </div>
       <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #3b82f6;">
-        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Wurde etwas nicht aufgezeicht was wichtig gewesen wäre?</div>
+        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Was war bedeutsam aber nicht aufgezeichnet?</div>
         <textarea id="rqNicht" rows="2" placeholder="Was fehlt in den Daten?" style="width:100%;font-size:12px;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;font-family:sans-serif;background:#fff;"></textarea>
       </div>
       <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #BA7517;">
