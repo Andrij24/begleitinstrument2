@@ -51,6 +51,7 @@
     .wb-export{background:#16a34a;color:#fff;}
     .wb-analyse{background:#7c3aed;color:#fff;}
     .wb-delete{background:#fee2e2;color:#dc2626;}
+    .wb-umap{background:#dbeafe;color:#2563eb;}
     .wb-verlauf{background:#0e7490;color:#fff;}
 
     /* Auswertungs-Modal — ohne Dritte-Sicht */
@@ -198,6 +199,7 @@
 <div id="topBar">
   <button id="btnStart" class="btn btn-blue">START</button>
   <button id="btnStop" class="btn btn-red">STOP / SAVE</button>
+
 </div>
 <div id="panelToggles">
   <button class="panel-tab" data-panel="ansicht">🗺 Ansicht</button>
@@ -212,6 +214,7 @@
   <div id="drawerBody">
     <div class="section" id="sec-ansicht" style="display:none;">
       <div class="section-label">Kartenansicht</div>
+      <button class="layer-opt" data-url="maptiler-vector" data-style="https://api.maptiler.com/maps/019e02c9-c89f-7ac4-a445-8682af45becc/style.json?key=kIVeCJrwqaa77bZoYoEF">✦ Eigene Karte</button>
       <button class="layer-opt active" data-url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png">Standard</button>
       <button class="layer-opt" data-url="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}">Satellit</button>
       <button class="layer-opt" data-url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png">Graustufen</button>
@@ -410,15 +413,66 @@ window.addEventListener('load', function() {
         btn.classList.add('active');
         return;
       }
-      const url=btn.getAttribute('data-url');currentTileUrl=url;
+      const url=btn.getAttribute('data-url');
+      const style=btn.getAttribute('data-style');
+      document.querySelectorAll('.layer-opt').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+
+      // MapTiler Vector Stil via maplibre-gl-leaflet
+      if(url==='maptiler-vector'){
+        state.map.removeLayer(state.currentTile);
+        // Lade MapLibre GL Leaflet Plugin wenn nötig
+        function loadMaptilerStyle(){
+          if(window.maplibregl&&window.MaplibreglLeaflet){
+            applyVectorStyle(style);
+          } else {
+            // Lade maplibre-gl
+            if(!window.maplibregl){
+              const lnk=document.createElement('link');
+              lnk.rel='stylesheet';lnk.href='https://unpkg.com/maplibre-gl@3/dist/maplibre-gl.css';
+              document.head.appendChild(lnk);
+              const scr=document.createElement('script');
+              scr.src='https://unpkg.com/maplibre-gl@3/dist/maplibre-gl.js';
+              scr.onload=()=>{
+                const scr2=document.createElement('script');
+                scr2.src='https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js';
+                scr2.onload=()=>applyVectorStyle(style);
+                document.head.appendChild(scr2);
+              };
+              document.head.appendChild(scr);
+            } else {
+              const scr2=document.createElement('script');
+              scr2.src='https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js';
+              scr2.onload=()=>applyVectorStyle(style);
+              document.head.appendChild(scr2);
+            }
+          }
+        }
+        function applyVectorStyle(styleUrl){
+          try{
+            state.currentTile=L.maplibreGL({style:styleUrl,attribution:'© MapTiler © OpenStreetMap'}).addTo(state.map);
+            currentTileUrl='maptiler-vector';
+          }catch(err){
+            console.error('MapLibre GL Leaflet error:',err);
+            // Fallback auf Raster
+            const fallback='https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=kIVeCJrwqaa77bZoYoEF';
+            state.currentTile=L.tileLayer(fallback,{crossOrigin:true,maxZoom:22,maxNativeZoom:19}).addTo(state.map);
+          }
+        }
+        loadMaptilerStyle();
+        return;
+      }
+
+      // Standard Raster Tile
+      currentTileUrl=url;
       state.map.removeLayer(state.currentTile);
       state.currentTile=L.tileLayer(url,{crossOrigin:true,maxZoom:22,maxNativeZoom:19}).addTo(state.map);
-      document.querySelectorAll('.layer-opt').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
     };
   });
 
   // ── 3D Ansicht ──
-  const MAPTILER_3D_KEY = 'DEIN_MAPTILER_KEY';
+  const MAPTILER_3D_KEY = 'kIVeCJrwqaa77bZoYoEF';
+  const MAPTILER_MAP_ID = '019e02c9-c89f-7ac4-a445-8682af45becc';
   let map3dInstance = null;
   function open3DView(){
     const mapDiv=document.getElementById('map3d');
@@ -426,7 +480,141 @@ window.addEventListener('load', function() {
     mapDiv.style.display='block';
     document.getElementById('exit3d').style.display='block';
     document.getElementById('map').style.display='none';
-    mapDiv.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#1a1a1a;color:#fff;font-size:13px;text-align:center;padding:20px;">🏔 3D Ansicht benötigt MapTiler API-Key.<br><br>Bitte MAPTILER_3D_KEY im Code eintragen.</div>';
+    // MapTiler GL JS laden falls noch nicht geladen
+    if(!window.maptilersdk){
+      mapDiv.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#1a1a1a;color:#fff;font-size:13px;text-align:center;padding:20px;">Lade 3D Karte...</div>';
+      const link=document.createElement('link');
+      link.rel='stylesheet';link.href='https://cdn.maptiler.com/maptiler-sdk-js/latest/maptiler-sdk.css';
+      document.head.appendChild(link);
+      const scr=document.createElement('script');
+      scr.src='https://cdn.maptiler.com/maptiler-sdk-js/latest/maptiler-sdk.umd.min.js';
+      scr.onload=()=>init3DMap();
+      document.head.appendChild(scr);
+    } else {
+      init3DMap();
+    }
+  }
+  function init3DMap(){
+    const mapDiv=document.getElementById('map3d');
+    mapDiv.innerHTML='';
+    maptilersdk.config.apiKey=MAPTILER_3D_KEY;
+    const center=state.liveMarker?state.liveMarker.getLatLng():state.map.getCenter();
+    map3dInstance=new maptilersdk.Map({
+      container:mapDiv,
+      style:'https://api.maptiler.com/maps/019e02c9-c89f-7ac4-a445-8682af45becc/style.json?key=kIVeCJrwqaa77bZoYoEF',
+      center:[center.lng,center.lat],
+      zoom:15,
+      pitch:60,
+      bearing:-20,
+      antialias:true
+    });
+    map3dInstance.on('load',()=>{
+      // Terrain
+      map3dInstance.addSource('terrain',{type:'raster-dem',url:'https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=kIVeCJrwqaa77bZoYoEF',tileSize:256});
+      map3dInstance.setTerrain({source:'terrain',exaggeration:2.5});
+      map3dInstance.setSky({'sky-color':'#a8c8e8','sky-horizon-blend':0.4,'horizon-color':'#dceaf5','horizon-fog-blend':0.15,'fog-color':'#c8dcea','fog-ground-blend':0.4});
+
+      // Gespeicherte Walks als Tusche-Linien einzeichnen
+      state.walks.forEach((walk,wi)=>{
+        if(!walk.route||walk.route.length<2) return;
+        const srcId='walk-'+walk.id;
+        const segs=walk.segments||[];
+
+        // GeoJSON mit Segment-Eigenschaften (Gewicht/Opacity)
+        const segFeatures=segs.length>0
+          ? segs.filter(s=>s.ll1&&s.ll2).map(s=>({
+              type:'Feature',
+              geometry:{type:'LineString',coordinates:[[s.ll2[1],s.ll2[0]],[s.ll1[1],s.ll1[0]]]},
+              properties:{w:Math.max(1,Math.min(20,s.weight)),op:Math.max(0.15,Math.min(1,s.opacity))}
+            }))
+          : [{type:'Feature',
+              geometry:{type:'LineString',coordinates:walk.route.map(p=>[p[1],p[0]])},
+              properties:{w:5,op:0.75}}];
+
+        map3dInstance.addSource(srcId,{type:'geojson',data:{type:'FeatureCollection',features:segFeatures}});
+
+        // Äußere weiche Schicht (Tuscherand)
+        map3dInstance.addLayer({
+          id:srcId+'-outer',type:'line',source:srcId,
+          layout:{'line-join':'round','line-cap':'round'},
+          paint:{
+            'line-color':'rgba(16,10,4,0.18)',
+            'line-width':['interpolate',['linear'],['zoom'],
+              12,['*',['get','w'],0.8],
+              16,['*',['get','w'],1.4],
+              19,['*',['get','w'],2.2]],
+            'line-blur':2
+          }
+        });
+        // Mittlere Schicht
+        map3dInstance.addLayer({
+          id:srcId+'-mid',type:'line',source:srcId,
+          layout:{'line-join':'round','line-cap':'round'},
+          paint:{
+            'line-color':'rgba(16,10,4,0.55)',
+            'line-width':['interpolate',['linear'],['zoom'],
+              12,['*',['get','w'],0.5],
+              16,['*',['get','w'],0.9],
+              19,['*',['get','w'],1.5]],
+            'line-blur':0.5
+          }
+        });
+        // Innere dunkle Kern-Linie
+        map3dInstance.addLayer({
+          id:srcId+'-line',type:'line',source:srcId,
+          layout:{'line-join':'round','line-cap':'round'},
+          paint:{
+            'line-color':'rgba(10,6,2,0.88)',
+            'line-width':['interpolate',['linear'],['zoom'],
+              12,['*',['get','w'],0.25],
+              16,['*',['get','w'],0.5],
+              19,['*',['get','w'],0.85]],
+            'line-opacity':['get','op']
+          }
+        });
+
+        // Eintrags-Marker mit Farbe nach Typ
+        const TC={mood:'#ea580c',thought:'#1e3a6e',sense:'#16a34a',voice:'#7c3aed',sound:'#7c3aed',photo:'#374151'};
+        const points=walk.entries.filter(e=>e.location).map(e=>({
+          type:'Feature',
+          geometry:{type:'Point',coordinates:[e.location.lng,e.location.lat]},
+          properties:{col:TC[e.type]||walk.color||'#e6194b',r:e.type==='mood'?8:5}
+        }));
+        if(points.length>0){
+          map3dInstance.addSource(srcId+'-pts',{type:'geojson',data:{type:'FeatureCollection',features:points}});
+          // Weißer Rand
+          map3dInstance.addLayer({
+            id:srcId+'-pts-border',type:'circle',source:srcId+'-pts',
+            paint:{
+              'circle-radius':['interpolate',['linear'],['zoom'],12,['get','r'],16,['*',['get','r'],1.6],19,['*',['get','r'],2.5]],
+              'circle-color':'#fff',
+              'circle-opacity':0.95
+            }
+          });
+          // Farbiger Kern
+          map3dInstance.addLayer({
+            id:srcId+'-pts-layer',type:'circle',source:srcId+'-pts',
+            paint:{
+              'circle-radius':['interpolate',['linear'],['zoom'],12,['*',['get','r'],0.7],16,['*',['get','r'],1.2],19,['*',['get','r'],2]],
+              'circle-color':['get','col'],
+              'circle-opacity':0.95
+            }
+          });
+        }
+      });
+    });
+    map3dInstance.on('load',()=>{
+      map3dInstance.addSource('terrain',{type:'raster-dem',url:'https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=kIVeCJrwqaa77bZoYoEF',tileSize:256});
+      map3dInstance.setTerrain({source:'terrain',exaggeration:1.5});
+      map3dInstance.setSky({
+        'sky-color':'#b8d4e8',
+        'sky-horizon-blend':0.3,
+        'horizon-color':'#e8f0f8',
+        'horizon-fog-blend':0.1,
+        'fog-color':'#dce8f0',
+        'fog-ground-blend':0.5
+      });
+    });
   }
   document.getElementById('exit3d').onclick = () => {
     document.getElementById('map3d').style.display='none';
@@ -615,7 +803,27 @@ window.addEventListener('load', function() {
     inkLayer.clearSegments();
     Object.keys(mapLayers).forEach(k=>{mapLayers[k].forEach(l=>{try{state.map.removeLayer(l);}catch(e){}});mapLayers[k]=[];});
     if(!state.current.reflection)state.current.reflection={frei:'',moodRetro:3,moment:'',orte:'',nicht:'',ueber:''};
-    releaseWakeLock();    state.walks.push(state.current);saveWalks();state.current=null;renderArchive();openPanel('archiv');
+    releaseWakeLock();
+    const savedWalk=state.current;
+    state.walks.push(state.current);saveWalks();state.current=null;renderArchive();openPanel('archiv');
+    // Export-Banner im Archiv anzeigen
+    setTimeout(()=>{
+      const list=document.getElementById('archiveList');
+      if(!list) return;
+      const banner=document.createElement('div');
+      banner.style.cssText='background:#16a34a;color:#fff;border-radius:10px;padding:12px 14px;'
+        +'margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;';
+      banner.innerHTML='<span style="font-size:12px;font-weight:bold;">✅ Walk gespeichert!</span>'
+        +'<button style="padding:8px 14px;border-radius:8px;border:none;background:#fff;'
+        +'color:#16a34a;font-size:11px;font-weight:bold;cursor:pointer;">📦 Jetzt exportieren</button>';
+      banner.querySelector('button').onclick=()=>{
+        banner.remove();
+        exportWalk(savedWalk);
+      };
+      list.insertBefore(banner,list.firstChild);
+      // Banner nach 30 Sek. automatisch ausblenden
+      setTimeout(()=>{if(banner.parentNode)banner.remove();},30000);
+    },300);
   };
 
   function saveWalks(){
@@ -866,8 +1074,8 @@ window.addEventListener('load', function() {
     verlaufMap.zoomControl.setPosition('bottomright');
 
     // Graustufen-Karte
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
-      maxZoom:19, subdomains:'abcd'
+    L.tileLayer('https://api.maptiler.com/maps/019e02c9-c89f-7ac4-a445-8682af45becc/{z}/{x}/{y}.png?key=kIVeCJrwqaa77bZoYoEF',{
+      maxZoom:22, maxNativeZoom:20, tileSize:256, crossOrigin:true
     }).addTo(verlaufMap);
 
     // ── Tuschlinie: gespeicherte Segmente direkt übernehmen ──
@@ -1560,15 +1768,15 @@ window.addEventListener('load', function() {
 
       // ── Immer sichtbare Schnell-Buttons ──
       const quickRow=document.createElement('div');
-      quickRow.style.cssText='display:flex;gap:6px;padding:4px 10px 6px;align-items:center;';
+      quickRow.style.cssText='display:flex;gap:4px;padding:4px 8px 6px;align-items:center;';
       [{cls:'wb-verlauf',label:'📋 Reflexion',col:'#2563eb'},
        {cls:'wb-analyse',label:'📊 Auswerten',col:'#16a34a'}
       ].forEach(({cls,label,col})=>{
         const btn=document.createElement('button');
         btn.setAttribute('data-cls',cls);
-        btn.style.cssText='flex:1;padding:8px 4px;font-size:11px;border-radius:8px;'
+        btn.style.cssText='flex:1;padding:7px 3px;font-size:10px;border-radius:8px;'
           +'border:1.5px solid '+col+';background:#fff;color:'+col+';font-weight:bold;'
-          +'cursor:pointer;-webkit-tap-highlight-color:transparent;';
+          +'cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap;';
         btn.textContent=label;
         quickRow.appendChild(btn);
       });
@@ -1687,6 +1895,59 @@ window.addEventListener('load', function() {
       walk.route.forEach(p=>{gpx+='      <trkpt lat="'+p[0]+'" lon="'+p[1]+'"></trkpt>\n';});
       gpx+='    </trkseg>\n  </trk>\n</gpx>';
       folder.file('route.gpx',gpx);
+
+      // ── GeoJSON Export — für uMap / map.iterations.at ──
+      const geojson={
+        type:'FeatureCollection',
+        features:[
+          // Route als LineString
+          {
+            type:'Feature',
+            properties:{name:walk.name,type:'route',color:walk.color||'#e6194b'},
+            geometry:{type:'LineString',coordinates:walk.route.map(p=>[p[1],p[0]])}
+          },
+          // Einträge als Points
+          ...walk.entries
+            .filter(e=>e.location)
+            .map(e=>({
+              type:'Feature',
+              properties:(()=>{
+                const TN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Wahrnehmung',
+                  voice:'💬 Sprachnachricht',sound:'🎙 Umgebungssound',photo:'📸 Foto'};
+                const TC={mood:'#ea580c',thought:'#1e3a6e',sense:'#2d5a2d',
+                  voice:'#7c3aed',sound:'#7c3aed',photo:'#374151'};
+                // Beschreibung aufbauen
+                let desc='';
+                if(e.moodValue!=null) desc='Stimmung: '+e.moodValue+'/5';
+                if(e.text) desc+=(desc?'\n':'')+e.text;
+                if(e.audioDuration) desc+=(desc?'\n':'')+'Aufnahmedauer: '+e.audioDuration;
+                // Foto als Base64 direkt ins GeoJSON (uMap zeigt es per img-Tag)
+                const imgTag=e.dataUrl
+                  ?'<img src="'+e.dataUrl+'" style="max-width:200px;border-radius:6px;margin-top:6px;"/>'
+                  :'';
+                // Audio: base64 als data-URL
+                const aBase=e.audioBase64||(e.entryId&&audioBlobs[e.entryId]
+                  ?null:null); // Blob kann nicht serialisiert werden
+                const audioTag=e.audioBase64
+                  ?'<audio controls src="'+e.audioBase64+'" style="width:100%;margin-top:6px;"></audio>'
+                  :'';
+                return {
+                  name:(TN[e.type]||e.type)+(e.timestamp?' ('+e.timestamp+')':''),
+                  description:desc+(imgTag?'\n\n'+imgTag:'')+(audioTag?'\n\n'+audioTag:''),
+                  type:e.type,
+                  moodValue:e.moodValue||null,
+                  timestamp:e.timestamp||null,
+                  'marker-color':TC[e.type]||'#555555',
+                  'marker-size':e.type==='mood'?'large':'medium',
+                  'marker-symbol':({mood:'star',thought:'circle',sense:'triangle',
+                    voice:'music',sound:'music',photo:'camera'})[e.type]||'circle'
+                };
+              })(),
+              geometry:{type:'Point',coordinates:[e.location.lng,e.location.lat]}
+            }))
+        ]
+      };
+      folder.file('route_umap.geojson',JSON.stringify(geojson,null,2));
       let pc=0;walk.entries.forEach(e=>{if(e.type==='photo'&&e.dataUrl){pc++;folder.file('foto_'+pc+'.jpg',e.dataUrl.split(',')[1],{base64:true});}});
       let ac=0;walk.entries.forEach(e=>{
         if(e.type==='voice'||e.type==='sound'){
@@ -1736,6 +1997,97 @@ window.addEventListener('load', function() {
       const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=walk.name.replace(/[^a-zA-Z0-9äöüÄÖÜß _-]/g,'_')+'_export.zip';a.click();setTimeout(()=>URL.revokeObjectURL(url),5000);
     }catch(err){alert('Export fehlgeschlagen: '+err.message);}finally{overlay.classList.remove('open');}
   }
+
+  let umapCurrentWalk=null;
+  function openUmapModal(walk){
+    umapCurrentWalk=walk;
+    document.getElementById('umapModal').style.display='flex';
+  }
+  document.getElementById('umapClose').onclick=()=>{
+    document.getElementById('umapModal').style.display='none';
+    umapCurrentWalk=null;
+  };
+  document.getElementById('umapDownloadBtn').onclick=()=>{
+    if(!umapCurrentWalk) return;
+    const walk=umapCurrentWalk;
+
+    // Farben und Labels exakt wie in der App
+    const TC={mood:'#ea580c',thought:'#2563eb',sense:'#16a34a',
+              voice:'#7c3aed',sound:'#7c3aed',photo:'#374151'};
+    const TN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Wahrnehmung',
+              voice:'💬 Sprachnachricht',sound:'🎙 Umgebungssound',photo:'📸 Foto'};
+
+    const features=[];
+
+    // ── Ebene 1: Route als Linie ──
+    features.push({
+      type:'Feature',
+      properties:{
+        layer:'Route',
+        name:walk.name,
+        stroke:walk.color||'#e6194b',
+        'stroke-width':4,
+        'stroke-opacity':0.85
+      },
+      geometry:{type:'LineString',coordinates:walk.route.map(p=>[p[1],p[0]])}
+    });
+
+    // ── Ebenen 2–7: Einträge nach Typ, exakt wie in der App ──
+    walk.entries.filter(e=>e.location).forEach(e=>{
+      const col=TC[e.type]||'#555';
+      const typName=TN[e.type]||e.type;
+
+      // Popup-Inhalt: alles was erfasst wurde, direkt sichtbar ohne Vorlage
+      let popupLines=[];
+      popupLines.push('<b style="color:'+col+';">'+typName+'</b>');
+      if(e.timestamp) popupLines.push('<small>'+e.timestamp+'</small>');
+      if(e.moodValue!=null)
+        popupLines.push('<span style="font-size:28px;font-weight:bold;color:'+col+';">'+e.moodValue+'<span style="font-size:13px;color:#aaa;"> /5</span></span>');
+      if(e.text)
+        popupLines.push('<p style="margin:6px 0;font-size:13px;color:#333;">'+e.text+'</p>');
+      if(e.dataUrl)
+        popupLines.push('<img src="'+e.dataUrl+'" style="width:100%;max-width:280px;border-radius:8px;margin-top:6px;"/>');
+      if(e.audioBase64)
+        popupLines.push('<audio controls src="'+e.audioBase64+'" style="width:100%;margin-top:6px;"></audio>');
+      if(e.audioDuration&&!e.audioBase64)
+        popupLines.push('<small>🎙 Aufnahme ('+e.audioDuration+') — Audio nach Reload nicht mehr verfügbar</small>');
+
+      // Marker-Label: kurz und klar
+      let markerName=typName;
+      if(e.moodValue!=null) markerName='🔋 '+e.moodValue+'/5';
+      else if(e.text) markerName=typName+': '+e.text.substring(0,40)+(e.text.length>40?'…':'');
+      else if(e.dataUrl) markerName='📸 Foto';
+      else if(e.audioBase64||e.audioDuration) markerName=typName+' (Audio)';
+
+      features.push({
+        type:'Feature',
+        properties:{
+          layer:typName,           // uMap gruppiert nach 'layer'
+          name:markerName,
+          description:popupLines.join('<br>'),
+          'marker-color':col,
+          'marker-size':e.type==='mood'?'large':'medium',
+          'marker-symbol':({
+            mood:'star',thought:'circle',sense:'triangle',
+            voice:'music',sound:'music',photo:'camera'
+          })[e.type]||'circle',
+          timestamp:e.timestamp||null,
+          type:e.type,
+          moodValue:e.moodValue||null
+        },
+        geometry:{type:'Point',coordinates:[e.location.lng,e.location.lat]}
+      });
+    });
+
+    const geojson={type:'FeatureCollection',features};
+    const blob=new Blob([JSON.stringify(geojson,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=walk.name.replace(/[^a-zA-Z0-9äöüÄÖÜß _-]/g,'_')+'_umap.geojson';
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),3000);
+  };
 
   async function takeMapSnapshot(walk,folder){
     try{
@@ -1914,6 +2266,19 @@ window.addEventListener('load', function() {
 </div>
 
 
+<!-- UMAP-EXPORT MODAL -->
+<div id="umapModal" style="display:none;position:fixed;inset:0;z-index:6000;background:rgba(0,0,0,0.75);align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:16px;width:min(94vw,440px);padding:24px;display:flex;flex-direction:column;gap:14px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div style="font-size:14px;font-weight:bold;color:#111;">🗺 GeoJSON exportieren</div>
+      <button id="umapClose" style="border:none;background:#f0f0f0;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:14px;">✕</button>
+    </div>
+    <div style="background:#f0f4ff;border-radius:10px;padding:12px 14px;font-size:12px;color:#1e3a6e;line-height:1.7;">
+      Enthält Route + alle Einträge (Stimmung, Gedanken, Wahrnehmung, Fotos) — bereit zum Import in uMap.
+    </div>
+    <button id="umapDownloadBtn" style="width:100%;padding:14px;border-radius:10px;border:none;background:#2563eb;color:#fff;font-size:14px;font-weight:bold;cursor:pointer;-webkit-tap-highlight-color:transparent;">📥 GeoJSON herunterladen</button>
+  </div>
+</div>
 <!-- VERGLEICH-VOLLBILD -->
 <div id="vglOverlay" style="display:none;position:fixed;inset:0;z-index:5000;background:#f0ede8;flex-direction:column;overflow:hidden;">
   <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#fff;flex-shrink:0;border-bottom:1px solid #e5e5e5;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
