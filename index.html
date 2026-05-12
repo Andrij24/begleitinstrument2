@@ -385,7 +385,36 @@ window.addEventListener('load', function() {
   let currentTileUrl='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 
   state.map=L.map('map',{zoomControl:false,maxZoom:22}).setView([47.23,9.61],17);
-  state.currentTile=L.tileLayer(currentTileUrl,{crossOrigin:true,maxZoom:22,maxNativeZoom:19}).addTo(state.map);
+  // Direkt eigene MapTiler-Karte laden
+  currentTileUrl='maptiler-vector';
+  // Temporär OSM bis MapLibre geladen ist
+  state.currentTile=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{crossOrigin:true,maxZoom:22,maxNativeZoom:19}).addTo(state.map);
+  // Eigene Karte nachladen sobald MapLibre verfügbar
+  (function loadDefaultStyle(){
+    const lnk=document.createElement('link');
+    lnk.rel='stylesheet';lnk.href='https://unpkg.com/maplibre-gl@3/dist/maplibre-gl.css';
+    document.head.appendChild(lnk);
+    const scr=document.createElement('script');
+    scr.src='https://unpkg.com/maplibre-gl@3/dist/maplibre-gl.js';
+    scr.onload=()=>{
+      const scr2=document.createElement('script');
+      scr2.src='https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js';
+      scr2.onload=()=>{
+        try{
+          state.map.removeLayer(state.currentTile);
+          state.currentTile=L.maplibreGL({
+            style:'https://api.maptiler.com/maps/019e02c9-c89f-7ac4-a445-8682af45becc/style.json?key=kIVeCJrwqaa77bZoYoEF',
+            attribution:'© MapTiler © OpenStreetMap'
+          }).addTo(state.map);
+          // Aktiven Button aktualisieren
+          document.querySelectorAll('.layer-opt').forEach(b=>b.classList.remove('active'));
+          document.querySelector('.layer-opt[data-url="maptiler-vector"]')?.classList.add('active');
+        }catch(err){console.error('MapLibre init error:',err);}
+      };
+      document.head.appendChild(scr2);
+    };
+    document.head.appendChild(scr);
+  })();
 
   const drawer=document.getElementById('drawer');
   const drawerTitle=document.getElementById('drawerTitle');
@@ -513,6 +542,61 @@ window.addEventListener('load', function() {
       map3dInstance.addSource('terrain',{type:'raster-dem',url:'https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=kIVeCJrwqaa77bZoYoEF',tileSize:256});
       map3dInstance.setTerrain({source:'terrain',exaggeration:2.5});
       map3dInstance.setSky({'sky-color':'#a8c8e8','sky-horizon-blend':0.4,'horizon-color':'#dceaf5','horizon-fog-blend':0.15,'fog-color':'#c8dcea','fog-ground-blend':0.4});
+
+      // 3D Gebäude — funktioniert mit allen MapTiler-Stilen
+      // MapTiler nennt den Building-Layer je nach Stil unterschiedlich
+      // Wir versuchen alle gängigen Namen
+      const buildingLayerNames=['building','building-3d','buildings','building-extrusion','3d-buildings'];
+      let buildingLayerFound=false;
+      buildingLayerNames.forEach(layerName=>{
+        if(!buildingLayerFound&&map3dInstance.getLayer(layerName)){
+          buildingLayerFound=true;
+          try{
+            map3dInstance.setPaintProperty(layerName,'fill-extrusion-height',
+              ['interpolate',['linear'],['zoom'],14,0,16,['get','height'],18,['*',['get','height'],1.2]]);
+            map3dInstance.setPaintProperty(layerName,'fill-extrusion-base',['get','min_height']);
+            map3dInstance.setPaintProperty(layerName,'fill-extrusion-opacity',0.85);
+          }catch(err){console.log('Building layer error:',err);}
+        }
+      });
+      // Falls kein Building-Layer gefunden: eigenen hinzufügen
+      if(!buildingLayerFound){
+        // Füge 3D-Gebäude aus OSM-Daten hinzu (falls im Stil vorhanden)
+        const allLayers=map3dInstance.getStyle().layers||[];
+        allLayers.forEach(layer=>{
+          if(layer.id&&(layer.id.includes('build')||layer.id.includes('Build'))){
+            console.log('Found building layer:',layer.id,layer.type);
+            if(layer.type==='fill-extrusion'){
+              buildingLayerFound=true;
+              try{
+                map3dInstance.setPaintProperty(layer.id,'fill-extrusion-height',
+                  ['interpolate',['linear'],['zoom'],14,0,16,['get','height']]);
+                map3dInstance.setPaintProperty(layer.id,'fill-extrusion-opacity',0.85);
+              }catch(err){}
+            } else if(layer.type==='fill'){
+              // Konvertiere fill zu fill-extrusion
+              const src=layer.source;
+              const srcLayer=layer['source-layer'];
+              if(src&&srcLayer&&!buildingLayerFound){
+                buildingLayerFound=true;
+                map3dInstance.addLayer({
+                  id:'custom-3d-buildings',
+                  type:'fill-extrusion',
+                  source:src,
+                  'source-layer':srcLayer,
+                  filter:['==',['get','extrude'],'true'],
+                  paint:{
+                    'fill-extrusion-color':'#d4cfc9',
+                    'fill-extrusion-height':['interpolate',['linear'],['zoom'],14,0,16,['get','height']],
+                    'fill-extrusion-base':['get','min_height'],
+                    'fill-extrusion-opacity':0.8
+                  }
+                },layer.id);
+              }
+            }
+          }
+        });
+      }
 
       // Gespeicherte Walks als Tusche-Linien einzeichnen
       state.walks.forEach((walk,wi)=>{
@@ -738,7 +822,8 @@ window.addEventListener('load', function() {
     const ll=[smoothLat,smoothLng],now=Date.now();
     if(!state.liveMarker){
       state.liveMarker=L.circleMarker(ll,{radius:6,fillColor:'#111',color:'#fff',weight:2,fillOpacity:1,zIndexOffset:1000}).addTo(state.map);
-      state.map.setView(ll,17);
+      // Sofort auf GPS-Position zentrieren
+      state.map.setView(ll,17,{animate:true,duration:1.0});
     } else {
       state.liveMarker.setLatLng(ll);
     }
