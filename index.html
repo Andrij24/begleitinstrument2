@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-  <title>Begleitinstrument PRO</title>
+  <title>Begleitinstrument</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
@@ -205,6 +205,7 @@
   <button class="panel-tab" data-panel="ansicht">🗺 Ansicht</button>
   <button class="panel-tab" data-panel="ebenen">☰ Ebenen</button>
   <button class="panel-tab" data-panel="archiv">📂 Archiv</button>
+  <button class="panel-tab" id="btnHelp" style="background:#f5f0e8;color:#555;">❓ Hilfe</button>
 </div>
 <div id="drawer">
   <div id="drawerHeader">
@@ -1159,9 +1160,52 @@ window.addEventListener('load', function() {
     verlaufMap.zoomControl.setPosition('bottomright');
 
     // Graustufen-Karte
-    L.tileLayer('https://api.maptiler.com/maps/019e02c9-c89f-7ac4-a445-8682af45becc/{z}/{x}/{y}.png?key=kIVeCJrwqaa77bZoYoEF',{
-      maxZoom:22, maxNativeZoom:20, tileSize:256, crossOrigin:true
-    }).addTo(verlaufMap);
+    // MapTiler Stil via MapLibre GL Leaflet (gleich wie Hauptkarte)
+    if(window.maplibregl && window.MaplibreglLeaflet || window.L.maplibreGL){
+      try{
+        L.maplibreGL({
+          style:'https://api.maptiler.com/maps/019e02c9-c89f-7ac4-a445-8682af45becc/style.json?key=kIVeCJrwqaa77bZoYoEF',
+          attribution:'© MapTiler © OpenStreetMap'
+        }).addTo(verlaufMap);
+      }catch(err){
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd'}).addTo(verlaufMap);
+      }
+    } else {
+      // MapLibre noch nicht geladen — OSM als Fallback, dann nachladen
+      const refTile=L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd'}).addTo(verlaufMap);
+      if(!window.maplibregl){
+        const scr=document.createElement('script');
+        scr.src='https://unpkg.com/maplibre-gl@3/dist/maplibre-gl.js';
+        scr.onload=()=>{
+          const scr2=document.createElement('script');
+          scr2.src='https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js';
+          scr2.onload=()=>{
+            try{
+              verlaufMap.removeLayer(refTile);
+              L.maplibreGL({
+                style:'https://api.maptiler.com/maps/019e02c9-c89f-7ac4-a445-8682af45becc/style.json?key=kIVeCJrwqaa77bZoYoEF',
+                attribution:'© MapTiler © OpenStreetMap'
+              }).addTo(verlaufMap);
+            }catch(e){}
+          };
+          document.head.appendChild(scr2);
+        };
+        document.head.appendChild(scr);
+      } else {
+        const scr2=document.createElement('script');
+        scr2.src='https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js';
+        scr2.onload=()=>{
+          try{
+            verlaufMap.removeLayer(refTile);
+            L.maplibreGL({
+              style:'https://api.maptiler.com/maps/019e02c9-c89f-7ac4-a445-8682af45becc/style.json?key=kIVeCJrwqaa77bZoYoEF',
+              attribution:'© MapTiler © OpenStreetMap'
+            }).addTo(verlaufMap);
+          }catch(e){}
+        };
+        document.head.appendChild(scr2);
+      }
+    }
 
     // ── Tuschlinie: gespeicherte Segmente direkt übernehmen ──
     // walk.segments enthält ll1, ll2, weight, opacity — exakt wie auf der Hauptkarte
@@ -2245,6 +2289,93 @@ window.addEventListener('load', function() {
     }catch(err){console.error('Snapshot:',err);}
   }
 
+  // ── ONBOARDING ──
+  let obCurrentStep=0;
+  let obSteps=null, obDots=null, obTotal=0;
+
+  function goToStep(n){
+    if(!obSteps) return;
+    obSteps.forEach((s,i)=>s.style.display=i===n?'flex':'none');
+    obDots.forEach((d,i)=>d.style.background=i===n?'#111':'#ddd');
+    document.getElementById('ob-next').textContent=n===obTotal-1?'Starten ✓':'Weiter →';
+    document.getElementById('ob-back').style.display=n>0?'block':'none';
+    document.getElementById('ob-skip').style.display=n===obTotal-1?'none':'block';
+    obCurrentStep=n;
+  }
+
+  function initOnboarding(){
+    // Gerät erkennen
+    const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;
+    const isAndroid=/Android/.test(navigator.userAgent);
+
+    // Device-spezifischer Hinweis Schritt 1
+    const hint=document.getElementById('ob-device-hint');
+    if(isIOS){
+      hint.style.cssText='background:#fef3c7;border-radius:10px;padding:12px 14px;font-size:11px;color:#92400e;line-height:1.7;border-left:4px solid #f59e0b;';
+      hint.innerHTML='<b>📱 iPhone erkannt:</b><br>Verwende <b>Safari</b> als Browser. Erlaube unter Einstellungen → Safari → Standort den Zugriff.';
+    } else if(isAndroid){
+      hint.style.cssText='background:#ecfdf5;border-radius:10px;padding:12px 14px;font-size:11px;color:#065f46;line-height:1.7;border-left:4px solid #10b981;';
+      hint.innerHTML='<b>🤖 Android erkannt:</b><br>Verwende <b>Chrome</b> als Browser. Wähle bei der Standort-Abfrage <b>"Immer erlauben"</b>.';
+    } else {
+      hint.style.cssText='background:#f0f4ff;border-radius:10px;padding:12px 14px;font-size:11px;color:#1e3a6e;line-height:1.7;';
+      hint.innerHTML='<b>💡 Tipp:</b><br>Auf dem Handy: iPhone → Safari, Android → Chrome verwenden.';
+    }
+
+    // Display-Hinweis Schritt 4
+    const dHint=document.getElementById('ob-display-hint');
+    if(isIOS){
+      dHint.innerHTML='<b>iPhone:</b> Einstellungen → Anzeige & Helligkeit → Automatische Sperre → <b>"Nie"</b><br>Nach dem Walk bitte zurücksetzen.';
+    } else if(isAndroid){
+      dHint.innerHTML='<b>Android:</b> Einstellungen → Anzeige → Ruhezustand/Sleep → <b>längste Zeit</b> wählen oder "Nie".<br>Energiesparmodus für die Testdauer deaktivieren.';
+    } else {
+      dHint.innerHTML='Stelle die automatische Sperre auf die längste verfügbare Zeit.';
+    }
+
+    // Onboarding anzeigen — Version-Key damit neue Version immer erscheint
+    const OB_VERSION='v8';
+    if(localStorage.getItem('ob_done')!==OB_VERSION){
+      document.getElementById('onboardingModal').style.display='flex';
+    }
+
+    // Navigation
+    let currentStep=0;
+    const steps=document.querySelectorAll('.ob-step');
+    const dots=document.querySelectorAll('.ob-dot');
+    const total=steps.length;
+
+    function goTo(n){
+      steps.forEach((s,i)=>s.style.display=i===n?'flex':'none');
+      dots.forEach((d,i)=>d.style.background=i===n?'#111':'#ddd');
+      document.getElementById('ob-next').textContent=n===total-1?'Starten ✓':'Weiter →';
+      document.getElementById('ob-back').style.display=n>0?'block':'none';
+      document.getElementById('ob-skip').style.display=n===total-1?'none':'block';
+      currentStep=n;
+    }
+
+    document.getElementById('ob-back').onclick=()=>{
+      if(currentStep>0) goTo(currentStep-1);
+    };
+    document.getElementById('ob-next').onclick=()=>{
+      if(currentStep<total-1){
+        goTo(currentStep+1);
+      } else {
+        closeOnboarding();
+      }
+    };
+
+    document.getElementById('ob-skip').onclick=()=>closeOnboarding();
+
+    function closeOnboarding(){
+      document.getElementById('onboardingModal').style.display='none';
+      localStorage.setItem('ob_done',OB_VERSION);
+    }
+  }
+  initOnboarding();
+  document.getElementById('btnHelp').onclick=()=>{
+    document.getElementById('onboardingModal').style.display='flex';
+    goToStep(0);
+  };
+
   renderArchive();
 });
 </script>
@@ -2364,6 +2495,207 @@ window.addEventListener('load', function() {
     <button id="umapDownloadBtn" style="width:100%;padding:14px;border-radius:10px;border:none;background:#2563eb;color:#fff;font-size:14px;font-weight:bold;cursor:pointer;-webkit-tap-highlight-color:transparent;">📥 GeoJSON herunterladen</button>
   </div>
 </div>
+<!-- ONBOARDING MODAL -->
+<div id="onboardingModal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.92);align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#fff;border-radius:20px;width:min(96vw,420px);max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;">
+
+    <!-- Header -->
+    <div style="background:#111;border-radius:20px 20px 0 0;padding:20px 20px 16px;text-align:center;flex-shrink:0;">
+      <div style="font-size:28px;margin-bottom:8px;"></div>
+      <div style="font-size:16px;font-weight:bold;color:#fff;">Begleitinstrument</div>
+      <div style="font-size:11px;color:#9ca3af;margin-top:4px;">Was erlebst du während deines Spazierganges?</div>
+    </div>
+
+    <!-- Schritte -->
+    <div id="onboarding-steps" style="padding:16px;display:flex;flex-direction:column;gap:0;">
+
+      <!-- Schritt 1 -->
+      <div class="ob-step" data-step="0" style="display:flex;flex-direction:column;gap:12px;">
+        <div style="text-align:center;padding:8px 0;">
+          <div style="font-size:40px;">📍</div>
+          <div style="font-size:15px;font-weight:bold;color:#111;margin-top:8px;">Willkommen!</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:6px;line-height:1.6;">Diese Webbasierte-App begleitet dich bei einem Spaziergang und zeichnet auf was du erlebst — Route, Stimmung, Gedanken, Fotos und Audio.</div>
+        </div>
+        <div style="background:#f0f4ff;border-radius:10px;padding:12px 14px;font-size:11px;color:#1e3a6e;line-height:1.7;">
+          <b>Bevor du startest:</b><br>
+          Erlaube der App Zugriff auf <b>Standort, Mikrofon und Kamera</b> wenn du danach gefragt wirst - erlauben drücken.
+        </div>
+        <!-- iOS / Android Hinweis -->
+        <div id="ob-device-hint" style="border-radius:10px;padding:12px 14px;font-size:11px;line-height:1.7;"></div>
+      </div>
+
+      <!-- Schritt 2 -->
+      <div class="ob-step" data-step="1" style="display:none;flex-direction:column;gap:12px;">
+        <div style="text-align:center;padding:8px 0;">
+          <div style="font-size:40px;">🚶</div>
+          <div style="font-size:15px;font-weight:bold;color:#111;margin-top:8px;">Spaziergang aufzeichnen</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
+            <span style="font-size:22px;">▶️</span>
+            <div><b style="font-size:12px;">START</b><br><span style="font-size:11px;color:#6b7280;">Tippe auf START und warte bis der GPS-Punkt erscheint.</span></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
+            <span style="font-size:22px;">📸🎙💬👁💭🔋</span>
+            <div><b style="font-size:12px;">Aufzeichnen</b><br><span style="font-size:11px;color:#6b7280;">Die Buttons links: 📸 Foto,🎙 Umgebungssound, 💬 Sprachnachricht, 👁 Wahrnehmung, 💭 Gedanke, 🔋 Stimmung.</span></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
+            <span style="font-size:22px;">⏹️</span>
+            <div><b style="font-size:12px;">STOP / SAVE</b><br><span style="font-size:11px;color:#6b7280;">Walk beenden, Namen vergeben und speichern.</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Schritt 3 -->
+      <div class="ob-step" data-step="2" style="display:none;flex-direction:column;gap:12px;">
+        <div style="text-align:center;padding:8px 0;">
+          <div style="font-size:40px;">📋</div>
+          <div style="font-size:15px;font-weight:bold;color:#111;margin-top:8px;">Nach dem Spaziergang</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
+            <span style="font-size:22px;">📂</span>
+            <div><b style="font-size:12px;">Archiv öffnen</b><br><span style="font-size:11px;color:#6b7280;">Tippe oben rechts auf "Archiv" um deine Walks auf der Map zu sehen sowie Umzubenennen, zu Exportieren und zu Löschen.</span></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
+            <span style="font-size:22px;">📋</span>
+            <div><b style="font-size:12px;">Reflexion</b><br><span style="font-size:11px;color:#6b7280;">Warte etwas, dann beantworte die Reflexionsfragen.</span></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
+            <span style="font-size:22px;">📦</span>
+            <div><b style="font-size:12px;">Export</b><br><span style="font-size:11px;color:#6b7280;">Exportiere deinen Walk als ZIP — alle Daten, Fotos und Audio.</span></div>
+          </div>
+          <div style="background:#f0f4ff;border-radius:10px;padding:10px 12px;font-size:11px;color:#1e3a6e;line-height:1.8;">
+            <b>Wo findest du den Export?</b><br>
+            Archiv → Walk antippen → Aktionen aufklappen → <b>📦 Export</b><br><br>
+            📱 <b>iPhone:</b> Die ZIP-Datei landet in <b>Dateien → Downloads</b>. Von dort per Whatsapp oder Mail senden.<br>
+            🤖 <b>Android:</b> Die ZIP-Datei landet im <b>Downloads-Ordner</b>. Von dort per Whatsapp oder Mail senden.
+          </div>
+        </div>
+      </div>
+
+      <!-- Schritt 3b — Ansicht & Ebenen -->
+      <div class="ob-step" data-step="3" style="display:none;flex-direction:column;gap:12px;">
+        <div style="text-align:center;padding:8px 0;">
+          <div style="font-size:40px;">🗺</div>
+          <div style="font-size:15px;font-weight:bold;color:#111;margin-top:8px;">Ansicht & Ebenen</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
+            <span style="font-size:22px;">🗺</span>
+            <div><b style="font-size:12px;">Ansicht</b><br><span style="font-size:11px;color:#6b7280;">Wechsle zwischen der eigenen Karte, Standard, Satellit, Graustufen oder 3D-Ansicht.</span></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
+            <span style="font-size:22px;">☰</span>
+            <div><b style="font-size:12px;">Ebenen</b><br><span style="font-size:11px;color:#6b7280;">Zeigt Schrittzähler und Tempo. Einzelne Ebenen (Fotos, Audio, Stimmung...) ein- und ausblenden.</span></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
+            <span style="font-size:22px;">🏔</span>
+            <div><b style="font-size:12px;">3D Ansicht</b><br><span style="font-size:11px;color:#6b7280;">Zeigt in 3D echte Geländemodell und Gebäuden.</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Schritt 4 — Auswertung erklärt -->
+      <div class="ob-step" data-step="4" style="display:none;flex-direction:column;gap:12px;">
+        <div style="text-align:center;padding:8px 0;">
+          <div style="font-size:40px;">📊</div>
+          <div style="font-size:15px;font-weight:bold;color:#111;margin-top:8px;">Die Auswertung</div>
+          <div style="font-size:11px;color:#6b7280;margin-top:6px;line-height:1.6;">Zeigt die Lücke zwischen Erleben und Erinnern</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="background:#f0fdf4;border-radius:10px;padding:10px 12px;border-left:4px solid #1D9E75;">
+            <div style="font-size:11px;font-weight:bold;color:#065f46;margin-bottom:4px;">Schicht 1 — Aufgezeichnet</div>
+            <div style="font-size:11px;color:#374151;line-height:1.6;">Deine Stimmungswerte (🔋 1–5) die du <b>während</b> des Walks gesetzt hast.</div>
+          </div>
+          <div style="background:#f5f3ff;border-radius:10px;padding:10px 12px;border-left:4px solid #534AB7;">
+            <div style="font-size:11px;font-weight:bold;color:#3730a3;margin-bottom:4px;">Schicht 2 — Erinnert</div>
+            <div style="font-size:11px;color:#374151;line-height:1.6;">Wie du den Walk <b>im Nachhinein</b> bewertest (aus den Reflexionsfragen).</div>
+          </div>
+          <div style="background:#fff7ed;border-radius:10px;padding:10px 12px;border-left:4px solid #f97316;">
+            <div style="font-size:11px;font-weight:bold;color:#92400e;margin-bottom:4px;">Diskrepanz</div>
+            <div style="font-size:11px;color:#374151;line-height:1.6;">Die <b>Differenz</b> zwischen beiden — wie wurde der Spaziergang erinnert? Grün = Erinnerung besser, Rot = schlechter.</div>
+          </div>
+        </div>
+        <div style="background:#f0f4ff;border-radius:10px;padding:10px 12px;font-size:10px;color:#1e3a6e;line-height:1.6;">
+          💡 Tipp: Setze mindestens 3–4 Stimmungsmarker (🔋) während des Walks für aussagekräftige Diagramme.
+        </div>
+      </div>
+
+      <!-- Schritt 5 — Vergleich & GeoJSON -->
+      <div class="ob-step" data-step="5" style="display:none;flex-direction:column;gap:12px;">
+        <div style="text-align:center;padding:8px 0;">
+          <div style="font-size:40px;">⚖️</div>
+          <div style="font-size:15px;font-weight:bold;color:#111;margin-top:8px;">Vergleichen & Auswerten</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
+            <span style="font-size:22px;">📊</span>
+            <div><b style="font-size:12px;">Auswerten</b><br><span style="font-size:11px;color:#6b7280;">Zeigt aufgezeichnete vs. erinnerte Stimmung und die Abweichung.</span></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
+            <span style="font-size:22px;">⚖️</span>
+            <div><b style="font-size:12px;">Vergleich</b><br><span style="font-size:11px;color:#6b7280;">Tippe bei 2+ Walks auf ⚖️ — dann "Vergleich starten" um sie untereinander zu sehen.</span></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
+            <span style="font-size:22px;">🗺</span>
+            <div><b style="font-size:12px;">GeoJSON Export</b><br><span style="font-size:11px;color:#6b7280;">Exportiere deinen Walk und schicke mir diesen zu (über Archiv → Spaziergang antippen → 📦 Export).</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Schritt 6 — Display aktiv halten -->
+      <div class="ob-step" data-step="6" style="display:none;flex-direction:column;gap:12px;">
+        <div style="text-align:center;padding:8px 0;">
+          <div style="font-size:40px;">⚠️</div>
+          <div style="font-size:15px;font-weight:bold;color:#111;margin-top:8px;">Wichtiger Hinweis</div>
+        </div>
+        <div style="background:#fff7ed;border-radius:10px;padding:12px 14px;border-left:4px solid #f97316;font-size:11px;color:#92400e;line-height:1.8;">
+          <b>Display aktiv halten!</b><br>
+          Wenn sich der Bildschirm abdunkelt, kann die GPS-Aufzeichnung unterbrechen.<br><br>
+          <span id="ob-display-hint"></span>
+        </div>
+        <div style="background:#f0fdf4;border-radius:10px;padding:12px 14px;font-size:11px;color:#166534;line-height:1.7;">
+          ✅ Gehe ins Freie — GPS funktioniert drinnen schlecht<br>
+          ✅ Warte nach START bis der blaue Punkt erscheint<br>
+          ✅ Exportiere nach dem Walk um alles zu sichern
+        </div>
+        <div style="background:#f0f4ff;border-radius:10px;padding:12px 14px;font-size:11px;color:#1e3a6e;line-height:1.8;">
+          <b>📦 Export nach dem Walk:</b><br>
+          Archiv → Walk antippen → <b>📦 Export</b><br><br>
+          📱 <b>iPhone:</b> ZIP landet in <b>Dateien → Downloads</b><br>
+          Weiterleiten per Whatsapp oder Mail<br><br>
+          🤖 <b>Android:</b> ZIP landet im <b>Downloads-Ordner</b><br>
+          Weiterleiten per WhatsApp oder Mail
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Navigation -->
+    <div style="padding:12px 16px;display:flex;flex-direction:column;gap:10px;flex-shrink:0;border-top:1px solid #f0f0f0;">
+      <!-- Punkte -->
+      <div style="display:flex;gap:6px;justify-content:center;">
+        <div class="ob-dot" data-dot="0" style="width:8px;height:8px;border-radius:50%;background:#111;"></div>
+        <div class="ob-dot" data-dot="1" style="width:8px;height:8px;border-radius:50%;background:#ddd;"></div>
+        <div class="ob-dot" data-dot="2" style="width:8px;height:8px;border-radius:50%;background:#ddd;"></div>
+        <div class="ob-dot" data-dot="3" style="width:8px;height:8px;border-radius:50%;background:#ddd;"></div>
+        <div class="ob-dot" data-dot="4" style="width:8px;height:8px;border-radius:50%;background:#ddd;"></div>
+        <div class="ob-dot" data-dot="5" style="width:8px;height:8px;border-radius:50%;background:#ddd;"></div>
+        <div class="ob-dot" data-dot="6" style="width:8px;height:8px;border-radius:50%;background:#ddd;"></div>
+      </div>
+      <!-- Buttons -->
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button id="ob-back" style="padding:10px 14px;border-radius:8px;border:none;background:#f0f0f0;color:#6b7280;font-size:12px;font-weight:bold;cursor:pointer;display:none;">← Zurück</button>
+        <div style="flex:1;"></div>
+        <button id="ob-skip" style="padding:10px 14px;border-radius:8px;border:none;background:#f0f0f0;color:#6b7280;font-size:11px;cursor:pointer;">Direkt starten</button>
+        <button id="ob-next" style="padding:10px 20px;border-radius:8px;border:none;background:#111;color:#fff;font-size:12px;font-weight:bold;cursor:pointer;">Weiter →</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 <!-- VERGLEICH-VOLLBILD -->
 <div id="vglOverlay" style="display:none;position:fixed;inset:0;z-index:5000;background:#f0ede8;flex-direction:column;overflow:hidden;">
   <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#fff;flex-shrink:0;border-bottom:1px solid #e5e5e5;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
