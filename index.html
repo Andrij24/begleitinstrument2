@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
   <title>Begleitinstrument</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
@@ -20,12 +20,12 @@
     #panelToggles{position:fixed;top:12px;right:12px;z-index:1001;display:flex;flex-direction:column;gap:6px;}
     .panel-tab{padding:8px 12px;border-radius:10px;border:none;font-size:10px;font-weight:bold;text-transform:uppercase;cursor:pointer;background:#fff;color:#333;box-shadow:0 2px 8px rgba(0,0,0,0.15);transition:background 0.15s,color 0.15s;white-space:nowrap;}
     .panel-tab.active{background:#2563eb;color:#fff;}
-    #drawer{position:fixed;top:0;right:-340px;width:320px;height:100vh;z-index:1002;background:#f5f5f5;box-shadow:-4px 0 20px rgba(0,0,0,0.15);transition:right 0.3s ease;display:flex;flex-direction:column;overflow:hidden;}
+    #drawer{position:fixed;top:0;right:-340px;width:320px;height:100%;max-height:100dvh;z-index:1002;background:#f5f5f5;box-shadow:-4px 0 20px rgba(0,0,0,0.15);transition:right 0.3s ease;display:flex;flex-direction:column;overflow:hidden;}
     #drawer.open{right:0;}
     #drawerHeader{background:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e5e5e5;flex-shrink:0;}
     #drawerTitle{font-size:12px;font-weight:bold;text-transform:uppercase;color:#333;}
     #drawerClose{width:28px;height:28px;border-radius:50%;border:none;background:#eee;cursor:pointer;font-size:14px;}
-    #drawerBody{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px;}
+    #drawerBody{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding:14px;padding-bottom:calc(14px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px;}
     .section{background:#fff;border-radius:12px;padding:12px;border:1px solid #e5e5e5;}
     .section-label{font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;border-bottom:1px solid #f0f0f0;padding-bottom:4px;margin-bottom:10px;}
     .layer-opt{display:block;width:100%;text-align:left;padding:8px 10px;border-radius:6px;border:1px solid #ddd;cursor:pointer;font-size:11px;background:#fff;margin-bottom:4px;}
@@ -189,6 +189,8 @@
     }
     #moodModal,#thoughtModal,#senseModal{position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,0.78);display:none;align-items:center;justify-content:center;}
     #thoughtModal,#senseModal{z-index:2000;background:rgba(0,0,0,0.75);}
+    @keyframes gpsPulse{0%,100%{box-shadow:0 0 0 3px rgba(34,197,94,0.25);}50%{box-shadow:0 0 0 6px rgba(34,197,94,0.08);}}
+    #gpsDot.active{animation:gpsPulse 2s infinite;}
   </style>
 
 </head>
@@ -199,7 +201,10 @@
 <div id="topBar">
   <button id="btnStart" class="btn btn-blue">START</button>
   <button id="btnStop" class="btn btn-red">STOP / SAVE</button>
-
+  <div id="gpsStatus" style="display:none;align-items:center;gap:6px;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:10px;padding:8px 12px;font-size:10px;font-weight:bold;color:#333;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+    <div id="gpsDot" style="width:9px;height:9px;border-radius:50%;background:#22c55e;flex-shrink:0;box-shadow:0 0 0 3px rgba(34,197,94,0.25);transition:background 0.4s,box-shadow 0.4s;"></div>
+    <span id="gpsLabel">GPS aktiv</span>
+  </div>
 </div>
 <div id="panelToggles">
   <button class="panel-tab" data-panel="ansicht">🗺 Ansicht</button>
@@ -247,7 +252,7 @@
         <button id="btnVergleich" style="padding:8px 14px;border-radius:8px;border:none;background:#7c3aed;color:#fff;font-size:11px;font-weight:bold;cursor:pointer;display:none;">⚖️ Vergleich starten</button>
       </div>
       <div id="vglHint" style="font-size:10px;color:#9ca3af;margin-bottom:8px;">Tippe bei 2 oder mehr Walks auf ⚖️ um sie zu vergleichen.</div>
-      <div id="archiveList"><div style="font-size:11px;color:#999;">Noch keine Walks gespeichert.</div></div>
+      <div id="archiveList" style="padding-bottom:20px;"><div style="font-size:11px;color:#999;">Noch keine Walks gespeichert.</div></div>
     </div>
 
   </div>
@@ -815,7 +820,36 @@ window.addEventListener('load', function() {
   let inkLayer=new InkLayer();inkLayer.addTo(state.map);state.inkLayer=inkLayer;
 
   let smoothLat=null,smoothLng=null;
+  // GPS Status Management
+  let _gpsLostTimer=null;
+  function setGpsOk(){
+    const dot=document.getElementById('gpsDot');
+    const lbl=document.getElementById('gpsLabel');
+    if(!dot)return;
+    dot.style.background='#22c55e';
+    dot.style.boxShadow='0 0 0 3px rgba(34,197,94,0.25)';
+    dot.classList.add('active');
+    if(lbl)lbl.textContent='GPS aktiv';
+    if(_gpsLostTimer){clearTimeout(_gpsLostTimer);_gpsLostTimer=null;}
+  }
+  function setGpsLost(){
+    const dot=document.getElementById('gpsDot');
+    const lbl=document.getElementById('gpsLabel');
+    if(!dot)return;
+    dot.style.background='#ef4444';
+    dot.style.boxShadow='0 0 0 3px rgba(239,68,68,0.25)';
+    dot.classList.remove('active');
+    if(lbl)lbl.textContent='GPS verloren';
+  }
+
   navigator.geolocation.watchPosition(pos=>{
+    // GPS Signal empfangen — Status auf OK
+    if(state.current){
+      setGpsOk();
+      // Wenn 15s kein neues Signal kommt → GPS verloren
+      if(_gpsLostTimer) clearTimeout(_gpsLostTimer);
+      _gpsLostTimer=setTimeout(()=>{if(state.current)setGpsLost();},15000);
+    }
     if(pos.coords.accuracy>30)return;
     const rawLat=pos.coords.latitude,rawLng=pos.coords.longitude;
     if(smoothLat===null){smoothLat=rawLat;smoothLng=rawLng;}
@@ -855,7 +889,10 @@ window.addEventListener('load', function() {
       } else state.current.route.push(ll);
       lastPos=ll;lastPosTime=now;
     }
-  },err=>console.warn('GPS:',err.code),{enableHighAccuracy:true,maximumAge:0,timeout:30000});
+  },err=>{
+    console.warn('GPS:',err.code);
+    if(state.current) setGpsLost();
+  },{enableHighAccuracy:true,maximumAge:0,timeout:30000});
 
   // Screen WakeLock: verhindert dass GPS abbricht wenn Bildschirm dunkel wird
   let wakeLock=null;
@@ -878,6 +915,23 @@ window.addEventListener('load', function() {
     inkLayer.clearSegments();
     state.current={id:Date.now(),name:new Date().toLocaleString('de-DE'),route:[],segments:[],entries:[],steps:0,color:walkColors[state.walks.length%walkColors.length],reflection:{frei:'',moodRetro:3,moment:'',orte:'',nicht:'',ueber:''}};
     requestWakeLock();
+    // GPS Status-Anzeige einblenden
+    const gpsEl=document.getElementById('gpsStatus');
+    if(gpsEl){gpsEl.style.display='flex';setGpsLost();} // Startet rot bis Signal kommt
+    // Auto-Save starten — alle 30 Sekunden
+    if(window._autoSaveInterval) clearInterval(window._autoSaveInterval);
+    window._autoSaveInterval=setInterval(()=>{
+      if(state.current){
+        try{
+          localStorage.setItem('psychogeo_current_walk', JSON.stringify({
+            ...state.current,
+            entries: state.current.entries.map(e=>{
+              const c={...e};delete c.audioUrl;return c;
+            })
+          }));
+        }catch(ex){console.warn('Auto-Save fehlgeschlagen:',ex);}
+      }
+    },30000);
     alert('Walk gestartet!');
   };
 
@@ -890,6 +944,13 @@ window.addEventListener('load', function() {
     Object.keys(mapLayers).forEach(k=>{mapLayers[k].forEach(l=>{try{state.map.removeLayer(l);}catch(e){}});mapLayers[k]=[];});
     if(!state.current.reflection)state.current.reflection={frei:'',moodRetro:3,moment:'',orte:'',nicht:'',ueber:''};
     releaseWakeLock();
+    // GPS Status-Anzeige ausblenden
+    const gpsEl2=document.getElementById('gpsStatus');
+    if(gpsEl2) gpsEl2.style.display='none';
+    if(_gpsLostTimer){clearTimeout(_gpsLostTimer);_gpsLostTimer=null;}
+    // Auto-Save stoppen und temporären Walk löschen
+    if(window._autoSaveInterval){clearInterval(window._autoSaveInterval);window._autoSaveInterval=null;}
+    localStorage.removeItem('psychogeo_current_walk');
     const savedWalk=state.current;
     state.walks.push(state.current);saveWalks();state.current=null;renderArchive();openPanel('archiv');
     // Export-Banner im Archiv anzeigen
@@ -2332,7 +2393,7 @@ window.addEventListener('load', function() {
     }
 
     // Onboarding anzeigen — Version-Key damit neue Version immer erscheint
-    const OB_VERSION='v8';
+    const OB_VERSION='v9';
     if(localStorage.getItem('ob_done')!==OB_VERSION){
       document.getElementById('onboardingModal').style.display='flex';
     }
@@ -2375,6 +2436,73 @@ window.addEventListener('load', function() {
     document.getElementById('onboardingModal').style.display='flex';
     goToStep(0);
   };
+
+  // ── Wiederherstellung eines unterbrochenen Walks ──
+  (function checkRecovery(){
+    const saved = localStorage.getItem('psychogeo_current_walk');
+    if(!saved) return;
+    try{
+      const recovered = JSON.parse(saved);
+      if(!recovered || !recovered.route || recovered.route.length < 2) {
+        localStorage.removeItem('psychogeo_current_walk');
+        return;
+      }
+      // Banner anzeigen
+      const banner = document.createElement('div');
+      banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;'
+        +'background:#dc2626;color:#fff;padding:14px 16px;font-size:12px;'
+        +'display:flex;align-items:center;justify-content:space-between;gap:10px;'
+        +'box-shadow:0 4px 20px rgba(0,0,0,0.3);';
+      banner.innerHTML = '<div><b>⚠️ Unterbrochener Walk gefunden!</b><br>'
+        +'<span style="font-size:11px;opacity:0.9;">"'+recovered.name+'" — '+recovered.route.length+' GPS-Punkte, '+recovered.entries.length+' Einträge</span></div>'
+        +'<div style="display:flex;gap:8px;flex-shrink:0;">'
+        +'<button id="recoverBtn" style="padding:8px 14px;border-radius:8px;border:none;background:#fff;color:#dc2626;font-size:11px;font-weight:bold;cursor:pointer;">💾 Wiederherstellen</button>'
+        +'<button id="discardBtn" style="padding:8px 14px;border-radius:8px;border:none;background:rgba(255,255,255,0.2);color:#fff;font-size:11px;font-weight:bold;cursor:pointer;">✕ Verwerfen</button>'
+        +'</div>';
+      document.body.appendChild(banner);
+
+      document.getElementById('recoverBtn').onclick=()=>{
+        // Walk ins Archiv speichern
+        recovered.name = recovered.name + ' (wiederhergestellt)';
+        if(!recovered.reflection) recovered.reflection={frei:'',moodRetro:3,moment:'',orte:'',nicht:'',ueber:''};
+        state.walks.push(recovered);
+        saveWalks();
+        localStorage.removeItem('psychogeo_current_walk');
+        banner.remove();
+        renderArchive();
+        openPanel('archiv');
+        // Grüner Bestätigungs-Banner
+        const ok=document.createElement('div');
+        ok.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;background:#16a34a;color:#fff;'
+          +'padding:12px 16px;font-size:12px;font-weight:bold;text-align:center;';
+        ok.textContent='✅ Walk wiederhergestellt und im Archiv gespeichert!';
+        document.body.appendChild(ok);
+        setTimeout(()=>ok.remove(),4000);
+      };
+
+      document.getElementById('discardBtn').onclick=()=>{
+        localStorage.removeItem('psychogeo_current_walk');
+        banner.remove();
+      };
+    }catch(ex){
+      localStorage.removeItem('psychogeo_current_walk');
+    }
+  })();
+
+  // Fix Drawer-Höhe auf Mobile — funktioniert auf Android UND iPhone Safari
+  function fixDrawerHeight(){
+    const d=document.getElementById('drawer');
+    if(!d) return;
+    // visualViewport ist präziser als window.innerHeight (iPhone Safari-Toolbar)
+    const h=window.visualViewport?window.visualViewport.height:window.innerHeight;
+    d.style.height=h+'px';
+  }
+  fixDrawerHeight();
+  window.addEventListener('resize', fixDrawerHeight);
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize', fixDrawerHeight);
+    window.visualViewport.addEventListener('scroll', fixDrawerHeight);
+  }
 
   renderArchive();
 });
@@ -2518,7 +2646,7 @@ window.addEventListener('load', function() {
         </div>
         <div style="background:#f0f4ff;border-radius:10px;padding:12px 14px;font-size:11px;color:#1e3a6e;line-height:1.7;">
           <b>Bevor du startest:</b><br>
-          Erlaube der App Zugriff auf <b>Standort, Mikrofon und Kamera</b> wenn du danach gefragt wirst - erlauben drücken.
+          Schalte während der Benutzung das GPS ein. Erlaube der App Zugriff auf <b>Standort, Mikrofon und Kamera</b> wenn du danach gefragt wirst - erlauben drücken.
         </div>
         <!-- iOS / Android Hinweis -->
         <div id="ob-device-hint" style="border-radius:10px;padding:12px 14px;font-size:11px;line-height:1.7;"></div>
@@ -2695,6 +2823,7 @@ window.addEventListener('load', function() {
 
   </div>
 </div>
+
 
 <!-- VERGLEICH-VOLLBILD -->
 <div id="vglOverlay" style="display:none;position:fixed;inset:0;z-index:5000;background:#f0ede8;flex-direction:column;overflow:hidden;">
