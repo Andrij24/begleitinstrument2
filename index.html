@@ -112,23 +112,35 @@
       border-radius: 26px;
       border: 1px solid rgba(255,255,255,0.95);
       box-shadow: 0 8px 40px rgba(0,0,0,0.13), 0 1px 0 rgba(255,255,255,0.85) inset, 0 0 0 0.5px rgba(0,0,0,0.06);
-      padding: 10px 8px;
+      padding: 10px 6px;
     }
     .fab {
       position: relative;
-      width: 46px;
-      height: 46px;
+      width: 52px;
+      height: 52px;
       border-radius: 15px;
       border: none;
       cursor: pointer;
       font-size: 20px;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
+      gap: 1px;
       background: transparent;
       color: #1a1a1a;
       transition: background 0.13s ease, transform 0.1s ease;
       -webkit-tap-highlight-color: transparent;
+    }
+    .fab-lbl {
+      font-size: 7px;
+      font-weight: 600;
+      color: rgba(0,0,0,0.5);
+      letter-spacing: 0.1px;
+      line-height: 1;
+      text-transform: uppercase;
+      pointer-events: none;
+      white-space: nowrap;
     }
     .fab:hover { background: rgba(0,0,0,0.06); transform: scale(1.1); }
     .fab:active { transform: scale(0.91); background: rgba(0,0,0,0.1); }
@@ -242,7 +254,7 @@
       <button class="layer-toggle-btn active" data-layer="photo"><span class="dot"></span> Fotos</button>
       <button class="layer-toggle-btn active" data-layer="sound"><span class="dot"></span> Umgebungssound</button>
       <button class="layer-toggle-btn active" data-layer="voice"><span class="dot"></span> Sprachnachricht</button>
-      <button class="layer-toggle-btn active" data-layer="sense"><span class="dot"></span> Wahrnehmung</button>
+      <button class="layer-toggle-btn active" data-layer="sense"><span class="dot"></span> Eindrücke</button>
       <button class="layer-toggle-btn active" data-layer="thought"><span class="dot"></span> Gedanken</button>
       <button class="layer-toggle-btn active" data-layer="mood"><span class="dot"></span> Stimmung</button>
     </div>
@@ -260,14 +272,14 @@
 
 <!-- MODERNES FAB-PANEL — Reihenfolge: Foto, Sound, Sprache, Wahrnehmung, Gedanke, Stimmung -->
 <div id="fabGrid">
-  <button id="fabPhoto"   class="fab" data-label="Foto aufnehmen">📸</button>
-  <button id="fabSound"   class="fab" data-label="Umgebungssound">🎙</button>
-  <button id="fabMsg"     class="fab" data-label="Sprachnachricht">💬</button>
+  <button id="fabPhoto"   class="fab" data-label="Foto aufnehmen">📸<span class="fab-lbl">Foto</span></button>
+  <button id="fabSound"   class="fab" data-label="Umgebungssound">🎙<span class="fab-lbl" style="font-size:6px;">Umgebungssound</span></button>
+  <button id="fabMsg"     class="fab" data-label="Sprachnachricht">💬<span class="fab-lbl" style="font-size:6px;">Sprachnachricht</span></button>
   <div class="fab-divider"></div>
-  <button id="fabSense"   class="fab" data-label="Wahrnehmung">👁</button>
-  <button id="fabThought" class="fab" data-label="Gedanke">💭</button>
+  <button id="fabSense"   class="fab" data-label="Eindrücke">👁<span class="fab-lbl">Eindrücke</span></button>
+  <button id="fabThought" class="fab" data-label="Gedanke">💭<span class="fab-lbl">Gedanke</span></button>
   <div class="fab-divider"></div>
-  <button id="fabMood"    class="fab" data-label="Stimmung">🔋</button>
+  <button id="fabMood"    class="fab" data-label="Stimmung">🔋<span class="fab-lbl">Stimmung</span></button>
 </div>
 
 <div id="cameraModal">
@@ -303,6 +315,19 @@
 <div id="exportOverlay"><div id="exportBox"><div style="font-size:24px;">📦</div><div id="exportMsg">Exportiere...</div></div></div>
 <input type="file" id="photoInput" accept="image/*" capture="environment"/>
 
+<!-- FOTO-NOTIZ MODAL -->
+<div id="photoNoteModal" style="display:none;position:fixed;inset:0;z-index:2500;background:rgba(0,0,0,0.82);align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;padding:24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:14px;">
+    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">📸 Foto-Notiz</div>
+    <img id="photoNotePreview" style="width:100%;border-radius:10px;max-height:180px;object-fit:cover;"/>
+    <textarea id="photoNoteText" placeholder="Notiz zum Foto (optional)..." style="width:100%;height:80px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
+    <div style="display:flex;gap:8px;">
+      <button id="photoNoteSkip" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;">Überspringen</button>
+      <button id="photoNoteSave" style="flex:1;padding:12px;border-radius:10px;border:none;background:#374151;color:#fff;font-weight:bold;font-size:11px;cursor:pointer;">💾 Speichern</button>
+    </div>
+  </div>
+</div>
+
 <!-- AUSWERTUNGS-MODAL — nur Ich-Sicht -->
 <div id="analyseModal">
   <div id="analyseBox">
@@ -330,7 +355,7 @@
       <div style="background:#f5f3ff;border-radius:8px;padding:8px 10px;margin-top:8px;font-size:11px;color:#374151;font-style:italic;" id="refFreiDisplay">—</div>
     </div>
     <div class="a-card" style="margin-bottom:10px;">
-      <div class="a-label" style="color:#854F0B;">Diskrepanz pro Abschnitt</div>
+      <div class="a-label" style="color:#854F0B;">Abweichung pro Abschnitt</div>
       <div id="diskBars"></div>
       <div style="font-size:10px;color:#9ca3af;margin-top:6px;">Grün = Erinnerung höher als Aufzeichnung · Rot = niedriger · Skala 1–5</div>
     </div>
@@ -349,9 +374,9 @@
       <div id="moodThumb" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;background:#fff;border:3px solid #facc15;box-shadow:0 2px 8px rgba(0,0,0,0.3);pointer-events:none;"></div>
     </div>
     <input type="range" id="moodSlider" min="1" max="5" value="3" step="1" style="width:100%;margin:-8px 0;opacity:0;height:32px;cursor:pointer;"/>
-    <div style="display:flex;justify-content:space-between;font-size:10px;color:#aaa;margin-top:-8px;"><span>1 — sehr tief</span><span>3 — neutral</span><span>5 — sehr hoch</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:#aaa;margin-top:-8px;"><span>1 — Stimmung bedrückt</span><span>3 — neutral</span><span>5 — sehr gute Stimmung</span></div>
     <div style="text-align:center;"><span id="moodVal" style="font-size:36px;font-weight:bold;color:#facc15;">3</span><span style="font-size:13px;color:#aaa;">/100</span></div>
-    <textarea id="moodText" placeholder="Notiz (optional)..." style="width:100%;height:56px;border-radius:10px;border:1.5px solid #e5e5e5;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
+    <textarea id="moodText" placeholder="Beschreibe deine Stimmung (optional)..." style="width:100%;height:56px;border-radius:10px;border:1.5px solid #e5e5e5;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
     <div style="display:flex;gap:10px;">
       <button id="moodCancel" style="flex:1;padding:13px;border-radius:12px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:12px;cursor:pointer;">Abbrechen</button>
       <button id="moodSave" style="flex:2;padding:13px;border-radius:12px;border:none;font-weight:bold;font-size:12px;cursor:pointer;color:#fff;background:#facc15;">Marker setzen</button>
@@ -372,7 +397,7 @@
 <!-- WAHRNEHMUNG-MODAL -->
 <div id="senseModal" style="display:none;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:20px;padding:24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:14px;">
-    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">👁 Wahrnehmung</div>
+    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">👁 Eindrücke</div>
     <textarea id="senseText" placeholder="Was nimmst du wahr?" style="width:100%;height:100px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
     <div style="display:flex;gap:8px;">
       <button id="senseCancel" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;">Abbrechen</button>
@@ -391,6 +416,10 @@ window.addEventListener('load', function() {
   let currentTileUrl='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 
   state.map=L.map('map',{zoomControl:false,maxZoom:22}).setView([47.23,9.61],17);
+  // Eigener Pane für Tuschelinien — unter Markern (markerPane=600)
+  state.map.createPane('inkPane');
+  state.map.getPane('inkPane').style.zIndex=350;
+  state.map.getPane('inkPane').style.pointerEvents='none';
   // Direkt eigene MapTiler-Karte laden
   currentTileUrl='maptiler-vector';
   // Temporär OSM bis MapLibre geladen ist
@@ -765,8 +794,9 @@ window.addEventListener('load', function() {
     onAdd(map){
       this._map=map;
       const c=document.createElement('canvas');
-      c.style.cssText='position:absolute;top:0;left:0;pointer-events:none;z-index:400;';
-      map.getPanes().overlayPane.appendChild(c);
+      c.style.cssText='position:absolute;top:0;left:0;pointer-events:none;z-index:200;';
+      const pane=map.getPane('inkPane')||map.getPanes().overlayPane;
+      pane.appendChild(c);
       this._canvas=c; this._ctx=c.getContext('2d');
       // Auf alle Karten-Events reagieren — auch während Zoom-Animation
       map.on('movestart move moveend zoomstart zoom zoomend viewreset resize',this._onMapMove,this);
@@ -774,7 +804,8 @@ window.addEventListener('load', function() {
       return this;
     },
     onRemove(map){
-      map.getPanes().overlayPane.removeChild(this._canvas);
+      const pane=map.getPane('inkPane')||map.getPanes().overlayPane;
+      if(pane.contains(this._canvas))pane.removeChild(this._canvas);
       map.off('movestart move moveend zoomstart zoom zoomend viewreset resize',this._onMapMove,this);
     },
     _onMapMove(){this._reset();},
@@ -886,6 +917,7 @@ window.addEventListener('load', function() {
         state.current.segments.push({ll1:lastPos,ll2:ll,weight:w,opacity:op});
         if(layerVisibility.route)inkLayer.addSegment(lastPos,ll,w,op);
         const se=document.getElementById('currentSpeed');if(se)se.textContent=(smoothedSpeed*3.6).toFixed(1)+' km/h';
+        autoSaveNow();
       } else state.current.route.push(ll);
       lastPos=ll;lastPosTime=now;
     }
@@ -931,7 +963,7 @@ window.addEventListener('load', function() {
           }));
         }catch(ex){console.warn('Auto-Save fehlgeschlagen:',ex);}
       }
-    },30000);
+    },10000);
     alert('Walk gestartet!');
   };
 
@@ -969,9 +1001,22 @@ window.addEventListener('load', function() {
       };
       list.insertBefore(banner,list.firstChild);
       // Banner nach 30 Sek. automatisch ausblenden
-      setTimeout(()=>{if(banner.parentNode)banner.remove();},30000);
+      setTimeout(()=>{if(banner.parentNode)banner.remove();},10000);
     },300);
   };
+
+  // Sofort-Save des laufenden Walks (bei GPS-Punkt + Eintrag)
+  function autoSaveNow(){
+    if(!state.current) return;
+    try{
+      localStorage.setItem('psychogeo_current_walk', JSON.stringify({
+        ...state.current,
+        entries: state.current.entries.map(e=>{
+          const c={...e};delete c.audioUrl;return c;
+        })
+      }));
+    }catch(ex){console.warn('AutoSave fehlgeschlagen:',ex);}
+  }
 
   function saveWalks(){
     const ts=state.walks.map(w=>({...w,entries:w.entries.map(e=>{
@@ -1000,9 +1045,21 @@ window.addEventListener('load', function() {
   }
 
 
+  // Track live marker positions for overlap detection
+  const _livePosCounts={};
   function placeMarker(type,latLng,popupHTML){
     mapLayers[type]=mapLayers[type]||[];
-    const m=L.marker(latLng).bindPopup(popupHTML);
+    // Überlappende Marker versetzen
+    const posKey=latLng.lat.toFixed(5)+','+latLng.lng.toFixed(5);
+    _livePosCounts[posKey]=(_livePosCounts[posKey]||0)+1;
+    const posIdx=_livePosCounts[posKey]-1;
+    const angle=(posIdx*137.5)*(Math.PI/180);
+    const offset=posIdx===0?0:0.00004*(1+Math.floor(posIdx/8));
+    const adjLatLng=posIdx===0?latLng:L.latLng(
+      latLng.lat+Math.sin(angle)*offset,
+      latLng.lng+Math.cos(angle)*offset
+    );
+    const m=L.marker(adjLatLng,{zIndexOffset:1000}).bindPopup(popupHTML);
     mapLayers[type].push(m);
     if(layerVisibility[type]!==false){m.addTo(state.map);m.openPopup();}
     return m;
@@ -1020,14 +1077,57 @@ window.addEventListener('load', function() {
   async function openCamera(){try{cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});cameraPreview.srcObject=cameraStream;cameraModal.classList.add('open');}catch(e){document.getElementById('photoInput').click();}}
   function closeCamera(){if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}cameraModal.classList.remove('open');}
   document.getElementById('closeCamera').onclick=closeCamera;
-  function placePhotoMarker(dataUrl,pos){
+  function placePhotoMarker(dataUrl,pos,note){
     const ts=new Date().toLocaleTimeString();
     const icon=L.divIcon({className:'',html:'<div style="width:26px;height:26px;border-radius:50%;border:2.5px solid #fff;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.4);background:#555;"><img src="'+dataUrl+'" style="width:100%;height:100%;object-fit:cover;"/></div>',iconSize:[26,26],iconAnchor:[13,13],popupAnchor:[0,-16]});
-    const popup='<img src="'+dataUrl+'" style="width:200px;border-radius:8px;"/><br><small>'+ts+'</small>';
+    const popup='<div style="min-width:200px;">'
+      +'<img src="'+dataUrl+'" style="width:100%;border-radius:8px;"/>'
+      +(note?'<div style="font-size:12px;color:#333;margin-top:6px;line-height:1.5;">'+escHtml(note)+'</div>':'')
+      +'<small style="color:#aaa;">'+ts+'</small></div>';
     const m=placeMarker('photo',pos,popup);m.setIcon(icon);return ts;
   }
-  document.getElementById('captureBtn').onclick=()=>{if(!requireWalk()){closeCamera();return;}const pos=getPos();photoCanvas.width=cameraPreview.videoWidth;photoCanvas.height=cameraPreview.videoHeight;photoCanvas.getContext('2d').drawImage(cameraPreview,0,0);const dataUrl=photoCanvas.toDataURL('image/jpeg',0.7);const ts=placePhotoMarker(dataUrl,pos);state.current.entries.push({type:'photo',location:{lat:pos.lat,lng:pos.lng},timestamp:ts,dataUrl});closeCamera();};
-  document.getElementById('photoInput').onchange=function(){if(!this.files||!this.files[0]||!requireWalk())return;const pos=getPos();const reader=new FileReader();reader.onload=e=>{const dataUrl=e.target.result;const ts=placePhotoMarker(dataUrl,pos);state.current.entries.push({type:'photo',location:{lat:pos.lat,lng:pos.lng},timestamp:ts,dataUrl});};reader.readAsDataURL(this.files[0]);this.value='';};
+  let _pendingPhoto={dataUrl:null,pos:null};
+  document.getElementById('captureBtn').onclick=()=>{
+    if(!requireWalk()){closeCamera();return;}
+    const pos=getPos();
+    photoCanvas.width=cameraPreview.videoWidth;
+    photoCanvas.height=cameraPreview.videoHeight;
+    photoCanvas.getContext('2d').drawImage(cameraPreview,0,0);
+    const dataUrl=photoCanvas.toDataURL('image/jpeg',0.7);
+    closeCamera();
+    // Notiz-Modal öffnen
+    _pendingPhoto={dataUrl,pos};
+    document.getElementById('photoNotePreview').src=dataUrl;
+    document.getElementById('photoNoteText').value='';
+    document.getElementById('photoNoteModal').style.display='flex';
+  };
+
+  function _savePhotoWithNote(note){
+    const {dataUrl,pos}=_pendingPhoto;
+    if(!dataUrl||!pos) return;
+    const ts=placePhotoMarker(dataUrl,pos,note);
+    state.current.entries.push({type:'photo',location:{lat:pos.lat,lng:pos.lng},timestamp:ts,dataUrl,text:note||''});
+    autoSaveNow();
+    document.getElementById('photoNoteModal').style.display='none';
+    _pendingPhoto={dataUrl:null,pos:null};
+  }
+
+  document.getElementById('photoNoteSkip').onclick=()=>_savePhotoWithNote('');
+  document.getElementById('photoNoteSave').onclick=()=>_savePhotoWithNote(document.getElementById('photoNoteText').value.trim());
+  document.getElementById('photoInput').onchange=function(){
+    if(!this.files||!this.files[0]||!requireWalk())return;
+    const pos=getPos();
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const dataUrl=e.target.result;
+      _pendingPhoto={dataUrl,pos};
+      document.getElementById('photoNotePreview').src=dataUrl;
+      document.getElementById('photoNoteText').value='';
+      document.getElementById('photoNoteModal').style.display='flex';
+    };
+    reader.readAsDataURL(this.files[0]);
+    this.value='';
+  };
   document.getElementById('fabPhoto').onclick=()=>openCamera();
 
   const audioModal=document.getElementById('audioModal');
@@ -1048,7 +1148,7 @@ window.addEventListener('load', function() {
     const blob=new Blob(audioChunks,{type:MediaRecorder.isTypeSupported('audio/mp4')?'audio/mp4':'audio/webm'});
     const url=URL.createObjectURL(blob);const pos=getPos();const ts=new Date().toLocaleTimeString();const dur=formatTime(timerSec);
     const entryId='audio_'+Date.now();audioBlobs[entryId]=blob;
-    state.current.entries.push({type:audioType,location:{lat:pos.lat,lng:pos.lng},timestamp:ts,audioDuration:dur,audioUrl:url,entryId});
+    state.current.entries.push({type:audioType,location:{lat:pos.lat,lng:pos.lng},timestamp:ts,audioDuration:dur,audioUrl:url,entryId});autoSaveNow();
     const color=audioType==='voice'?'#7c3aed':'#f97316';
     const svgI=audioType==='voice'?'<line x1="8" y1="5" x2="8" y2="11" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/><line x1="5" y1="8" x2="11" y2="8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>':'<circle cx="8" cy="8" r="3" fill="none" stroke="#fff" stroke-width="1.8"/><line x1="8" y1="2" x2="8" y2="5" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>';
     const icon=L.divIcon({className:'',html:'<div style="width:22px;height:22px;border-radius:50%;background:'+color+';border:2.5px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;"><svg width="16" height="16" viewBox="0 0 16 16">'+svgI+'</svg></div>',iconSize:[22,22],iconAnchor:[11,11],popupAnchor:[0,-14]});
@@ -1077,10 +1177,18 @@ window.addEventListener('load', function() {
     if(!requireWalk())return;
     const val=parseInt(moodSlider.value),col=moodColor(val),note=document.getElementById('moodText').value.trim();
     const pos=getPos(),ts=new Date().toLocaleTimeString();
-    state.current.entries.push({type:'mood',location:{lat:pos.lat,lng:pos.lng},timestamp:ts,moodValue:val,markerColor:col,text:note});
+    state.current.entries.push({type:'mood',location:{lat:pos.lat,lng:pos.lng},timestamp:ts,moodValue:val,markerColor:col,text:note});autoSaveNow();
     const icon=L.divIcon({className:'',html:'<div style="width:22px;height:22px;border-radius:50%;background:'+col+';border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;"><span style="color:#fff;font-size:10px;font-weight:bold;">'+val+'</span></div>',iconSize:[22,22],iconAnchor:[11,11],popupAnchor:[0,-14]});
     const popup='<div style="min-width:150px;padding:4px;"><b style="font-size:13px;">Stimmung</b><br><div style="margin:8px 0 4px;background:#eee;border-radius:6px;height:10px;overflow:hidden;"><div style="height:100%;width:'+((val-1)/4*100)+'%;background:'+col+';border-radius:6px;"></div></div><span style="font-size:22px;font-weight:bold;color:'+col+';">'+val+'</span><span style="font-size:12px;color:#aaa;"> / 100</span>'+(note?'<br><span style="font-size:11px;color:#555;margin-top:4px;display:block;">'+note+'</span>':'')+'<br><span style="font-size:10px;color:#bbb;">'+ts+'</span></div>';
-    mapLayers['mood']=mapLayers['mood']||[];const m=L.marker([pos.lat,pos.lng],{icon}).bindPopup(popup);mapLayers['mood'].push(m);
+    mapLayers['mood']=mapLayers['mood']||[];
+    const moodPosKey=pos.lat.toFixed(5)+','+pos.lng.toFixed(5);
+    _livePosCounts[moodPosKey]=(_livePosCounts[moodPosKey]||0)+1;
+    const moodPosIdx=_livePosCounts[moodPosKey]-1;
+    const moodAngle=(moodPosIdx*137.5)*(Math.PI/180);
+    const moodOffset=moodPosIdx===0?0:0.00004*(1+Math.floor(moodPosIdx/8));
+    const moodLat=pos.lat+Math.sin(moodAngle)*moodOffset;
+    const moodLng=pos.lng+Math.cos(moodAngle)*moodOffset;
+    const m=L.marker([moodLat,moodLng],{icon,zIndexOffset:1000}).bindPopup(popup);mapLayers['mood'].push(m);
     if(layerVisibility['mood']!==false){m.addTo(state.map);setTimeout(()=>m.openPopup(),100);}
     moodModal.style.display='none';document.getElementById('moodText').value='';moodSlider.value=3;updateMoodUI(3);
   });
@@ -1090,9 +1198,9 @@ window.addEventListener('load', function() {
   document.getElementById('thoughtCancel').onclick=()=>{thoughtModal.style.display='none';};
   document.getElementById('thoughtSave').onclick=()=>{
     if(!requireWalk())return;const t=document.getElementById('thoughtText').value.trim();const pos=getPos();const ts=new Date().toLocaleTimeString();
-    state.current.entries.push({type:'thought',location:{lat:pos.lat,lng:pos.lng},timestamp:ts,text:t||'(kein Text)'});
+    state.current.entries.push({type:'thought',location:{lat:pos.lat,lng:pos.lng},timestamp:ts,text:t||'(kein Text)'});autoSaveNow();
     const icon=makeDotIcon('#22c55e',20);const popup='<div style="min-width:140px;"><b>Gedanke</b><br><p style="margin:4px 0;font-size:12px;color:#333;">'+(t||'—')+'</p><small style="color:#aaa;">'+ts+'</small></div>';
-    mapLayers['thought']=mapLayers['thought']||[];const m=L.marker([pos.lat,pos.lng],{icon}).bindPopup(popup);mapLayers['thought'].push(m);
+    mapLayers['thought']=mapLayers['thought']||[];const m=L.marker([pos.lat,pos.lng],{icon,zIndexOffset:1000}).bindPopup(popup);mapLayers['thought'].push(m);
     if(layerVisibility['thought']!==false){m.addTo(state.map);m.openPopup();}
     thoughtModal.style.display='none';document.getElementById('thoughtText').value='';
   };
@@ -1102,9 +1210,9 @@ window.addEventListener('load', function() {
   document.getElementById('senseCancel').onclick=()=>{senseModal.style.display='none';};
   document.getElementById('senseSave').onclick=()=>{
     if(!requireWalk())return;const t=document.getElementById('senseText').value.trim();const pos=getPos();const ts=new Date().toLocaleTimeString();
-    state.current.entries.push({type:'sense',location:{lat:pos.lat,lng:pos.lng},timestamp:ts,text:t||'(keine Eingabe)'});
+    state.current.entries.push({type:'sense',location:{lat:pos.lat,lng:pos.lng},timestamp:ts,text:t||'(keine Eingabe)'});autoSaveNow();
     const icon=makeDotIcon('#f97316',20);const popup='<div style="min-width:140px;"><b>Wahrnehmung</b><br>'+(t?'<p style="margin:4px 0;font-size:12px;color:#333;">'+t+'</p>':'')+'<small style="color:#aaa;">'+ts+'</small></div>';
-    mapLayers['sense']=mapLayers['sense']||[];const m=L.marker([pos.lat,pos.lng],{icon}).bindPopup(popup);mapLayers['sense'].push(m);
+    mapLayers['sense']=mapLayers['sense']||[];const m=L.marker([pos.lat,pos.lng],{icon,zIndexOffset:1000}).bindPopup(popup);mapLayers['sense'].push(m);
     if(layerVisibility['sense']!==false){m.addTo(state.map);m.openPopup();}
     senseModal.style.display='none';document.getElementById('senseText').value='';
   };
@@ -1126,7 +1234,7 @@ window.addEventListener('load', function() {
         const ai=new InkLayer();ai.addTo(state.map);for(let i=1;i<walk.route.length;i++)ai.addSegment(walk.route[i-1],walk.route[i],6,0.7);state.archiveInkLayers[id]=ai;if(!layerVisibility.route)ai._canvas.style.display='none';
       }
       walk.entries.forEach(e=>{
-        const eTN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Wahrnehmung',
+        const eTN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Eindrücke',
                   voice:'💬 Sprachnachricht',sound:'🎙 Umgebungssound',photo:'📸 Foto'};
         let popup='<div style="min-width:180px;font-size:12px;padding:2px;">'
           +'<b style="color:#333;">'+( eTN[e.type]||(e.type||'').toUpperCase())+'</b>';
@@ -1134,14 +1242,22 @@ window.addEventListener('load', function() {
         if(e.text) popup+='<div style="margin-top:4px;color:#333;">'+escHtml(e.text)+'</div>';
         if(e.moodValue!=null) popup+='<div style="font-size:24px;font-weight:bold;color:#f97316;margin:4px 0;">'+e.moodValue+'/5</div>';
         popup+='__AUDIO__</div>';
-        if(e.dataUrl)popup='<img src="'+e.dataUrl+'" style="width:180px;border-radius:6px;"/><br><small>'+(e.timestamp||'')+'</small>';
+        if(e.dataUrl)popup='<div><img src="'+e.dataUrl+'" style="width:180px;border-radius:6px;"/>'+(e.text?'<div style="font-size:11px;color:#333;margin-top:4px;padding:0 2px;">'+escHtml(e.text)+'</div>':'')+'<br><small style="color:#aaa;">'+(e.timestamp||'')+'</small></div>';
         const eAurl=e.audioUrl||(e.entryId&&audioBlobs[e.entryId]?URL.createObjectURL(audioBlobs[e.entryId]):null)||e.audioBase64||null;
         const eAudio=eAurl?'<audio controls src="'+eAurl+'" style="width:100%;margin-top:8px;height:40px;"></audio>':'';
         popup=popup.replace('__AUDIO__',eAudio);
         const dc=e.type==='thought'?'#22c55e':e.type==='sense'?'#f97316':e.type==='mood'?(e.markerColor||walk.color):e.type==='voice'?'#7c3aed':e.type==='sound'?'#f97316':e.type==='photo'?'#555':walk.color;
         const dr=(e.type==='mood'||e.type==='thought'||e.type==='sense')?7:5;
-        const dop=(e.type==='photo'||e.type==='voice'||e.type==='sound')?0.6:0.92;
-        L.circleMarker([e.location.lat,e.location.lng],{color:'#fff',weight:2,fillColor:dc,fillOpacity:0.95,radius:dr+1}).addTo(group).bindPopup(popup);
+        // Überlappende Marker leicht versetzen
+        const posKey=e.location.lat.toFixed(5)+','+e.location.lng.toFixed(5);
+        if(!group._posCount) group._posCount={};
+        group._posCount[posKey]=(group._posCount[posKey]||0)+1;
+        const posIdx=group._posCount[posKey]-1;
+        const angle=(posIdx*137.5)*(Math.PI/180); // Goldener Winkel
+        const offset=posIdx===0?0:0.00004*(1+Math.floor(posIdx/8));
+        const offsetLat=e.location.lat+Math.sin(angle)*offset;
+        const offsetLng=e.location.lng+Math.cos(angle)*offset;
+        L.circleMarker([offsetLat,offsetLng],{color:'#fff',weight:2,fillColor:dc,fillOpacity:0.95,radius:dr+1,pane:'markerPane'}).addTo(group).bindPopup(popup);
       });
       group.addTo(state.map);state.activeLayers[id]=group;
       if(header)header.classList.add('shown');if(actions)actions.classList.add('open');
@@ -1307,7 +1423,7 @@ window.addEventListener('load', function() {
     // ── Eintrags-Marker als Sprechblasen (DivIcon) ──
     const typeColor={mood:'#f97316',thought:'#1e3a6e',sense:'#2d5a2d',voice:'#7c3aed',sound:'#f58231',photo:'#2a2a2a'};
     const typeIcon={mood:'🔋',thought:'💭',sense:'👁',voice:'💬',sound:'🎙',photo:'📸'};
-    const typeText={mood:'Stimmung',thought:'Gedanke',sense:'Wahrnehmung',voice:'Sprache',sound:'Sound',photo:'Foto'};
+    const typeText={mood:'Stimmung',thought:'Gedanke',sense:'Eindrücke',voice:'Sprache',sound:'Sound',photo:'Foto'};
 
     entries.forEach(e=>{
       if(!e.location)return;
@@ -1361,7 +1477,7 @@ window.addEventListener('load', function() {
           // Entry-Card unterhalb der Karte anzeigen
           const card=document.getElementById('verlaufEntryCard');
           card.style.display='block';
-          const TN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Wahrnehmung',voice:'💬 Sprache',sound:'🎙 Sound',photo:'📸 Foto'};
+          const TN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Eindrücke',voice:'💬 Sprache',sound:'🎙 Sound',photo:'📸 Foto'};
           let h='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
             +'<span style="font-weight:bold;font-size:13px;color:'+col+';">'+(TN[e.type]||e.type)+'</span>';
           if(e.type==='mood'&&e.moodValue!=null)
@@ -1609,7 +1725,7 @@ window.addEventListener('load', function() {
         });
         if(!best){cvPopup.style.display='none';return;}
         const TC2={mood:'#ea580c',thought:'#2563eb',sense:'#16a34a',voice:'#7c3aed',sound:'#7c3aed',photo:'#374151'};
-        const TN2={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Wahrnehmung',voice:'💬 Sprache',sound:'🎙 Sound',photo:'📸 Foto'};
+        const TN2={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Eindrücke',voice:'💬 Sprache',sound:'🎙 Sound',photo:'📸 Foto'};
         const col2=TC2[best.type]||'#555';
         let html='<div style="padding-right:20px;">'
           +'<b style="color:'+col2+';font-size:12px;">'+(TN2[best.type]||best.type)+'</b>';
@@ -1637,7 +1753,7 @@ window.addEventListener('load', function() {
         hasEntries=true;
         const TC={mood:'#ea580c',thought:'#2563eb',sense:'#16a34a',
                   voice:'#7c3aed',sound:'#7c3aed',photo:'#374151'};
-        const TN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Wahrnehmung',
+        const TN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Eindrücke',
                   voice:'💬 Sprachnachricht',sound:'🎙 Umgebungssound',photo:'📸 Foto'};
         const col=TC[e.type]||'#555';
         const row=document.createElement('div');
@@ -2102,7 +2218,7 @@ window.addEventListener('load', function() {
             .map(e=>({
               type:'Feature',
               properties:(()=>{
-                const TN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Wahrnehmung',
+                const TN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Eindrücke',
                   voice:'💬 Sprachnachricht',sound:'🎙 Umgebungssound',photo:'📸 Foto'};
                 const TC={mood:'#ea580c',thought:'#1e3a6e',sense:'#2d5a2d',
                   voice:'#7c3aed',sound:'#7c3aed',photo:'#374151'};
@@ -2111,6 +2227,7 @@ window.addEventListener('load', function() {
                 if(e.moodValue!=null) desc='Stimmung: '+e.moodValue+'/5';
                 if(e.text) desc+=(desc?'\n':'')+e.text;
                 if(e.audioDuration) desc+=(desc?'\n':'')+'Aufnahmedauer: '+e.audioDuration;
+                if(e.type==='photo'&&!e.text) desc='📸 Foto (keine Notiz)';
                 // Foto als Base64 direkt ins GeoJSON (uMap zeigt es per img-Tag)
                 const imgTag=e.dataUrl
                   ?'<img src="'+e.dataUrl+'" style="max-width:200px;border-radius:6px;margin-top:6px;"/>'
@@ -2165,10 +2282,10 @@ window.addEventListener('load', function() {
         );
       }
       // ── Eintraege.txt — alle Texteingaben exportieren ──
-      const textEntries=walk.entries.filter(e=>e.text||(e.type==='mood'&&e.moodValue!=null));
+      const textEntries=walk.entries.filter(e=>e.text||(e.type==='mood'&&e.moodValue!=null)||e.type==='photo');
       if(textEntries.length>0){
         let txt='EINTRÄGE: '+walk.name+'\n'+'='.repeat(40)+'\n';
-        const typeNames={mood:'Stimmung',thought:'Gedanke',sense:'Wahrnehmung',voice:'Sprachnachricht',sound:'Umgebungssound',photo:'Foto'};
+        const typeNames={mood:'Stimmung',thought:'Gedanke',sense:'Eindrücke',voice:'Sprachnachricht',sound:'Umgebungssound',photo:'Foto'};
         textEntries.forEach((e,i)=>{
           txt+='\n['+(i+1)+'] '+(typeNames[e.type]||e.type).toUpperCase();
           if(e.timestamp) txt+=' | '+e.timestamp;
@@ -2177,6 +2294,7 @@ window.addEventListener('load', function() {
           if(e.type==='mood'&&e.moodValue!=null) txt+='Stimmung: '+e.moodValue+'/5\n';
           if(e.text) txt+=e.text+'\n';
           if(e.audioDuration) txt+='Audio-Dauer: '+e.audioDuration+'\n';
+          if(e.type==='photo') txt+='📸 Foto'+(e.text?' — '+e.text:'')+'\n';
         });
         folder.file('eintraege.txt',txt);
       }
@@ -2204,7 +2322,7 @@ window.addEventListener('load', function() {
     // Farben und Labels exakt wie in der App
     const TC={mood:'#ea580c',thought:'#2563eb',sense:'#16a34a',
               voice:'#7c3aed',sound:'#7c3aed',photo:'#374151'};
-    const TN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Wahrnehmung',
+    const TN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Eindrücke',
               voice:'💬 Sprachnachricht',sound:'🎙 Umgebungssound',photo:'📸 Foto'};
 
     const features=[];
@@ -2235,6 +2353,8 @@ window.addEventListener('load', function() {
         popupLines.push('<span style="font-size:28px;font-weight:bold;color:'+col+';">'+e.moodValue+'<span style="font-size:13px;color:#aaa;"> /5</span></span>');
       if(e.text)
         popupLines.push('<p style="margin:6px 0;font-size:13px;color:#333;">'+e.text+'</p>');
+      else if(e.type==='photo')
+        popupLines.push('<p style="margin:6px 0;font-size:11px;color:#aaa;">(keine Notiz)</p>');
       if(e.dataUrl)
         popupLines.push('<img src="'+e.dataUrl+'" style="width:100%;max-width:280px;border-radius:8px;margin-top:6px;"/>');
       if(e.audioBase64)
@@ -2437,63 +2557,10 @@ window.addEventListener('load', function() {
     goToStep(0);
   };
 
-  // ── Wiederherstellung eines unterbrochenen Walks ──
-  (function checkRecovery(){
-    const saved = localStorage.getItem('psychogeo_current_walk');
-    if(!saved) return;
-    try{
-      const recovered = JSON.parse(saved);
-      if(!recovered || !recovered.route || recovered.route.length < 2) {
-        localStorage.removeItem('psychogeo_current_walk');
-        return;
-      }
-      // Banner anzeigen
-      const banner = document.createElement('div');
-      banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;'
-        +'background:#dc2626;color:#fff;padding:14px 16px;font-size:12px;'
-        +'display:flex;align-items:center;justify-content:space-between;gap:10px;'
-        +'box-shadow:0 4px 20px rgba(0,0,0,0.3);';
-      banner.innerHTML = '<div><b>⚠️ Unterbrochener Walk gefunden!</b><br>'
-        +'<span style="font-size:11px;opacity:0.9;">"'+recovered.name+'" — '+recovered.route.length+' GPS-Punkte, '+recovered.entries.length+' Einträge</span></div>'
-        +'<div style="display:flex;gap:8px;flex-shrink:0;">'
-        +'<button id="recoverBtn" style="padding:8px 14px;border-radius:8px;border:none;background:#fff;color:#dc2626;font-size:11px;font-weight:bold;cursor:pointer;">💾 Wiederherstellen</button>'
-        +'<button id="discardBtn" style="padding:8px 14px;border-radius:8px;border:none;background:rgba(255,255,255,0.2);color:#fff;font-size:11px;font-weight:bold;cursor:pointer;">✕ Verwerfen</button>'
-        +'</div>';
-      document.body.appendChild(banner);
-
-      document.getElementById('recoverBtn').onclick=()=>{
-        // Walk ins Archiv speichern
-        recovered.name = recovered.name + ' (wiederhergestellt)';
-        if(!recovered.reflection) recovered.reflection={frei:'',moodRetro:3,moment:'',orte:'',nicht:'',ueber:''};
-        state.walks.push(recovered);
-        saveWalks();
-        localStorage.removeItem('psychogeo_current_walk');
-        banner.remove();
-        renderArchive();
-        openPanel('archiv');
-        // Grüner Bestätigungs-Banner
-        const ok=document.createElement('div');
-        ok.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;background:#16a34a;color:#fff;'
-          +'padding:12px 16px;font-size:12px;font-weight:bold;text-align:center;';
-        ok.textContent='✅ Walk wiederhergestellt und im Archiv gespeichert!';
-        document.body.appendChild(ok);
-        setTimeout(()=>ok.remove(),4000);
-      };
-
-      document.getElementById('discardBtn').onclick=()=>{
-        localStorage.removeItem('psychogeo_current_walk');
-        banner.remove();
-      };
-    }catch(ex){
-      localStorage.removeItem('psychogeo_current_walk');
-    }
-  })();
-
-  // Fix Drawer-Höhe auf Mobile — funktioniert auf Android UND iPhone Safari
+  // Fix Drawer-Höhe auf Mobile — Android UND iPhone Safari
   function fixDrawerHeight(){
     const d=document.getElementById('drawer');
     if(!d) return;
-    // visualViewport ist präziser als window.innerHeight (iPhone Safari-Toolbar)
     const h=window.visualViewport?window.visualViewport.height:window.innerHeight;
     d.style.height=h+'px';
   }
@@ -2505,6 +2572,69 @@ window.addEventListener('load', function() {
   }
 
   renderArchive();
+
+  // ── Wiederherstellung eines unterbrochenen Walks ──
+  // Läuft nach renderArchive damit saveWalks/openPanel verfügbar sind
+  (function checkRecovery(){
+    const saved = localStorage.getItem('psychogeo_current_walk');
+    if(!saved) return;
+    let recovered;
+    try{ recovered = JSON.parse(saved); }
+    catch(ex){ localStorage.removeItem('psychogeo_current_walk'); return; }
+    if(!recovered || !recovered.route || recovered.route.length < 2){
+      localStorage.removeItem('psychogeo_current_walk');
+      return;
+    }
+    // Banner anzeigen
+    const banner = document.createElement('div');
+    banner.id = 'recoveryBanner';
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;'
+      +'background:#dc2626;color:#fff;padding:14px 16px;font-size:12px;'
+      +'display:flex;align-items:center;justify-content:space-between;gap:10px;'
+      +'box-shadow:0 4px 20px rgba(0,0,0,0.3);flex-wrap:wrap;';
+    banner.innerHTML = '<div><b>⚠️ Unterbrochener Walk gefunden!</b><br>'
+      +'<span style="font-size:11px;opacity:0.9;">"'+recovered.name
+      +'" — '+recovered.route.length+' GPS-Punkte, '+recovered.entries.length+' Einträge</span></div>'
+      +'<div style="display:flex;gap:8px;flex-shrink:0;">'
+      +'<button id="recoverBtn" style="padding:8px 14px;border-radius:8px;border:none;'
+      +'background:#fff;color:#dc2626;font-size:11px;font-weight:bold;cursor:pointer;'
+      +'-webkit-tap-highlight-color:transparent;">💾 Wiederherstellen</button>'
+      +'<button id="discardBtn" style="padding:8px 14px;border-radius:8px;border:none;'
+      +'background:rgba(255,255,255,0.2);color:#fff;font-size:11px;font-weight:bold;cursor:pointer;'
+      +'-webkit-tap-highlight-color:transparent;">✕ Verwerfen</button>'
+      +'</div>';
+    document.body.appendChild(banner);
+
+    document.getElementById('recoverBtn').addEventListener('click', function(){
+      try{
+        if(!recovered.reflection) recovered.reflection={frei:'',moodRetro:3,moment:'',orte:'',nicht:'',ueber:''};
+        if(!recovered.segments) recovered.segments=[];
+        if(!recovered.entries) recovered.entries=[];
+        recovered.name = recovered.name + ' (wiederhergestellt)';
+        state.walks.push(recovered);
+        saveWalks();
+        localStorage.removeItem('psychogeo_current_walk');
+        banner.remove();
+        renderArchive();
+        openPanel('archiv');
+        // Grüner Bestätigungs-Banner
+        const ok=document.createElement('div');
+        ok.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;background:#16a34a;'
+          +'color:#fff;padding:12px 16px;font-size:12px;font-weight:bold;text-align:center;'
+          +'box-shadow:0 4px 20px rgba(0,0,0,0.3);';
+        ok.textContent='✅ Walk wiederhergestellt und im Archiv gespeichert!';
+        document.body.appendChild(ok);
+        setTimeout(()=>ok.remove(), 4000);
+      } catch(err){
+        alert('Fehler beim Wiederherstellen: '+err.message);
+      }
+    });
+
+    document.getElementById('discardBtn').addEventListener('click', function(){
+      localStorage.removeItem('psychogeo_current_walk');
+      banner.remove();
+    });
+  })();
 });
 </script>
 <!-- REFLEXIONS-MODAL -->
@@ -2577,9 +2707,9 @@ window.addEventListener('load', function() {
       <div id="moodThumb" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;background:#fff;border:3px solid #facc15;box-shadow:0 2px 8px rgba(0,0,0,0.3);pointer-events:none;"></div>
     </div>
     <input type="range" id="moodSlider" min="1" max="5" value="3" step="1" style="width:100%;margin:-8px 0;opacity:0;height:32px;cursor:pointer;"/>
-    <div style="display:flex;justify-content:space-between;font-size:10px;color:#aaa;margin-top:-8px;"><span>1 — sehr tief</span><span>3 — neutral</span><span>5 — sehr hoch</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:#aaa;margin-top:-8px;"><span>1 — Stimmung bedrückt</span><span>3 — neutral</span><span>5 — sehr gute Stimmung</span></div>
     <div style="text-align:center;"><span id="moodVal" style="font-size:36px;font-weight:bold;color:#facc15;">3</span><span style="font-size:13px;color:#aaa;">/100</span></div>
-    <textarea id="moodText" placeholder="Notiz (optional)..." style="width:100%;height:56px;border-radius:10px;border:1.5px solid #e5e5e5;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
+    <textarea id="moodText" placeholder="Beschreibe deine Stimmung (optional)..." style="width:100%;height:56px;border-radius:10px;border:1.5px solid #e5e5e5;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
     <div style="display:flex;gap:10px;">
       <button id="moodCancel" style="flex:1;padding:13px;border-radius:12px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:12px;cursor:pointer;">Abbrechen</button>
       <button id="moodSave" style="flex:2;padding:13px;border-radius:12px;border:none;font-weight:bold;font-size:12px;cursor:pointer;color:#fff;background:#facc15;">Marker setzen</button>
@@ -2600,7 +2730,7 @@ window.addEventListener('load', function() {
 <!-- WAHRNEHMUNG-MODAL -->
 <div id="senseModal" style="display:none;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:20px;padding:24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:14px;">
-    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">👁 Wahrnehmung</div>
+    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">👁 Eindrücke</div>
     <textarea id="senseText" placeholder="Was nimmst du wahr?" style="width:100%;height:100px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
     <div style="display:flex;gap:8px;">
       <button id="senseCancel" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;">Abbrechen</button>
