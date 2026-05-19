@@ -1211,7 +1211,7 @@ window.addEventListener('load', function() {
   document.getElementById('senseSave').onclick=()=>{
     if(!requireWalk())return;const t=document.getElementById('senseText').value.trim();const pos=getPos();const ts=new Date().toLocaleTimeString();
     state.current.entries.push({type:'sense',location:{lat:pos.lat,lng:pos.lng},timestamp:ts,text:t||'(keine Eingabe)'});autoSaveNow();
-    const icon=makeDotIcon('#f97316',20);const popup='<div style="min-width:140px;"><b>Wahrnehmung</b><br>'+(t?'<p style="margin:4px 0;font-size:12px;color:#333;">'+t+'</p>':'')+'<small style="color:#aaa;">'+ts+'</small></div>';
+    const icon=makeDotIcon('#f97316',20);const popup='<div style="min-width:140px;"><b>Eindrücke</b><br>'+(t?'<p style="margin:4px 0;font-size:12px;color:#333;">'+t+'</p>':'')+'<small style="color:#aaa;">'+ts+'</small></div>';
     mapLayers['sense']=mapLayers['sense']||[];const m=L.marker([pos.lat,pos.lng],{icon,zIndexOffset:1000}).bindPopup(popup);mapLayers['sense'].push(m);
     if(layerVisibility['sense']!==false){m.addTo(state.map);m.openPopup();}
     senseModal.style.display='none';document.getElementById('senseText').value='';
@@ -2300,6 +2300,10 @@ window.addEventListener('load', function() {
       }
       msg.textContent='Erstelle Kartenbild...';
       await takeMapSnapshot(walk,folder);
+      msg.textContent='Erstelle Reflexionskarte...';
+      await takeReflexionSnapshot(walk,folder);
+      msg.textContent='Erstelle Auswertung...';
+      await takeAuswertungSnapshot(walk,folder);
       msg.textContent='Erstelle ZIP...';
       const blob=await zip.generateAsync({type:'blob'},m=>{msg.textContent='Packe... '+Math.round(m.percent)+'%';});
       const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=walk.name.replace(/[^a-zA-Z0-9äöüÄÖÜß _-]/g,'_')+'_export.zip';a.click();setTimeout(()=>URL.revokeObjectURL(url),5000);
@@ -2470,6 +2474,208 @@ window.addEventListener('load', function() {
     }catch(err){console.error('Snapshot:',err);}
   }
 
+  // ── REFLEXIONSKARTE SNAPSHOT ──
+  async function takeReflexionSnapshot(walk, folder){
+    try{
+      const route=walk.route||[];
+      const entries=walk.entries.filter(e=>e.location);
+      if(route.length<2){folder.file('reflexionskarte.png','');return;}
+
+      const W=1200,H=900,P=60;
+      let minLat=Infinity,maxLat=-Infinity,minLng=Infinity,maxLng=-Infinity;
+      route.forEach(([lat,lng])=>{minLat=Math.min(minLat,lat);maxLat=Math.max(maxLat,lat);minLng=Math.min(minLng,lng);maxLng=Math.max(maxLng,lng);});
+      entries.forEach(e=>{if(e.location){minLat=Math.min(minLat,e.location.lat);maxLat=Math.max(maxLat,e.location.lat);minLng=Math.min(minLng,e.location.lng);maxLng=Math.max(maxLng,e.location.lng);}});
+      const lS=maxLat-minLat||0.001,lnS=maxLng-minLng||0.001;
+      const sX=(W-P*2)/lnS,sY=(H-P*2)/lS,sc=Math.min(sX,sY);
+      function toXY(lat,lng){return{x:P+(lng-minLng)*sc,y:H-P-(lat-minLat)*sc};}
+
+      const canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;
+      const ctx=canvas.getContext('2d');
+
+      // Hintergrund dunkel wie Reflexionsmodal
+      ctx.fillStyle='#1a1a1a';ctx.fillRect(0,0,W,H);
+      // Feines Raster
+      ctx.strokeStyle='rgba(255,255,255,0.04)';ctx.lineWidth=1;
+      for(let x=0;x<W;x+=60){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+      for(let y=0;y<H;y+=60){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
+      // Titel
+      ctx.fillStyle='#ffffff';ctx.font='bold 22px sans-serif';ctx.textAlign='left';
+      ctx.fillText('Reflexionskarte: '+walk.name,P,36);
+      ctx.fillStyle='rgba(255,255,255,0.4)';ctx.font='14px sans-serif';
+      ctx.fillText(entries.length+' Einträge · '+route.length+' GPS-Punkte',P,58);
+
+      // Tuschelinie
+      const segs=walk.segments||[];
+      if(segs.length>0){
+        const maxW=Math.max(...segs.map(s=>s.weight),1);
+        segs.forEach(s=>{
+          const p1=toXY(s.ll1[0],s.ll1[1]),p2=toXY(s.ll2[0],s.ll2[1]);
+          const w=Math.max(3,Math.min(18,s.weight*(8/Math.max(maxW,1))+3));
+          const op=Math.max(0.45,s.opacity);
+          drawInkStroke(ctx,p1.x,p1.y,p2.x,p2.y,w,op);
+        });
+      } else if(route.length>1){
+        ctx.beginPath();
+        route.forEach(([lat,lng],i)=>{const{x,y}=toXY(lat,lng);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+        ctx.strokeStyle='rgba(255,255,255,0.8)';ctx.lineWidth=5;ctx.lineCap='round';ctx.stroke();
+      }
+
+      // Start/Ende
+      const sp=toXY(route[0][0],route[0][1]),ep=toXY(route[route.length-1][0],route[route.length-1][1]);
+      [{pt:sp,col:'#22c55e',label:'Start'},{pt:ep,col:'#ef4444',label:'Ende'}].forEach(({pt,col,label})=>{
+        ctx.save();ctx.shadowColor='rgba(0,0,0,0.5)';ctx.shadowBlur=10;
+        ctx.beginPath();ctx.arc(pt.x,pt.y,12,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();ctx.restore();
+        ctx.beginPath();ctx.arc(pt.x,pt.y,12,0,Math.PI*2);ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.stroke();
+        ctx.fillStyle='#fff';ctx.font='bold 9px sans-serif';ctx.textAlign='center';ctx.fillText(label[0],pt.x,pt.y+4);
+      });
+
+      // Eintrags-Marker
+      const TC={mood:'#ea580c',thought:'#1e3a6e',sense:'#16a34a',voice:'#7c3aed',sound:'#7c3aed',photo:'#374151'};
+      const TI={mood:'●',thought:'◆',sense:'▲',voice:'▶',sound:'◉',photo:'■'};
+      entries.forEach(e=>{
+        if(!e.location)return;
+        const col=e.type==='mood'?(e.markerColor||'#ea580c'):(TC[e.type]||'#555');
+        const{x,y}=toXY(e.location.lat,e.location.lng);
+        const r=e.type==='mood'?13:10;
+        ctx.save();ctx.shadowColor='rgba(0,0,0,0.4)';ctx.shadowBlur=6;
+        ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();ctx.restore();
+        ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.strokeStyle='#fff';ctx.lineWidth=2.5;ctx.stroke();
+        ctx.fillStyle='#fff';ctx.textAlign='center';ctx.font='bold '+(e.type==='mood'?'11':'9')+'px sans-serif';
+        ctx.fillText(e.type==='mood'&&e.moodValue!=null?e.moodValue:(TI[e.type]||'●'),x,y+4);
+      });
+
+      // Legende
+      const types=[['mood','#ea580c','Stimmung'],['thought','#1e3a6e','Gedanke'],['sense','#16a34a','Eindrücke'],['voice','#7c3aed','Sprache'],['sound','#7c3aed','Sound'],['photo','#374151','Foto']];
+      let lx=P,ly=H-30;
+      ctx.font='11px sans-serif';
+      types.forEach(([type,col,label])=>{
+        const hasType=entries.some(e=>e.type===type);
+        if(!hasType)return;
+        ctx.beginPath();ctx.arc(lx+7,ly,6,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();
+        ctx.fillStyle='rgba(255,255,255,0.7)';ctx.textAlign='left';
+        ctx.fillText(label,lx+18,ly+4);
+        lx+=ctx.measureText(label).width+36;
+      });
+
+      const b64=canvas.toDataURL('image/png').split(',')[1];
+      if(b64)folder.file('reflexionskarte.png',b64,{base64:true});
+    }catch(err){console.error('ReflexionSnapshot:',err);}
+  }
+
+  // ── AUSWERTUNGS-SCREENSHOT ──
+  async function takeAuswertungSnapshot(walk, folder){
+    try{
+      const ref=walk.reflection||{};
+      const moodEntries=walk.entries.filter(e=>e.type==='mood'&&e.moodValue!=null);
+      if(moodEntries.length===0&&!ref.frei&&!ref.moment){folder.file('auswertung.png','');return;}
+
+      const W=1000,H=700,PAD=50;
+      const canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;
+      const ctx=canvas.getContext('2d');
+
+      // Hintergrund
+      ctx.fillStyle='#f8f8f8';ctx.fillRect(0,0,W,H);
+      ctx.strokeStyle='rgba(0,0,0,0.06)';ctx.lineWidth=1;
+      for(let x=0;x<W;x+=50){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+      for(let y=0;y<H;y+=50){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
+      // Titel
+      ctx.fillStyle='#111';ctx.font='bold 20px sans-serif';ctx.textAlign='left';
+      ctx.fillText('Auswertung: '+walk.name,PAD,40);
+
+      // Stimmungswerte
+      const aufgezWerte=moodEntries.map(e=>e.moodValue);
+      const avgAufgez=aufgezWerte.length?Math.round(aufgezWerte.reduce((a,b)=>a+b,0)/aufgezWerte.length):null;
+      const moodRetro=ref.moodRetro!=null?ref.moodRetro:null;
+      const diskrepanz=(avgAufgez!=null&&moodRetro!=null)?(moodRetro-avgAufgez):null;
+
+      // Stat-Boxen
+      const stats=[
+        {label:'Ø Stimmung',val:avgAufgez!=null?avgAufgez+'':'—',col:'#1D9E75'},
+        {label:'Erinnert',val:moodRetro!=null?moodRetro+'':'—',col:'#534AB7'},
+        {label:'Abweichung',val:diskrepanz!=null?(diskrepanz>=0?'+':'')+diskrepanz:'—',col:diskrepanz>0?'#534AB7':diskrepanz<0?'#dc2626':'#374151'}
+      ];
+      stats.forEach((s,i)=>{
+        const bx=PAD+i*220,by=60,bw=200,bh=70;
+        ctx.fillStyle='#f0f4ff';ctx.beginPath();ctx.roundRect(bx,by,bw,bh,8);ctx.fill();
+        ctx.fillStyle=s.col;ctx.font='bold 28px sans-serif';ctx.textAlign='center';
+        ctx.fillText(s.val,bx+bw/2,by+42);
+        ctx.fillStyle='#6b7280';ctx.font='10px sans-serif';
+        ctx.fillText(s.label.toUpperCase(),bx+bw/2,by+60);
+      });
+
+      if(aufgezWerte.length>=2){
+        const chartX=PAD,chartY=155,chartW=W-PAD*2,chartH=160;
+        const labels=moodEntries.map((e,i)=>e.timestamp?e.timestamp.substring(0,5):(i+1)+'.');
+        const erinData=aufgezWerte.map(v=>moodRetro!=null?Math.min(5,Math.max(1,Math.round(v*0.4+moodRetro*0.6))):v);
+
+        // Schicht 1 — Aufgezeichnet
+        ctx.fillStyle='#0F6E56';ctx.font='bold 11px sans-serif';ctx.textAlign='left';
+        ctx.fillText('SCHICHT 1 — AUFGEZEICHNETE STIMMUNG',chartX,chartY-8);
+        drawMiniChart(ctx,chartX,chartY,chartW,chartH,aufgezWerte,labels,'#1D9E75','rgba(29,158,117,0.1)');
+
+        // Schicht 2 — Erinnert
+        const chartY2=chartY+chartH+40;
+        ctx.fillStyle='#534AB7';ctx.font='bold 11px sans-serif';
+        ctx.fillText('SCHICHT 2 — SELBSTREFLEXION',chartX,chartY2-8);
+        drawMiniChart(ctx,chartX,chartY2,chartW,chartH,erinData,labels,'#534AB7','rgba(83,74,183,0.1)');
+      }
+
+      // Reflexionstext
+      if(ref.frei){
+        const ty=aufgezWerte.length>=2?540:200;
+        ctx.fillStyle='#374151';ctx.font='italic 13px sans-serif';ctx.textAlign='left';
+        const maxW2=W-PAD*2;
+        const words=ref.frei.split(' ');
+        let line='',lines=[];
+        words.forEach(w=>{
+          const test=line+w+' ';
+          if(ctx.measureText(test).width>maxW2&&line){lines.push(line.trim());line=w+' ';}
+          else line=test;
+        });
+        if(line)lines.push(line.trim());
+        lines.slice(0,3).forEach((l,i)=>ctx.fillText((i===0?'"':'')+l+(i===Math.min(lines.length,3)-1?'"':''),PAD,ty+i*20));
+      }
+
+      const b64=canvas.toDataURL('image/png').split(',')[1];
+      if(b64)folder.file('auswertung.png',b64,{base64:true});
+    }catch(err){console.error('AuswertungSnapshot:',err);}
+  }
+
+  function drawMiniChart(ctx,x,y,w,h,data,labels,color,fill){
+    if(data.length<2)return;
+    const step=w/(data.length-1);
+    function py(v){return y+h-(v-1)/(5-1)*h;}
+    // Grid
+    [1,2,3,4,5].forEach(v=>{
+      const gy=py(v);
+      ctx.strokeStyle='rgba(0,0,0,0.06)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(x,gy);ctx.lineTo(x+w,gy);ctx.stroke();
+      ctx.fillStyle='#aaa';ctx.font='9px sans-serif';ctx.textAlign='right';
+      ctx.fillText(v,x-6,gy+3);
+    });
+    // Fill
+    ctx.beginPath();ctx.moveTo(x,py(data[0]));
+    data.forEach((v,i)=>ctx.lineTo(x+i*step,py(v)));
+    ctx.lineTo(x+w,y+h);ctx.lineTo(x,y+h);ctx.closePath();
+    ctx.fillStyle=fill;ctx.fill();
+    // Line
+    ctx.beginPath();ctx.moveTo(x,py(data[0]));
+    data.forEach((v,i)=>ctx.lineTo(x+i*step,py(v)));
+    ctx.strokeStyle=color;ctx.lineWidth=2.5;ctx.lineJoin='round';ctx.stroke();
+    // Points + labels
+    data.forEach((v,i)=>{
+      ctx.beginPath();ctx.arc(x+i*step,py(v),4,0,Math.PI*2);
+      ctx.fillStyle=color;ctx.fill();
+      ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+      if(labels[i]){
+        ctx.fillStyle='#888';ctx.font='8px sans-serif';ctx.textAlign='center';
+        ctx.fillText(labels[i],x+i*step,y+h+12);
+      }
+    });
+  }
+
   // ── ONBOARDING ──
   let obCurrentStep=0;
   let obSteps=null, obDots=null, obTotal=0;
@@ -2513,7 +2719,7 @@ window.addEventListener('load', function() {
     }
 
     // Onboarding anzeigen — Version-Key damit neue Version immer erscheint
-    const OB_VERSION='v9';
+    const OB_VERSION='v10';
     if(localStorage.getItem('ob_done')!==OB_VERSION){
       document.getElementById('onboardingModal').style.display='flex';
     }
@@ -2918,6 +3124,18 @@ window.addEventListener('load', function() {
           ✅ Warte nach START bis der blaue Punkt erscheint<br>
           ✅ Exportiere nach dem Walk um alles zu sichern
         </div>
+        <div style="background:#f8f8f8;border-radius:10px;padding:12px 14px;font-size:11px;color:#374151;line-height:1.8;border:1px solid #e5e5e5;">
+          <b>📡 GPS-Statusanzeige:</b><br>
+          Während der Aufzeichnung siehst du neben START/STOP:<br>
+          <span style="display:inline-flex;align-items:center;gap:6px;margin-top:4px;">
+            <span style="width:10px;height:10px;border-radius:50%;background:#22c55e;display:inline-block;"></span>
+            <b style="color:#16a34a;">GPS aktiv</b> — Signal vorhanden, Route wird aufgezeichnet
+          </span><br>
+          <span style="display:inline-flex;align-items:center;gap:6px;margin-top:4px;">
+            <span style="width:10px;height:10px;border-radius:50%;background:#ef4444;display:inline-block;"></span>
+            <b style="color:#dc2626;">GPS verloren</b> — kein Signal, Route wird unterbrochen
+          </span>
+        </div>
         <div style="background:#f0f4ff;border-radius:10px;padding:12px 14px;font-size:11px;color:#1e3a6e;line-height:1.8;">
           <b>📦 Export nach dem Walk:</b><br>
           Archiv → Walk antippen → <b>📦 Export</b><br><br>
@@ -2925,6 +3143,32 @@ window.addEventListener('load', function() {
           Weiterleiten per Whatsapp oder Mail<br><br>
           🤖 <b>Android:</b> ZIP landet im <b>Downloads-Ordner</b><br>
           Weiterleiten per WhatsApp oder Mail
+        </div>
+      </div>
+
+
+      <!-- Schritt 7 — Auto-Save & Wiederherstellung -->
+      <div class="ob-step" data-step="7" style="display:none;flex-direction:column;gap:12px;">
+        <div style="text-align:center;padding:8px 0;">
+          <div style="font-size:40px;">💾</div>
+          <div style="font-size:15px;font-weight:bold;color:#111;margin-top:8px;">Datensicherheit</div>
+          <div style="font-size:11px;color:#6b7280;margin-top:6px;line-height:1.6;">Deine Daten sind automatisch geschützt</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="background:#f0fdf4;border-radius:10px;padding:12px 14px;border-left:4px solid #16a34a;font-size:11px;color:#166534;line-height:1.8;">
+            <b>🔄 Auto-Save</b><br>
+            Die App speichert deinen laufenden Walk automatisch — alle 10 Sekunden sowie bei jedem neuen GPS-Punkt und jedem Eintrag (Foto, Audio, Stimmung...).<br><br>
+            Auch wenn das GPS abbricht oder die Seite abstürzt, sind deine Daten gesichert.
+          </div>
+          <div style="background:#fff7ed;border-radius:10px;padding:12px 14px;border-left:4px solid #f97316;font-size:11px;color:#92400e;line-height:1.8;">
+            <b>⚠️ Wenn etwas schiefgeht:</b><br>
+            Öffne die App einfach wieder — es erscheint oben ein <b style="color:#dc2626;">roter Banner</b>:<br>
+            <span style="background:#dc2626;color:#fff;border-radius:6px;padding:2px 8px;font-size:10px;display:inline-block;margin-top:4px;">⚠️ Unterbrochener Walk gefunden!</span><br><br>
+            Tippe auf <b>💾 Wiederherstellen</b> — der Walk wird sofort ins Archiv gespeichert.
+          </div>
+          <div style="background:#f0f4ff;border-radius:10px;padding:10px 12px;font-size:11px;color:#1e3a6e;line-height:1.7;">
+            🔒 <b>Datenschutz:</b> Alle Daten bleiben ausschließlich auf deinem Gerät. Es wird nichts automatisch übertragen oder in einer Cloud gespeichert.
+          </div>
         </div>
       </div>
 
@@ -2941,6 +3185,7 @@ window.addEventListener('load', function() {
         <div class="ob-dot" data-dot="4" style="width:8px;height:8px;border-radius:50%;background:#ddd;"></div>
         <div class="ob-dot" data-dot="5" style="width:8px;height:8px;border-radius:50%;background:#ddd;"></div>
         <div class="ob-dot" data-dot="6" style="width:8px;height:8px;border-radius:50%;background:#ddd;"></div>
+        <div class="ob-dot" data-dot="7" style="width:8px;height:8px;border-radius:50%;background:#ddd;"></div>
       </div>
       <!-- Buttons -->
       <div style="display:flex;gap:8px;align-items:center;">
