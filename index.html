@@ -203,6 +203,7 @@
     #thoughtModal,#senseModal{z-index:2000;background:rgba(0,0,0,0.75);}
     @keyframes gpsPulse{0%,100%{box-shadow:0 0 0 3px rgba(34,197,94,0.25);}50%{box-shadow:0 0 0 6px rgba(34,197,94,0.08);}}
     #gpsDot.active{animation:gpsPulse 2s infinite;}
+    @keyframes gpsRing{0%{transform:scale(0.8);opacity:0.8;}100%{transform:scale(2.2);opacity:0;}}
   </style>
 
 </head>
@@ -218,6 +219,8 @@
     <span id="gpsLabel">GPS aktiv</span>
   </div>
 </div>
+<!-- Wo bin ich Button -->
+<button id="btnLocate" style="display:none;position:fixed;bottom:24px;right:16px;z-index:1002;height:44px;padding:0 16px;border-radius:22px;border:none;background:rgba(255,255,255,0.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 4px 16px rgba(0,0,0,0.2);cursor:pointer;font-size:13px;font-weight:bold;color:#333;align-items:center;justify-content:center;gap:6px;-webkit-tap-highlight-color:transparent;white-space:nowrap;">📍 Wo bin ich?</button>
 <div id="panelToggles">
   <button class="panel-tab" data-panel="ansicht">🗺 Ansicht</button>
   <button class="panel-tab" data-panel="ebenen">☰ Ebenen</button>
@@ -467,6 +470,13 @@ window.addEventListener('load', function() {
     if(name==='archiv') renderArchive();
   }
   document.querySelectorAll('.panel-tab').forEach(b=>b.addEventListener('click',()=>openPanel(b.getAttribute('data-panel'))));
+  // Locate Button — zentriert Karte auf aktuellen Standort
+  document.getElementById('btnLocate').addEventListener('click',()=>{
+    if(state.liveMarker){
+      state.map.setView(state.liveMarker.getLatLng(),17,{animate:true,duration:0.8});
+    }
+  });
+
   document.getElementById('drawerClose').addEventListener('click',()=>{drawer.classList.remove('open');document.querySelectorAll('.panel-tab').forEach(t=>t.classList.remove('active'));currentPanel=null;});
 
   document.querySelectorAll('.layer-opt').forEach(btn=>{
@@ -862,6 +872,8 @@ window.addEventListener('load', function() {
     dot.classList.add('active');
     if(lbl)lbl.textContent='GPS aktiv';
     if(_gpsLostTimer){clearTimeout(_gpsLostTimer);_gpsLostTimer=null;}
+    // Marker grün wenn Walk aktiv
+    if(state.liveMarker&&state.current) state.liveMarker.setIcon(makeLiveMarkerIcon(true,false));
   }
   function setGpsLost(){
     const dot=document.getElementById('gpsDot');
@@ -871,6 +883,24 @@ window.addEventListener('load', function() {
     dot.style.boxShadow='0 0 0 3px rgba(239,68,68,0.25)';
     dot.classList.remove('active');
     if(lbl)lbl.textContent='GPS verloren';
+    // Marker rot wenn GPS verloren
+    if(state.liveMarker) state.liveMarker.setIcon(makeLiveMarkerIcon(false,true));
+  }
+
+  // Live-Marker Icon: blau ohne Walk, grün mit Walk aktiv, rot bei GPS verloren
+  function makeLiveMarkerIcon(recording, lost){
+    const color = lost ? '#ef4444' : recording ? '#22c55e' : '#2563eb';
+    const ringColor = lost ? 'rgba(239,68,68,0.25)' : recording ? 'rgba(34,197,94,0.25)' : 'rgba(37,99,235,0.2)';
+    const speed = lost ? 'none' : recording ? '1.2s' : '2s';
+    return L.divIcon({
+      className:'',
+      html:'<div style="position:relative;width:20px;height:20px;">'
+        +'<div style="position:absolute;inset:0;border-radius:50%;background:'+ringColor+';animation:gpsRing '+speed+' ease-out infinite;"></div>'
+        +'<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:12px;height:12px;border-radius:50%;background:'+color+';border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>'
+        +'</div>',
+      iconSize:[20,20],
+      iconAnchor:[10,10]
+    });
   }
 
   navigator.geolocation.watchPosition(pos=>{
@@ -887,12 +917,18 @@ window.addEventListener('load', function() {
     else{smoothLat+=0.25*(rawLat-smoothLat);smoothLng+=0.25*(rawLng-smoothLng);}
     const ll=[smoothLat,smoothLng],now=Date.now();
     if(!state.liveMarker){
-      state.liveMarker=L.circleMarker(ll,{radius:6,fillColor:'#111',color:'#fff',weight:2,fillOpacity:1,zIndexOffset:1000}).addTo(state.map);
+      state.liveMarker=L.marker(ll,{
+        icon:makeLiveMarkerIcon(false),
+        zIndexOffset:1000
+      }).addTo(state.map);
       // Sofort auf GPS-Position zentrieren
       state.map.setView(ll,17,{animate:true,duration:1.0});
     } else {
       state.liveMarker.setLatLng(ll);
     }
+    // Locate-Button einblenden sobald Position bekannt
+    const locBtn=document.getElementById('btnLocate');
+    if(locBtn) locBtn.style.display='flex';
     if(state.current){
       if(lastPos&&lastPosTime){
         const dist=haversineDist(lastPos,ll);
@@ -950,6 +986,8 @@ window.addEventListener('load', function() {
     // GPS Status-Anzeige einblenden
     const gpsEl=document.getElementById('gpsStatus');
     if(gpsEl){gpsEl.style.display='flex';setGpsLost();} // Startet rot bis Signal kommt
+    // Marker auf Aufzeichnungs-Modus (wird grün wenn Signal kommt)
+    if(state.liveMarker) state.liveMarker.setIcon(makeLiveMarkerIcon(false,true));
     // Auto-Save starten — alle 30 Sekunden
     if(window._autoSaveInterval) clearInterval(window._autoSaveInterval);
     window._autoSaveInterval=setInterval(()=>{
@@ -979,6 +1017,8 @@ window.addEventListener('load', function() {
     // GPS Status-Anzeige ausblenden
     const gpsEl2=document.getElementById('gpsStatus');
     if(gpsEl2) gpsEl2.style.display='none';
+    // Marker zurück auf blau (kein aktiver Walk)
+    if(state.liveMarker) state.liveMarker.setIcon(makeLiveMarkerIcon(false,false));
     if(_gpsLostTimer){clearTimeout(_gpsLostTimer);_gpsLostTimer=null;}
     // Auto-Save stoppen und temporären Walk löschen
     if(window._autoSaveInterval){clearInterval(window._autoSaveInterval);window._autoSaveInterval=null;}
@@ -1005,6 +1045,52 @@ window.addEventListener('load', function() {
     },300);
   };
 
+  // ── SPEICHER-MONITOR ──
+  function checkStorageUsage(){
+    try{
+      // Gesamtgrösse aller localStorage-Einträge schätzen
+      let total=0;
+      for(let key in localStorage){
+        if(localStorage.hasOwnProperty(key)){
+          total+=localStorage[key].length*2; // UTF-16 = 2 bytes pro Zeichen
+        }
+      }
+      const limitBytes=5*1024*1024; // ~5MB typisches Limit
+      const usedMB=(total/1024/1024).toFixed(1);
+      const pct=Math.round(total/limitBytes*100);
+
+      // Bestehende Warnung entfernen
+      const existing=document.getElementById('storageWarning');
+      if(existing) existing.remove();
+
+      if(pct>=90){
+        // Kritisch — roter Banner
+        const w=document.createElement('div');
+        w.id='storageWarning';
+        w.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:8000;'
+          +'background:#dc2626;color:#fff;padding:10px 14px;font-size:11px;'
+          +'display:flex;align-items:center;justify-content:space-between;gap:8px;'
+          +'box-shadow:0 -4px 20px rgba(0,0,0,0.3);';
+        w.innerHTML='<span>🔴 <b>Speicher fast voll!</b> ('+usedMB+' MB) — Walk exportieren & löschen!</span>'
+          +'<button onclick="this.parentElement.remove()" style="border:none;background:rgba(255,255,255,0.2);'
+          +'color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;">✕</button>';
+        document.body.appendChild(w);
+      } else if(pct>=70){
+        // Warnung — oranger Banner
+        const w=document.createElement('div');
+        w.id='storageWarning';
+        w.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:8000;'
+          +'background:#f97316;color:#fff;padding:10px 14px;font-size:11px;'
+          +'display:flex;align-items:center;justify-content:space-between;gap:8px;'
+          +'box-shadow:0 -4px 20px rgba(0,0,0,0.3);';
+        w.innerHTML='<span>🟠 <b>Speicher '+pct+'% voll</b> ('+usedMB+' MB) — bald exportieren & löschen!</span>'
+          +'<button onclick="this.parentElement.remove()" style="border:none;background:rgba(255,255,255,0.2);'
+          +'color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;">✕</button>';
+        document.body.appendChild(w);
+      }
+    }catch(ex){console.warn('Speicher-Check fehlgeschlagen:',ex);}
+  }
+
   // Sofort-Save des laufenden Walks (bei GPS-Punkt + Eintrag)
   function autoSaveNow(){
     if(!state.current) return;
@@ -1015,7 +1101,19 @@ window.addEventListener('load', function() {
           const c={...e};delete c.audioUrl;return c;
         })
       }));
-    }catch(ex){console.warn('AutoSave fehlgeschlagen:',ex);}
+    }catch(ex){
+      // Wenn zu voll: ohne grosse Fotos speichern
+      try{
+        localStorage.setItem('psychogeo_current_walk', JSON.stringify({
+          ...state.current,
+          entries: state.current.entries.map(e=>{
+            const c={...e};delete c.audioUrl;
+            if(e.type==='photo'&&e.dataUrl&&e.dataUrl.length>50000) delete c.dataUrl;
+            return c;
+          })
+        }));
+      }catch(ex2){console.warn('AutoSave fehlgeschlagen (Speicher voll):',ex2);}
+    }
   }
 
   function saveWalks(){
@@ -1028,20 +1126,51 @@ window.addEventListener('load', function() {
           const reader=new FileReader();
           reader.onload=ev=>{
             c.audioBase64=ev.target.result;
-            // Nochmal speichern mit base64
             const walks2=state.walks.map(w2=>({...w2,entries:w2.entries.map(e2=>{
               const d={...e2};delete d.audioUrl;
               if(e2.entryId===e.entryId&&audioBlobs[e2.entryId])d.audioBase64=ev.target.result;
               return d;
             })}));
-            localStorage.setItem('psychogeo_walks',JSON.stringify(walks2));
+            try{localStorage.setItem('psychogeo_walks',JSON.stringify(walks2));}
+            catch(ex){console.warn('Audio-Save fehlgeschlagen (zu gross):',ex);}
           };
           reader.readAsDataURL(audioBlobs[e.entryId]);
         }catch(ex){}
       }
       return c;
     })}));
-    localStorage.setItem('psychogeo_walks',JSON.stringify(ts));
+    // Erst versuchen mit Fotos
+    try{
+      localStorage.setItem('psychogeo_walks',JSON.stringify(ts));
+      checkStorageUsage(); // Speicher-Warnung prüfen
+    }catch(ex){
+      // localStorage voll (wahrscheinlich wegen Fotos) — ohne Fotos speichern
+      console.warn('Speicher voll, speichere ohne Fotos:',ex);
+      try{
+        const tsNoPhotos=state.walks.map(w=>({...w,entries:w.entries.map(e=>{
+          const c={...e};
+          delete c.audioUrl;
+          // Fotos weglassen wenn zu gross
+          if(e.type==='photo'&&e.dataUrl&&e.dataUrl.length>50000) delete c.dataUrl;
+          return c;
+        })}));
+        localStorage.setItem('psychogeo_walks',JSON.stringify(tsNoPhotos));
+        console.warn('Walk ohne grosse Fotos gespeichert');
+      }catch(ex2){
+        // Letzter Ausweg: nur Route und Texte speichern
+        console.error('Kritisch: Walk kann nicht gespeichert werden:',ex2);
+        try{
+          const tsMinimal=state.walks.map(w=>({...w,entries:w.entries.map(e=>{
+            const c={...e};
+            delete c.audioUrl;delete c.dataUrl;delete c.audioBase64;
+            return c;
+          })}));
+          localStorage.setItem('psychogeo_walks',JSON.stringify(tsMinimal));
+        }catch(ex3){
+          alert('⚠️ Speicher voll! Bitte einen alten Walk exportieren und löschen, dann erneut speichern.');
+        }
+      }
+    }
   }
 
 
@@ -2778,6 +2907,7 @@ window.addEventListener('load', function() {
   }
 
   renderArchive();
+  checkStorageUsage(); // Speicher beim Start prüfen
 
   // ── Wiederherstellung eines unterbrochenen Walks ──
   // Läuft nach renderArchive damit saveWalks/openPanel verfügbar sind
