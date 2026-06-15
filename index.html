@@ -220,12 +220,12 @@
   </div>
 </div>
 <!-- Wo bin ich Button -->
-<button id="btnLocate" style="display:none;position:fixed;bottom:24px;right:16px;z-index:1002;height:44px;padding:0 16px;border-radius:22px;border:none;background:rgba(255,255,255,0.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 4px 16px rgba(0,0,0,0.2);cursor:pointer;font-size:13px;font-weight:bold;color:#333;align-items:center;justify-content:center;gap:6px;-webkit-tap-highlight-color:transparent;white-space:nowrap;">📍 Wo bin ich?</button>
+<button id="btnLocate" style="display:none;position:fixed;bottom:24px;right:16px;z-index:1002;height:44px;padding:0 16px;border-radius:22px;border:none;background:rgba(255,255,255,0.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 4px 16px rgba(0,0,0,0.2);cursor:pointer;font-size:13px;font-weight:bold;color:#333;align-items:center;justify-content:center;gap:6px;-webkit-tap-highlight-color:transparent;white-space:nowrap;">📍 Where am I?</button>
 <div id="panelToggles">
-  <button class="panel-tab" data-panel="ansicht">🗺 Ansicht</button>
-  <button class="panel-tab" data-panel="ebenen">☰ Ebenen</button>
+  <button class="panel-tab" data-panel="ansicht">🗺 View</button>
+  <button class="panel-tab" data-panel="ebenen">☰ Layers</button>
   <button class="panel-tab" data-panel="archiv">📂 Archiv</button>
-  <button class="panel-tab" id="btnHelp" style="background:#f5f0e8;color:#555;">❓ Hilfe</button>
+  <button class="panel-tab" id="btnHelp" style="background:#f5f0e8;color:#555;">❓ Help</button>
 </div>
 <div id="drawer">
   <div id="drawerHeader">
@@ -234,12 +234,12 @@
   </div>
   <div id="drawerBody">
     <div class="section" id="sec-ansicht" style="display:none;">
-      <div class="section-label">Kartenansicht</div>
-      <button class="layer-opt" data-url="maptiler-vector" data-style="https://api.maptiler.com/maps/019e02c9-c89f-7ac4-a445-8682af45becc/style.json?key=kIVeCJrwqaa77bZoYoEF">✦ Eigene Karte</button>
+      <div class="section-label">Map View</div>
+      <button class="layer-opt" data-url="maptiler-vector" data-style="https://api.maptiler.com/maps/019e02c9-c89f-7ac4-a445-8682af45becc/style.json?key=kIVeCJrwqaa77bZoYoEF"> Custome Map</button>
       <button class="layer-opt active" data-url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png">Standard</button>
       <button class="layer-opt" data-url="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}">Satellit</button>
-      <button class="layer-opt" data-url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png">Graustufen</button>
-      <button class="layer-opt" data-type="3d">🏔 3D Ansicht</button>
+      <button class="layer-opt" data-url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png">Grayscale</button>
+      <button class="layer-opt" data-type="3d">🏔 3D View</button>
     </div>
     <div class="section" id="sec-ebenen" style="display:none;">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
@@ -254,20 +254,20 @@
       </div>
       <div style="font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;border-bottom:1px solid #f0f0f0;padding-bottom:4px;margin-bottom:10px;">Ebenen</div>
       <button class="layer-toggle-btn active" data-layer="route"><span class="dot"></span> Route</button>
-      <button class="layer-toggle-btn active" data-layer="photo"><span class="dot"></span> Fotos</button>
-      <button class="layer-toggle-btn active" data-layer="sound"><span class="dot"></span> Umgebungssound</button>
-      <button class="layer-toggle-btn active" data-layer="voice"><span class="dot"></span> Sprachnachricht</button>
-      <button class="layer-toggle-btn active" data-layer="sense"><span class="dot"></span> Eindrücke</button>
-      <button class="layer-toggle-btn active" data-layer="thought"><span class="dot"></span> Gedanken</button>
-      <button class="layer-toggle-btn active" data-layer="mood"><span class="dot"></span> Stimmung</button>
+      <button class="layer-toggle-btn active" data-layer="photo"><span class="dot"></span> Photo</button>
+      <button class="layer-toggle-btn active" data-layer="sound"><span class="dot"></span> Ambient Sound</button>
+      <button class="layer-toggle-btn active" data-layer="voice"><span class="dot"></span> Voice Message</button>
+      <button class="layer-toggle-btn active" data-layer="sense"><span class="dot"></span> Sense</button>
+      <button class="layer-toggle-btn active" data-layer="thought"><span class="dot"></span> thought</button>
+      <button class="layer-toggle-btn active" data-layer="mood"><span class="dot"></span> Mood</button>
     </div>
     <div class="section" id="sec-archiv" style="display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
         <div class="section-label" style="border:none;padding:0;margin:0;">Walks</div>
-        <button id="btnVergleich" style="padding:8px 14px;border-radius:8px;border:none;background:#7c3aed;color:#fff;font-size:11px;font-weight:bold;cursor:pointer;display:none;">⚖️ Vergleich starten</button>
+        <button id="btnVergleich" style="padding:8px 14px;border-radius:8px;border:none;background:#7c3aed;color:#fff;font-size:11px;font-weight:bold;cursor:pointer;display:none;">⚖️ Start Comparison</button>
       </div>
-      <div id="vglHint" style="font-size:10px;color:#9ca3af;margin-bottom:8px;">Tippe bei 2 oder mehr Walks auf ⚖️ um sie zu vergleichen.</div>
-      <div id="archiveList" style="padding-bottom:20px;"><div style="font-size:11px;color:#999;">Noch keine Walks gespeichert.</div></div>
+      <div id="vglHint" style="font-size:10px;color:#9ca3af;margin-bottom:8px;">Tap ⚖️ on 2 more walks to compare them.</div>
+      <div id="archiveList" style="padding-bottom:20px;"><div style="font-size:11px;color:#999;">No walks saved yet.</div></div>
     </div>
 
   </div>
@@ -275,25 +275,25 @@
 
 <!-- MODERNES FAB-PANEL — Reihenfolge: Foto, Sound, Sprache, Wahrnehmung, Gedanke, Stimmung -->
 <div id="fabGrid">
-  <button id="fabPhoto"   class="fab" data-label="Foto aufnehmen">📸<span class="fab-lbl">Foto</span></button>
-  <button id="fabSound"   class="fab" data-label="Umgebungssound">🎙<span class="fab-lbl" style="font-size:6px;">Umgebungssound</span></button>
-  <button id="fabMsg"     class="fab" data-label="Sprachnachricht">💬<span class="fab-lbl" style="font-size:6px;">Sprachnachricht</span></button>
+  <button id="fabPhoto"   class="fab" data-label="Take Photo">📸<span class="fab-lbl">Photo</span></button>
+  <button id="fabSound"   class="fab" data-label="Ambient Sound">🎙<span class="fab-lbl" style="font-size:6px;">Ambient Sound</span></button>
+  <button id="fabMsg"     class="fab" data-label="Voice Message">💬<span class="fab-lbl" style="font-size:6px;">Voice Message</span></button>
   <div class="fab-divider"></div>
-  <button id="fabSense"   class="fab" data-label="Eindrücke">👁<span class="fab-lbl">Eindrücke</span></button>
-  <button id="fabThought" class="fab" data-label="Gedanke">💭<span class="fab-lbl">Gedanke</span></button>
+  <button id="fabSense"   class="fab" data-label="Sense">👁<span class="fab-lbl">Sense</span></button>
+  <button id="fabThought" class="fab" data-label="Thought">💭<span class="fab-lbl">Thought</span></button>
   <div class="fab-divider"></div>
-  <button id="fabMood"    class="fab" data-label="Stimmung">🔋<span class="fab-lbl">Stimmung</span></button>
+  <button id="fabMood"    class="fab" data-label="Mood">🔋<span class="fab-lbl">Mood</span></button>
 </div>
 
 <div id="cameraModal">
   <button id="closeCamera">✕</button>
   <video id="cameraPreview" autoplay playsinline muted></video>
-  <button id="captureBtn">📸 Foto aufnehmen</button>
+  <button id="captureBtn">📸 Take Photo</button>
   <canvas id="photoCanvas" style="display:none;"></canvas>
 </div>
 <div id="audioModal">
   <button id="closeAudio">✕</button>
-  <div id="audioStatus">Aufnahme läuft...</div>
+  <div id="audioStatus">Recording...</div>
   <div id="audioTimer">0:00</div>
   <div id="audioViz">
     <div class="bar" style="height:8px"></div><div class="bar" style="height:16px"></div>
@@ -302,31 +302,31 @@
     <div class="bar" style="height:12px"></div><div class="bar" style="height:28px"></div>
     <div class="bar" style="height:14px"></div><div class="bar" style="height:8px"></div>
   </div>
-  <button id="stopAudioBtn">⏹ Aufnahme beenden</button>
+  <button id="stopAudioBtn">⏹ Stop Recording</button>
 </div>
 <div id="stopModal">
   <div class="modal-box">
-    <h3>Walk beenden &amp; speichern</h3>
-    <p>Gib deinem Walk einen Namen:</p>
-    <input id="walkNameInput" type="text" placeholder="z.B. Morgenspaziergang Zentrum"/>
+    <h3>Finish &amp; Save walk</h3>
+    <p>Give your Walk a name:</p>
+    <input id="walkNameInput" type="text" placeholder="e.g. Morning Walk"/>
     <div class="modal-btns">
-      <button id="modalCancel">Abbrechen</button>
-      <button id="modalSave">💾 Speichern</button>
+      <button id="modalCancel">Cancel</button>
+      <button id="modalSave">💾 Save</button>
     </div>
   </div>
 </div>
-<div id="exportOverlay"><div id="exportBox"><div style="font-size:24px;">📦</div><div id="exportMsg">Exportiere...</div></div></div>
+<div id="exportOverlay"><div id="exportBox"><div style="font-size:24px;">📦</div><div id="exportMsg">Exportin...</div></div></div>
 <input type="file" id="photoInput" accept="image/*" capture="environment"/>
 
 <!-- FOTO-NOTIZ MODAL -->
 <div id="photoNoteModal" style="display:none;position:fixed;inset:0;z-index:2500;background:rgba(0,0,0,0.82);align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:20px;padding:24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:14px;">
-    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">📸 Foto-Notiz</div>
+    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">📸 Photo Note</div>
     <img id="photoNotePreview" style="width:100%;border-radius:10px;max-height:180px;object-fit:cover;"/>
     <textarea id="photoNoteText" placeholder="Notiz zum Foto (optional)..." style="width:100%;height:80px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
     <div style="display:flex;gap:8px;">
-      <button id="photoNoteSkip" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;">Überspringen</button>
-      <button id="photoNoteSave" style="flex:1;padding:12px;border-radius:10px;border:none;background:#374151;color:#fff;font-weight:bold;font-size:11px;cursor:pointer;">💾 Speichern</button>
+      <button id="photoNoteSkip" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;">Skip</button>
+      <button id="photoNoteSave" style="flex:1;padding:12px;border-radius:10px;border:none;background:#374151;color:#fff;font-weight:bold;font-size:11px;cursor:pointer;">💾 Save</button>
     </div>
   </div>
 </div>
