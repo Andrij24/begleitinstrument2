@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
-  <title>Begleitinstrument</title>
+  <title>Accompanying Instrument</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
@@ -54,7 +54,7 @@
     .wb-umap{background:#dbeafe;color:#2563eb;}
     .wb-verlauf{background:#0e7490;color:#fff;}
 
-    /* Auswertungs-Modal — ohne Dritte-Sicht */
+    /* Evaluation Modal — without third-party view */
     #analyseModal{position:fixed;inset:0;z-index:4500;background:rgba(0,0,0,0.82);display:none;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;}
     #analyseModal.open{display:flex;}
     #analyseBox{background:#f8f8f8;border-radius:20px;width:min(96vw,560px);padding:20px;display:flex;flex-direction:column;gap:14px;margin:auto;}
@@ -96,7 +96,7 @@
     #exportBox{background:#fff;border-radius:14px;padding:24px 28px;text-align:center;min-width:200px;}
     #exportMsg{font-size:13px;color:#333;margin-top:8px;}
 
-    /* ── MODERNES FAB-PANEL ── */
+    /* ── MODERN FAB PANEL ── */
     #fabGrid {
       position: fixed;
       bottom: 24px;
@@ -172,8 +172,7 @@
       flex-shrink: 0;
     }
 
-
-    /* Verlauf-Modal */
+    /* History Modal */
     #verlaufModal{position:fixed;inset:0;z-index:3500;background:#000;display:none;align-items:stretch;justify-content:stretch;padding:0;overflow-y:auto;}
     #verlaufModal.open{display:flex;}
     #verlaufBox{background:#f8f8f8;border-radius:20px;width:min(96vw,640px);padding:20px;display:flex;flex-direction:column;gap:14px;margin:auto;}
@@ -210,22 +209,21 @@
 <body>
 <div id="map"></div>
 <div id="map3d" style="display:none;position:fixed;inset:0;z-index:2;"></div>
-<button id="exit3d" style="display:none;position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:1003;padding:10px 18px;border-radius:10px;border:none;background:rgba(0,0,0,0.75);color:#fff;font-size:11px;font-weight:bold;cursor:pointer;">✕ 3D verlassen</button>
+<button id="exit3d" style="display:none;position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:1003;padding:10px 18px;border-radius:10px;border:none;background:rgba(0,0,0,0.75);color:#fff;font-size:11px;font-weight:bold;cursor:pointer;">✕ Exit 3D</button>
 <div id="topBar">
   <button id="btnStart" class="btn btn-blue">START</button>
   <button id="btnStop" class="btn btn-red">STOP / SAVE</button>
   <div id="gpsStatus" style="display:none;align-items:center;gap:6px;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-radius:10px;padding:8px 12px;font-size:10px;font-weight:bold;color:#333;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
     <div id="gpsDot" style="width:9px;height:9px;border-radius:50%;background:#22c55e;flex-shrink:0;box-shadow:0 0 0 3px rgba(34,197,94,0.25);transition:background 0.4s,box-shadow 0.4s;"></div>
-    <span id="gpsLabel">GPS aktiv</span>
+    <span id="gpsLabel">GPS active</span>
   </div>
 </div>
-<!-- Wo bin ich Button -->
-<button id="btnLocate" style="display:none;position:fixed;bottom:24px;right:16px;z-index:1002;height:44px;padding:0 16px;border-radius:22px;border:none;background:rgba(255,255,255,0.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 4px 16px rgba(0,0,0,0.2);cursor:pointer;font-size:13px;font-weight:bold;color:#333;align-items:center;justify-content:center;gap:6px;-webkit-tap-highlight-color:transparent;white-space:nowrap;">📍 Wo bin ich?</button>
+<button id="btnLocate" style="display:none;position:fixed;bottom:24px;right:16px;z-index:1002;height:44px;padding:0 16px;border-radius:22px;border:none;background:rgba(255,255,255,0.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 4px 16px rgba(0,0,0,0.2);cursor:pointer;font-size:13px;font-weight:bold;color:#333;align-items:center;justify-content:center;gap:6px;-webkit-tap-highlight-color:transparent;white-space:nowrap;">📍 Where am I?</button>
 <div id="panelToggles">
-  <button class="panel-tab" data-panel="ansicht">🗺 Ansicht</button>
-  <button class="panel-tab" data-panel="ebenen">☰ Ebenen</button>
-  <button class="panel-tab" data-panel="archiv">📂 Archiv</button>
-  <button class="panel-tab" id="btnHelp" style="background:#f5f0e8;color:#555;">❓ Hilfe</button>
+  <button class="panel-tab" data-panel="ansicht">🗺 View</button>
+  <button class="panel-tab" data-panel="ebenen">☰ Layers</button>
+  <button class="panel-tab" data-panel="archiv">📂 Archive</button>
+  <button class="panel-tab" id="btnHelp" style="background:#f5f0e8;color:#555;">❓ Help</button>
 </div>
 <div id="drawer">
   <div id="drawerHeader">
@@ -234,66 +232,65 @@
   </div>
   <div id="drawerBody">
     <div class="section" id="sec-ansicht" style="display:none;">
-      <div class="section-label">Kartenansicht</div>
-      <button class="layer-opt" data-url="maptiler-vector" data-style="https://api.maptiler.com/maps/019e02c9-c89f-7ac4-a445-8682af45becc/style.json?key=kIVeCJrwqaa77bZoYoEF">✦ Eigene Karte</button>
+      <div class="section-label">Map View</div>
+      <button class="layer-opt" data-url="maptiler-vector" data-style="https://api.maptiler.com/maps/019e02c9-c89f-7ac4-a445-8682af45becc/style.json?key=kIVeCJrwqaa77bZoYoEF">✦ Custom Map</button>
       <button class="layer-opt active" data-url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png">Standard</button>
-      <button class="layer-opt" data-url="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}">Satellit</button>
-      <button class="layer-opt" data-url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png">Graustufen</button>
-      <button class="layer-opt" data-type="3d">🏔 3D Ansicht</button>
+      <button class="layer-opt" data-url="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}">Satellite</button>
+      <button class="layer-opt" data-url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png">Grayscale</button>
+      <button class="layer-opt" data-type="3d">🏔 3D View</button>
     </div>
     <div class="section" id="sec-ebenen" style="display:none;">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
         <div style="background:#f0f4ff;border-radius:10px;padding:10px 12px;text-align:center;">
-          <div style="font-size:9px;font-weight:bold;color:#6b7280;text-transform:uppercase;margin-bottom:4px;">Schritte</div>
+          <div style="font-size:9px;font-weight:bold;color:#6b7280;text-transform:uppercase;margin-bottom:4px;">Steps</div>
           <div id="stepCount" style="font-size:22px;font-weight:bold;color:#1a1a1a;">0</div>
         </div>
         <div style="background:#f0f4ff;border-radius:10px;padding:10px 12px;text-align:center;">
-          <div style="font-size:9px;font-weight:bold;color:#6b7280;text-transform:uppercase;margin-bottom:4px;">Tempo</div>
+          <div style="font-size:9px;font-weight:bold;color:#6b7280;text-transform:uppercase;margin-bottom:4px;">Pace</div>
           <div id="currentSpeed" style="font-size:18px;font-weight:bold;color:#1a1a1a;">—</div>
         </div>
       </div>
-      <div style="font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;border-bottom:1px solid #f0f0f0;padding-bottom:4px;margin-bottom:10px;">Ebenen</div>
+      <div style="font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;border-bottom:1px solid #f0f0f0;padding-bottom:4px;margin-bottom:10px;">Layers</div>
       <button class="layer-toggle-btn active" data-layer="route"><span class="dot"></span> Route</button>
-      <button class="layer-toggle-btn active" data-layer="photo"><span class="dot"></span> Fotos</button>
-      <button class="layer-toggle-btn active" data-layer="sound"><span class="dot"></span> Umgebungssound</button>
-      <button class="layer-toggle-btn active" data-layer="voice"><span class="dot"></span> Sprachnachricht</button>
-      <button class="layer-toggle-btn active" data-layer="sense"><span class="dot"></span> Eindrücke</button>
-      <button class="layer-toggle-btn active" data-layer="thought"><span class="dot"></span> Gedanken</button>
-      <button class="layer-toggle-btn active" data-layer="mood"><span class="dot"></span> Stimmung</button>
+      <button class="layer-toggle-btn active" data-layer="photo"><span class="dot"></span> Photos</button>
+      <button class="layer-toggle-btn active" data-layer="sound"><span class="dot"></span> Ambient Sound</button>
+      <button class="layer-toggle-btn active" data-layer="voice"><span class="dot"></span> Voice Message</button>
+      <button class="layer-toggle-btn active" data-layer="sense"><span class="dot"></span> Impressions</button>
+      <button class="layer-toggle-btn active" data-layer="thought"><span class="dot"></span> Thoughts</button>
+      <button class="layer-toggle-btn active" data-layer="mood"><span class="dot"></span> Mood</button>
     </div>
     <div class="section" id="sec-archiv" style="display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
         <div class="section-label" style="border:none;padding:0;margin:0;">Walks</div>
-        <button id="btnVergleich" style="padding:8px 14px;border-radius:8px;border:none;background:#7c3aed;color:#fff;font-size:11px;font-weight:bold;cursor:pointer;display:none;">⚖️ Vergleich starten</button>
+        <button id="btnVergleich" style="padding:8px 14px;border-radius:8px;border:none;background:#7c3aed;color:#fff;font-size:11px;font-weight:bold;cursor:pointer;display:none;">⚖️ Start Comparison</button>
       </div>
-      <div id="vglHint" style="font-size:10px;color:#9ca3af;margin-bottom:8px;">Tippe bei 2 oder mehr Walks auf ⚖️ um sie zu vergleichen.</div>
-      <div id="archiveList" style="padding-bottom:20px;"><div style="font-size:11px;color:#999;">Noch keine Walks gespeichert.</div></div>
+      <div id="vglHint" style="font-size:10px;color:#9ca3af;margin-bottom:8px;">Tap on ⚖️ for 2 or more walks to compare them.</div>
+      <div id="archiveList" style="padding-bottom:20px;"><div style="font-size:11px;color:#999;">No walks saved yet.</div></div>
     </div>
 
   </div>
 </div>
 
-<!-- MODERNES FAB-PANEL — Reihenfolge: Foto, Sound, Sprache, Wahrnehmung, Gedanke, Stimmung -->
 <div id="fabGrid">
-  <button id="fabPhoto"   class="fab" data-label="Foto aufnehmen">📸<span class="fab-lbl">Foto</span></button>
-  <button id="fabSound"   class="fab" data-label="Umgebungssound">🎙<span class="fab-lbl" style="font-size:6px;">Umgebungssound</span></button>
-  <button id="fabMsg"     class="fab" data-label="Sprachnachricht">💬<span class="fab-lbl" style="font-size:6px;">Sprachnachricht</span></button>
+  <button id="fabPhoto"   class="fab" data-label="Take Photo">📸<span class="fab-lbl">Photo</span></button>
+  <button id="fabSound"   class="fab" data-label="Ambient Sound">🎙<span class="fab-lbl" style="font-size:6px;">Ambient Sound</span></button>
+  <button id="fabMsg"     class="fab" data-label="Voice Message">💬<span class="fab-lbl" style="font-size:6px;">Voice Msg</span></button>
   <div class="fab-divider"></div>
-  <button id="fabSense"   class="fab" data-label="Eindrücke">👁<span class="fab-lbl">Eindrücke</span></button>
-  <button id="fabThought" class="fab" data-label="Gedanke">💭<span class="fab-lbl">Gedanke</span></button>
+  <button id="fabSense"   class="fab" data-label="Impressions">👁<span class="fab-lbl">Impressions</span></button>
+  <button id="fabThought" class="fab" data-label="Thought">💭<span class="fab-lbl">Thought</span></button>
   <div class="fab-divider"></div>
-  <button id="fabMood"    class="fab" data-label="Stimmung">🔋<span class="fab-lbl">Stimmung</span></button>
+  <button id="fabMood"    class="fab" data-label="Mood">🔋<span class="fab-lbl">Mood</span></button>
 </div>
 
 <div id="cameraModal">
   <button id="closeCamera">✕</button>
   <video id="cameraPreview" autoplay playsinline muted></video>
-  <button id="captureBtn">📸 Foto aufnehmen</button>
+  <button id="captureBtn">📸 Take Photo</button>
   <canvas id="photoCanvas" style="display:none;"></canvas>
 </div>
 <div id="audioModal">
   <button id="closeAudio">✕</button>
-  <div id="audioStatus">Aufnahme läuft...</div>
+  <div id="audioStatus">Recording in progress...</div>
   <div id="audioTimer">0:00</div>
   <div id="audioViz">
     <div class="bar" style="height:8px"></div><div class="bar" style="height:16px"></div>
@@ -302,109 +299,349 @@
     <div class="bar" style="height:12px"></div><div class="bar" style="height:28px"></div>
     <div class="bar" style="height:14px"></div><div class="bar" style="height:8px"></div>
   </div>
-  <button id="stopAudioBtn">⏹ Aufnahme beenden</button>
+  <button id="stopAudioBtn">⏹ Stop Recording</button>
 </div>
 <div id="stopModal">
   <div class="modal-box">
-    <h3>Walk beenden &amp; speichern</h3>
-    <p>Gib deinem Walk einen Namen:</p>
-    <input id="walkNameInput" type="text" placeholder="z.B. Morgenspaziergang Zentrum"/>
+    <h3>End &amp; Save Walk</h3>
+    <p>Give your walk a name:</p>
+    <input id="walkNameInput" type="text" placeholder="e.g., Morning Walk Center"/>
     <div class="modal-btns">
-      <button id="modalCancel">Abbrechen</button>
-      <button id="modalSave">💾 Speichern</button>
+      <button id="modalCancel">Cancel</button>
+      <button id="modalSave">💾 Save</button>
     </div>
   </div>
 </div>
-<div id="exportOverlay"><div id="exportBox"><div style="font-size:24px;">📦</div><div id="exportMsg">Exportiere...</div></div></div>
+<div id="exportOverlay"><div id="exportBox"><div style="font-size:24px;">📦</div><div id="exportMsg">Exporting...</div></div></div>
 <input type="file" id="photoInput" accept="image/*" capture="environment"/>
 
-<!-- FOTO-NOTIZ MODAL -->
 <div id="photoNoteModal" style="display:none;position:fixed;inset:0;z-index:2500;background:rgba(0,0,0,0.82);align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:20px;padding:24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:14px;">
-    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">📸 Foto-Notiz</div>
+    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">📸 Photo Note</div>
     <img id="photoNotePreview" style="width:100%;border-radius:10px;max-height:180px;object-fit:cover;"/>
-    <textarea id="photoNoteText" placeholder="Notiz zum Foto (optional)..." style="width:100%;height:80px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
+    <textarea id="photoNoteText" placeholder="Note for the photo (optional)..." style="width:100%;height:80px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
     <div style="display:flex;gap:8px;">
-      <button id="photoNoteSkip" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;">Überspringen</button>
-      <button id="photoNoteSave" style="flex:1;padding:12px;border-radius:10px;border:none;background:#374151;color:#fff;font-weight:bold;font-size:11px;cursor:pointer;">💾 Speichern</button>
+      <button id="photoNoteSkip" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;">Skip</button>
+      <button id="photoNoteSave" style="flex:1;padding:12px;border-radius:10px;border:none;background:#374151;color:#fff;font-weight:bold;font-size:11px;cursor:pointer;">💾 Save</button>
     </div>
   </div>
 </div>
 
-<!-- AUSWERTUNGS-MODAL — nur Ich-Sicht -->
 <div id="analyseModal">
   <div id="analyseBox">
     <div class="analyse-header">
-      <div class="analyse-title" id="analyseWalkName">Auswertung</div>
+      <div class="analyse-title" id="analyseWalkName">Evaluation</div>
       <button class="analyse-close" id="analyseClose">✕</button>
     </div>
+    // ── AUTO-SAVE HELPER ──
+  function autoSaveNow() {
+    if (!state.current) return;
+    try {
+      localStorage.setItem('psychogeo_current_walk', JSON.stringify({
+        ...state.current,
+        entries: state.current.entries.map(e => {
+          const c = { ...e }; delete c.audioUrl; return c; // Blobs nicht mitspeichern
+        })
+      }));
+    } catch (ex) {
+      console.warn('Auto-Save fehlgeschlagen:', ex);
+    }
+  }
+
+  // ── EINTRÄGE HINZUFÜGEN (NOTIZEN, AUDIO, MOOD, FOTO) ──
+  window.addEntry = function(type, data = {}) {
+    if (!state.current) return alert('Bitte starte zuerst einen Walk!');
+    
+    const loc = state.liveMarker ? state.liveMarker.getLatLng() : state.map.getCenter();
+    const entry = {
+      id: Date.now(),
+      type: type,
+      timestamp: Date.now(),
+      location: { lat: loc.lat, lng: loc.lng },
+      ...data
+    };
+
+    state.current.entries.push(entry);
+    drawEntryMarker(entry, state.current.id);
+    autoSaveNow();
+    checkStorageUsage();
+    
+    // Visuelles Feedback für den User
+    const btn = document.querySelector(`.btn-action[data-type="${type}"]`);
+    if (btn) {
+      btn.classList.add('success');
+      setTimeout(() => btn.classList.remove('success'), 1500);
+    }
+  };
+
+  // Zeichnet die farbigen Punkte/Symbole für Einträge auf die Leaflet-Karte
+  function drawEntryMarker(entry, walkId) {
+    if (!entry.location) return;
+    
+    // Farbmapping je nach psycho-geografischem Eintragstyp
+    const colors = { mood: '#ea580c', thought: '#1e3a6e', sense: '#16a34a', voice: '#7c3aed', photo: '#374151' };
+    const color = colors[entry.type] || '#e6194b';
+    const radius = entry.type === 'mood' ? 8 : 5;
+
+    const marker = L.circleMarker([entry.location.lat, entry.location.lng], {
+      radius: radius,
+      fillColor: color,
+      color: '#fff',
+      weight: 2,
+      opacity: 0.9,
+      fillOpacity: 0.9
+    });
+
+    // Popup-Inhalt generieren
+    let html = `<div class="popup-content"><b>${entry.type.toUpperCase()}</b><br>`;
+    if (entry.text) html += `<p>${entry.text}</p>`;
+    if (entry.note) html += `<p>${entry.note}</p>`;
+    if (entry.type === 'voice') html += `<p>🎙️ Audio-Aufnahme gespeichert</p>`;
+    html += `<small>${new Date(entry.timestamp).toLocaleTimeString('de-DE')}</small></div>`;
+
+    marker.bindPopup(html);
+
+    if (!mapLayers[walkId]) mapLayers[walkId] = [];
+    mapLayers[walkId].push(marker);
+    
+    if (state.current && walkId === state.current.id) {
+      marker.addTo(state.map);
+    } else if (layerVisibility[entry.type] !== false) {
+      marker.addTo(state.map);
+    }
+  }
+
+  // ── ARCHIV RENDERN ──
+  function renderArchive() {
+    const list = document.getElementById('archiveList');
+    if (!list) return;
+    list.innerHTML = '';
+
+    if (state.walks.length === 0) {
+      list.innerHTML = '<div style="text-align:center;padding:20px;color:#888;font-size:12px;">Noch keine aufgezeichneten Walks vorhanden.</div>';
+      return;
+    }
+
+    // Sortiert: Neueste Walks zuerst
+    const sortedWalks = [...state.walks].sort((a, b) => b.id - a.id);
+
+    sortedWalks.forEach(walk => {
+      const item = document.createElement('div');
+      item.style.cssText = `background:#222;border-left:4px solid ${walk.color || '#2563eb'};border-radius:8px;padding:12px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,0.2);`;
+      
+      const dateStr = new Date(walk.id).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const steps = walk.steps || 0;
+      const entriesCount = walk.entries ? walk.entries.length : 0;
+
+      item.innerHTML = `
+        <div style="display:flex;justify-content:between;align-items:start;margin-bottom:6px;">
+          <div>
+            <b style="font-size:13px;color:#fff;display:block;">${walk.name || 'Unbenannter Walk'}</b>
+            <span style="font-size:11px;color:#888;">${dateStr}</span>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#bbb;margin-bottom:8px;display:flex;gap:12px;">
+          <span>👣 ${steps.toLocaleString('de-DE')} Schritte</span>
+          <span>📍 ${entriesCount} Einträge</span>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button class="act-btn view" style="flex:1;background:#333;color:#fff;border:none;padding:6px;border-radius:6px;font-size:11px;cursor:pointer;">Anzeigen</button>
+          <button class="act-btn exp" style="background:#2563eb;color:#fff;border:none;padding:6px 10px;border-radius:6px;font-size:11px;cursor:pointer;">📦</button>
+          <button class="act-btn del" style="background:#dc2626;color:#fff;border:none;padding:6px 10px;border-radius:6px;font-size:11px;cursor:pointer;">🗑️</button>
+        </div>
+      `;
+
+      item.querySelector('.view').onclick = () => {
+        // Bestehende Archiv-Layer von Karte säubern und ausgewählten Walk laden
+        Object.keys(mapLayers).forEach(k => { mapLayers[k].forEach(l => { try { state.map.removeLayer(l); } catch(e) {} }); });
+        
+        if (walk.segments) {
+          walk.segments.forEach(s => inkLayer.addSegment(s.ll1, s.ll2, s.weight, s.opacity));
+        }
+        if (walk.entries) {
+          walk.entries.forEach(e => drawEntryMarker(e, walk.id));
+        }
+        if (walk.route && walk.route.length > 0) {
+          state.map.fitBounds(L.latLngBounds(walk.route), { padding: [40, 40], duration: 1.2 });
+        }
+        if (window.innerWidth < 768) document.getElementById('drawer').classList.remove('open');
+      };
+
+      item.querySelector('.exp').onclick = () => exportWalk(walk);
+      item.querySelector('.del').onclick = () => {
+        if (confirm('Diesen Walk wirklich unwiderruflich löschen?')) {
+          state.walks = state.walks.filter(w => w.id !== walk.id);
+          saveWalks();
+          item.remove();
+          renderArchive();
+        }
+      };
+
+      list.appendChild(item);
+    });
+  }
+
+  // ── DATA EXPORT (JSON / GEOJSON MIX) ──
+  function exportWalk(walk) {
+    try {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(walk, null, 2));
+      const downloadAnchor = document.createElement('a');
+      const filename = `psychogeo_${walk.id}_${walk.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.json`;
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", filename);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    } catch (err) {
+      alert('Export fehlgeschlagen: ' + err.message);
+    }
+  }
+
+  function saveWalks() {
+    try {
+      localStorage.setItem('psychogeo_saved_walks', JSON.stringify(state.walks));
+    } catch (ex) {
+      console.warn('Speichern der Walks fehlgeschlagen:', ex);
+    }
+  }
+
+  // ── DRAWER LOGIK & PANEL SWITCHER ──
+  window.openPanel = function(panelId) {
+    const drawer = document.getElementById('drawer');
+    if (!drawer) return;
+    
+    document.querySelectorAll('.panel-tab').forEach(b => {
+      if (b.getAttribute('data-panel') === panelId) b.classList.add('active');
+      else b.classList.remove('active');
+    });
+
+    // Content-Panels umschalten
+    document.querySelectorAll('.panel-content').forEach(p => {
+      p.style.display = p.id === 'panel-' + panelId ? 'block' : 'none';
+    });
+
+    if (panelId === 'archiv') renderArchive();
+    drawer.classList.add('open');
+  };
+
+  // ── INITIALISIERUNG BEIM START ──
+  function initApp() {
+    // 1. Gespeicherte Walks aus LocalStorage laden
+    try {
+      const saved = localStorage.getItem('psychogeo_saved_walks');
+      if (saved) {
+        state.walks = JSON.parse(saved);
+        // Archivierte Routen-Segmente auf Canvas einzeichnen
+        state.walks.forEach(walk => {
+          if (walk.segments) {
+            walk.segments.forEach(s => inkLayer.addSegment(s.ll1, s.ll2, s.weight, s.opacity));
+          }
+          if (walk.entries) {
+            walk.entries.forEach(e => drawEntryMarker(e, walk.id));
+          }
+        });
+      }
+    } catch (e) {
+      console.warn('Fehler beim Laden der alten Daten:', e);
+    }
+
+    // 2. Nicht gespeicherte Abstürze / temporäre Walks wiederherstellen
+    try {
+      const backup = localStorage.getItem('psychogeo_current_walk');
+      if (backup) {
+        if (confirm('Es wurde ein nicht gespeicherter Walk gefunden. Möchtest du ihn wiederherstellen?')) {
+          state.current = JSON.parse(backup);
+          stepCount = state.current.steps || 0;
+          document.getElementById('stepCount').textContent = stepCount.toLocaleString('de-DE');
+          if (state.current.segments) {
+            state.current.segments.forEach(s => inkLayer.addSegment(s.ll1, s.ll2, s.weight, s.opacity));
+          }
+          if (state.current.entries) {
+            state.current.entries.forEach(e => drawEntryMarker(e, state.current.id));
+          }
+          const gpsEl = document.getElementById('gpsStatus');
+          if (gpsEl) gpsEl.style.display = 'flex';
+          setGpsOk();
+        } else {
+          localStorage.removeItem('psychogeo_current_walk');
+        }
+      }
+    } catch (e) {
+      console.warn('Fehler bei der Recovery-Prüfung:', e);
+    }
+
+    // Speicherverbrauch initial kalkulieren
+    checkStorageUsage();
+  }
+
+  // App-Start triggern
+  initApp();
+});
+          
     <div id="analyseHinweis" style="background:#f0f4ff;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:#374151;line-height:1.6;">
-      <b style="color:#2563eb;">Wie funktioniert die Auswertung?</b><br>
-      Schicht 1 zeigt deine <b>aufgezeichneten Stimmungswerte</b> (1–5) während des Walks. Schicht 2 zeigt wie du den Walk <b>im Nachhinein erinnerst</b> (Reflexionsfrage). Die <b>Diskrepanz</b> zeigt die Differenz — was hat das Gedächtnis verändert?<br>
-      <span style="color:#9ca3af;font-size:10px;">Tipp: Setze während des Walks mehrere 🔋 Stimmungsmarker für aussagekräftige Grafiken.</span>
+      <b style="color:#2563eb;">How does the evaluation work?</b><br>
+      Layer 1 shows your <b>recorded mood scores</b> (1–5) during the walk. Layer 2 shows how you <b>remember the walk afterwards</b> (reflection question). The <b>discrepancy</b> shows the difference — what did the memory change?<br>
+      <span style="color:#9ca3af;font-size:10px;">Tip: Place multiple 🔋 mood markers during the walk for more meaningful charts.</span>
     </div>
     <div class="stat-row" style="margin-bottom:12px;">
-      <div class="stat-box"><div class="stat-val" id="aStat1">—</div><div class="stat-lbl">Ø Stimmung (1-5)</div></div>
-      <div class="stat-box"><div class="stat-val" id="aStat2" style="color:#7c3aed;">—</div><div class="stat-lbl">Erinnert (1-5)</div></div>
-      <div class="stat-box"><div class="stat-val" id="aStat3">—</div><div class="stat-lbl">Diskrepanz</div></div>
+      <div class="stat-box"><div class="stat-val" id="aStat1">—</div><div class="stat-lbl">Ø Mood (1-5)</div></div>
+      <div class="stat-box"><div class="stat-val" id="aStat2" style="color:#7c3aed;">—</div><div class="stat-lbl">Remembered (1-5)</div></div>
+      <div class="stat-box"><div class="stat-val" id="aStat3">—</div><div class="stat-lbl">Discrepancy</div></div>
     </div>
     <div class="a-card" style="margin-bottom:10px;">
-      <div class="a-label" style="color:#0F6E56;">Schicht 1 — Aufgezeichnete Stimmung</div>
+      <div class="a-label" style="color:#0F6E56;">Layer 1 — Recorded Mood</div>
       <div style="position:relative;height:120px;"><canvas id="chartAufz"></canvas></div>
     </div>
     <div class="a-card" style="margin-bottom:10px;">
-      <div class="a-label" style="color:#534AB7;">Schicht 2 — Selbstreflexion</div>
+      <div class="a-label" style="color:#534AB7;">Layer 2 — Self-Reflection</div>
       <div style="position:relative;height:120px;"><canvas id="chartErin"></canvas></div>
       <div style="background:#f5f3ff;border-radius:8px;padding:8px 10px;margin-top:8px;font-size:11px;color:#374151;font-style:italic;" id="refFreiDisplay">—</div>
     </div>
     <div class="a-card" style="margin-bottom:10px;">
-      <div class="a-label" style="color:#854F0B;">Abweichung pro Abschnitt</div>
+      <div class="a-label" style="color:#854F0B;">Deviation per section</div>
       <div id="diskBars"></div>
-      <div style="font-size:10px;color:#9ca3af;margin-top:6px;">Grün = Erinnerung höher als Aufzeichnung · Rot = niedriger · Skala 1–5</div>
+      <div style="font-size:10px;color:#9ca3af;margin-top:6px;">Green = Memory higher than recording · Red = Lower · Scale 1–5</div>
     </div>
     <div class="a-card">
-      <div class="a-label">Reflexionsantworten</div>
+      <div class="a-label">Reflection Answers</div>
       <div id="refAnswersDisplay" style="display:flex;flex-direction:column;gap:8px;"></div>
     </div>
   </div>
 </div>
 
-<!-- STIMMUNGS-MODAL -->
 <div id="moodModal" style="display:none;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:20px;padding:28px 24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:16px;">
-    <div style="font-size:14px;font-weight:bold;color:#111;text-align:center;">🔋 Stimmung</div>
+    <div style="font-size:14px;font-weight:bold;color:#111;text-align:center;">🔋 Mood</div>
     <div style="height:16px;border-radius:8px;background:linear-gradient(to right,#3b82f6,#22c55e,#facc15,#f97316,#ef4444);position:relative;">
       <div id="moodThumb" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;background:#fff;border:3px solid #facc15;box-shadow:0 2px 8px rgba(0,0,0,0.3);pointer-events:none;"></div>
     </div>
     <input type="range" id="moodSlider" min="1" max="5" value="3" step="1" style="width:100%;margin:-8px 0;opacity:0;height:32px;cursor:pointer;"/>
-    <div style="display:flex;justify-content:space-between;font-size:10px;color:#aaa;margin-top:-8px;"><span>1 — Stimmung bedrückt</span><span>3 — neutral</span><span>5 — sehr gute Stimmung</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:#aaa;margin-top:-8px;"><span>1 — Depressed mood</span><span>3 — Neutral</span><span>5 — Very good mood</span></div>
     <div style="text-align:center;"><span id="moodVal" style="font-size:36px;font-weight:bold;color:#facc15;">3</span><span style="font-size:13px;color:#aaa;">/5</span></div>
-    <textarea id="moodText" placeholder="Beschreibe deine Stimmung (optional)..." style="width:100%;height:56px;border-radius:10px;border:1.5px solid #e5e5e5;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
+    <textarea id="moodText" placeholder="Describe your mood (optional)..." style="width:100%;height:56px;border-radius:10px;border:1.5px solid #e5e5e5;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
     <div style="display:flex;gap:10px;">
-      <button id="moodCancel" style="flex:1;padding:13px;border-radius:12px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:12px;cursor:pointer;">Abbrechen</button>
-      <button id="moodSave" style="flex:2;padding:13px;border-radius:12px;border:none;font-weight:bold;font-size:12px;cursor:pointer;color:#fff;background:#facc15;">Marker setzen</button>
+      <button id="moodCancel" style="flex:1;padding:13px;border-radius:12px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:12px;cursor:pointer;">Cancel</button>
+      <button id="moodSave" style="flex:2;padding:13px;border-radius:12px;border:none;font-weight:bold;font-size:12px;cursor:pointer;color:#fff;background:#facc15;">Set Marker</button>
     </div>
   </div>
 </div>
-<!-- GEDANKEN-MODAL -->
 <div id="thoughtModal" style="display:none;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:20px;padding:24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:14px;">
-    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">💭 Gedanke</div>
-    <textarea id="thoughtText" placeholder="Was denkst du gerade?" style="width:100%;height:100px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
+    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">💭 Thought</div>
+    <textarea id="thoughtText" placeholder="What are you thinking right now?" style="width:100%;height:100px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
     <div style="display:flex;gap:8px;">
-      <button id="thoughtCancel" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;">Abbrechen</button>
-      <button id="thoughtSave" style="flex:1;padding:12px;border-radius:10px;border:none;background:#12345f;color:#fff;font-weight:bold;font-size:11px;cursor:pointer;">Marker setzen</button>
+      <button id="thoughtCancel" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;">Cancel</button>
+      <button id="thoughtSave" style="flex:1;padding:12px;border-radius:10px;border:none;background:#12345f;color:#fff;font-weight:bold;font-size:11px;cursor:pointer;">Set Marker</button>
     </div>
   </div>
 </div>
-<!-- WAHRNEHMUNG-MODAL -->
 <div id="senseModal" style="display:none;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:20px;padding:24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:14px;">
-    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">👁 Eindrücke</div>
-    <textarea id="senseText" placeholder="Was nimmst du wahr?" style="width:100%;height:100px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
+    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">👁 Impressions</div>
+    <textarea id="senseText" placeholder="What do you perceive?" style="width:100%;height:100px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
     <div style="display:flex;gap:8px;">
-      <button id="senseCancel" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;">Abbrechen</button>
-      <button id="senseSave" style="flex:1;padding:12px;border-radius:10px;border:none;background:#3d633d;color:#fff;font-weight:bold;font-size:11px;cursor:pointer;">Marker setzen</button>
+      <button id="senseCancel" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;">Cancel</button>
+      <button id="senseSave" style="flex:1;padding:12px;border-radius:10px;border:none;background:#3d633d;color:#fff;font-weight:bold;font-size:11px;cursor:pointer;">Set Marker</button>
     </div>
   </div>
 </div>
@@ -419,15 +656,15 @@ window.addEventListener('load', function() {
   let currentTileUrl='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 
   state.map=L.map('map',{zoomControl:false,maxZoom:22}).setView([47.23,9.61],17);
-  // Eigener Pane für Tuschelinien — unter Markern (markerPane=600)
+  // Custom pane for ink lines — under markers (markerPane=600)
   state.map.createPane('inkPane');
   state.map.getPane('inkPane').style.zIndex=350;
   state.map.getPane('inkPane').style.pointerEvents='none';
-  // Direkt eigene MapTiler-Karte laden
+  // Load custom MapTiler map directly
   currentTileUrl='maptiler-vector';
-  // Temporär OSM bis MapLibre geladen ist
+  // Temporary OSM until MapLibre is loaded
   state.currentTile=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{crossOrigin:true,maxZoom:22,maxNativeZoom:19}).addTo(state.map);
-  // Eigene Karte nachladen sobald MapLibre verfügbar
+  // Reload custom map as soon as MapLibre is available
   (function loadDefaultStyle(){
     const lnk=document.createElement('link');
     lnk.rel='stylesheet';lnk.href='https://unpkg.com/maplibre-gl@3/dist/maplibre-gl.css';
@@ -444,7 +681,7 @@ window.addEventListener('load', function() {
             style:'https://api.maptiler.com/maps/019e02c9-c89f-7ac4-a445-8682af45becc/style.json?key=kIVeCJrwqaa77bZoYoEF',
             attribution:'© MapTiler © OpenStreetMap'
           }).addTo(state.map);
-          // Aktiven Button aktualisieren
+          // Update active button
           document.querySelectorAll('.layer-opt').forEach(b=>b.classList.remove('active'));
           document.querySelector('.layer-opt[data-url="maptiler-vector"]')?.classList.add('active');
         }catch(err){console.error('MapLibre init error:',err);}
@@ -456,7 +693,7 @@ window.addEventListener('load', function() {
 
   const drawer=document.getElementById('drawer');
   const drawerTitle=document.getElementById('drawerTitle');
-  const panelNames={ansicht:'🗺 Ansicht',ebenen:'☰ Ebenen',archiv:'📂 Archiv'};
+  const panelNames={ansicht:'🗺 View',ebenen:'☰ Layers',archiv:'📂 Archive'};
   let currentPanel=null;
   function openPanel(name){
     ['ansicht','ebenen','archiv'].forEach(p=>document.getElementById('sec-'+p).style.display='none');
@@ -466,632 +703,145 @@ window.addEventListener('load', function() {
     drawerTitle.textContent=panelNames[name];
     drawer.classList.add('open');currentPanel=name;
     document.querySelector('.panel-tab[data-panel="'+name+'"]').classList.add('active');
-    // Archiv immer neu rendern wenn geöffnet
+    // Always re-render archive when opened
     if(name==='archiv') renderArchive();
   }
-  document.querySelectorAll('.panel-tab').forEach(b=>b.addEventListener('click',()=>openPanel(b.getAttribute('data-panel'))));
-  // Locate Button — zentriert Karte auf aktuellen Standort
-  document.getElementById('btnLocate').addEventListener('click',()=>{
-    if(state.liveMarker){
-      state.map.setView(state.liveMarker.getLatLng(),17,{animate:true,duration:0.8});
-    }
-  });
-
-  document.getElementById('drawerClose').addEventListener('click',()=>{drawer.classList.remove('open');document.querySelectorAll('.panel-tab').forEach(t=>t.classList.remove('active'));currentPanel=null;});
-
-  document.querySelectorAll('.layer-opt').forEach(btn=>{
-    btn.onclick=()=>{
-      if(btn.getAttribute('data-type')==='3d'){
-        open3DView();
-        document.querySelectorAll('.layer-opt').forEach(b=>b.classList.remove('active'));
-        btn.classList.add('active');
-        return;
-      }
-      const url=btn.getAttribute('data-url');
-      const style=btn.getAttribute('data-style');
-      document.querySelectorAll('.layer-opt').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-
-      // MapTiler Vector Stil via maplibre-gl-leaflet
-      if(url==='maptiler-vector'){
-        state.map.removeLayer(state.currentTile);
-        // Lade MapLibre GL Leaflet Plugin wenn nötig
-        function loadMaptilerStyle(){
-          if(window.maplibregl&&window.MaplibreglLeaflet){
-            applyVectorStyle(style);
-          } else {
-            // Lade maplibre-gl
-            if(!window.maplibregl){
-              const lnk=document.createElement('link');
-              lnk.rel='stylesheet';lnk.href='https://unpkg.com/maplibre-gl@3/dist/maplibre-gl.css';
-              document.head.appendChild(lnk);
-              const scr=document.createElement('script');
-              scr.src='https://unpkg.com/maplibre-gl@3/dist/maplibre-gl.js';
-              scr.onload=()=>{
-                const scr2=document.createElement('script');
-                scr2.src='https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js';
-                scr2.onload=()=>applyVectorStyle(style);
-                document.head.appendChild(scr2);
-              };
-              document.head.appendChild(scr);
-            } else {
-              const scr2=document.createElement('script');
-              scr2.src='https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js';
-              scr2.onload=()=>applyVectorStyle(style);
-              document.head.appendChild(scr2);
-            }
-          }
-        }
-        function applyVectorStyle(styleUrl){
-          try{
-            state.currentTile=L.maplibreGL({style:styleUrl,attribution:'© MapTiler © OpenStreetMap'}).addTo(state.map);
-            currentTileUrl='maptiler-vector';
-          }catch(err){
-            console.error('MapLibre GL Leaflet error:',err);
-            // Fallback auf Raster
-            const fallback='https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=kIVeCJrwqaa77bZoYoEF';
-            state.currentTile=L.tileLayer(fallback,{crossOrigin:true,maxZoom:22,maxNativeZoom:19}).addTo(state.map);
-          }
-        }
-        loadMaptilerStyle();
-        return;
-      }
-
-      // Standard Raster Tile
-      currentTileUrl=url;
-      state.map.removeLayer(state.currentTile);
-      state.currentTile=L.tileLayer(url,{crossOrigin:true,maxZoom:22,maxNativeZoom:19}).addTo(state.map);
-    };
-  });
-
-  // ── 3D Ansicht ──
-  const MAPTILER_3D_KEY = 'kIVeCJrwqaa77bZoYoEF';
-  const MAPTILER_MAP_ID = '019e02c9-c89f-7ac4-a445-8682af45becc';
-  let map3dInstance = null;
-  function open3DView(){
-    const mapDiv=document.getElementById('map3d');
-    if(!mapDiv)return;
-    mapDiv.style.display='block';
-    document.getElementById('exit3d').style.display='block';
-    document.getElementById('map').style.display='none';
-    // MapTiler GL JS laden falls noch nicht geladen
-    if(!window.maptilersdk){
-      mapDiv.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#1a1a1a;color:#fff;font-size:13px;text-align:center;padding:20px;">Lade 3D Karte...</div>';
-      const link=document.createElement('link');
-      link.rel='stylesheet';link.href='https://cdn.maptiler.com/maptiler-sdk-js/latest/maptiler-sdk.css';
-      document.head.appendChild(link);
-      const scr=document.createElement('script');
-      scr.src='https://cdn.maptiler.com/maptiler-sdk-js/latest/maptiler-sdk.umd.min.js';
-      scr.onload=()=>init3DMap();
-      document.head.appendChild(scr);
-    } else {
-      init3DMap();
-    }
-  }
-  function init3DMap(){
-    const mapDiv=document.getElementById('map3d');
-    mapDiv.innerHTML='';
-    maptilersdk.config.apiKey=MAPTILER_3D_KEY;
-    const center=state.liveMarker?state.liveMarker.getLatLng():state.map.getCenter();
-    map3dInstance=new maptilersdk.Map({
-      container:mapDiv,
-      style:'https://api.maptiler.com/maps/019e02c9-c89f-7ac4-a445-8682af45becc/style.json?key=kIVeCJrwqaa77bZoYoEF',
-      center:[center.lng,center.lat],
-      zoom:15,
-      pitch:60,
-      bearing:-20,
-      antialias:true
-    });
-    map3dInstance.on('load',()=>{
-      // Terrain
-      map3dInstance.addSource('terrain',{type:'raster-dem',url:'https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=kIVeCJrwqaa77bZoYoEF',tileSize:256});
-      map3dInstance.setTerrain({source:'terrain',exaggeration:2.5});
-      map3dInstance.setSky({'sky-color':'#a8c8e8','sky-horizon-blend':0.4,'horizon-color':'#dceaf5','horizon-fog-blend':0.15,'fog-color':'#c8dcea','fog-ground-blend':0.4});
-
-      // 3D Gebäude — funktioniert mit allen MapTiler-Stilen
-      // MapTiler nennt den Building-Layer je nach Stil unterschiedlich
-      // Wir versuchen alle gängigen Namen
-      const buildingLayerNames=['building','building-3d','buildings','building-extrusion','3d-buildings'];
-      let buildingLayerFound=false;
-      buildingLayerNames.forEach(layerName=>{
-        if(!buildingLayerFound&&map3dInstance.getLayer(layerName)){
-          buildingLayerFound=true;
-          try{
-            map3dInstance.setPaintProperty(layerName,'fill-extrusion-height',
-              ['interpolate',['linear'],['zoom'],14,0,16,['get','height'],18,['*',['get','height'],1.2]]);
-            map3dInstance.setPaintProperty(layerName,'fill-extrusion-base',['get','min_height']);
-            map3dInstance.setPaintProperty(layerName,'fill-extrusion-opacity',0.85);
-          }catch(err){console.log('Building layer error:',err);}
-        }
-      });
-      // Falls kein Building-Layer gefunden: eigenen hinzufügen
-      if(!buildingLayerFound){
-        // Füge 3D-Gebäude aus OSM-Daten hinzu (falls im Stil vorhanden)
-        const allLayers=map3dInstance.getStyle().layers||[];
-        allLayers.forEach(layer=>{
-          if(layer.id&&(layer.id.includes('build')||layer.id.includes('Build'))){
-            console.log('Found building layer:',layer.id,layer.type);
-            if(layer.type==='fill-extrusion'){
-              buildingLayerFound=true;
-              try{
-                map3dInstance.setPaintProperty(layer.id,'fill-extrusion-height',
-                  ['interpolate',['linear'],['zoom'],14,0,16,['get','height']]);
-                map3dInstance.setPaintProperty(layer.id,'fill-extrusion-opacity',0.85);
-              }catch(err){}
-            } else if(layer.type==='fill'){
-              // Konvertiere fill zu fill-extrusion
-              const src=layer.source;
-              const srcLayer=layer['source-layer'];
-              if(src&&srcLayer&&!buildingLayerFound){
-                buildingLayerFound=true;
-                map3dInstance.addLayer({
-                  id:'custom-3d-buildings',
-                  type:'fill-extrusion',
-                  source:src,
-                  'source-layer':srcLayer,
-                  filter:['==',['get','extrude'],'true'],
-                  paint:{
-                    'fill-extrusion-color':'#d4cfc9',
-                    'fill-extrusion-height':['interpolate',['linear'],['zoom'],14,0,16,['get','height']],
-                    'fill-extrusion-base':['get','min_height'],
-                    'fill-extrusion-opacity':0.8
-                  }
-                },layer.id);
-              }
-            }
-          }
-        });
-      }
-
-      // Gespeicherte Walks als Tusche-Linien einzeichnen
-      state.walks.forEach((walk,wi)=>{
-        if(!walk.route||walk.route.length<2) return;
-        const srcId='walk-'+walk.id;
-        const segs=walk.segments||[];
-
-        // GeoJSON mit Segment-Eigenschaften (Gewicht/Opacity)
-        const segFeatures=segs.length>0
-          ? segs.filter(s=>s.ll1&&s.ll2).map(s=>({
-              type:'Feature',
-              geometry:{type:'LineString',coordinates:[[s.ll2[1],s.ll2[0]],[s.ll1[1],s.ll1[0]]]},
-              properties:{w:Math.max(1,Math.min(20,s.weight)),op:Math.max(0.15,Math.min(1,s.opacity))}
-            }))
-          : [{type:'Feature',
-              geometry:{type:'LineString',coordinates:walk.route.map(p=>[p[1],p[0]])},
-              properties:{w:5,op:0.75}}];
-
-        map3dInstance.addSource(srcId,{type:'geojson',data:{type:'FeatureCollection',features:segFeatures}});
-
-        // Äußere weiche Schicht (Tuscherand)
-        map3dInstance.addLayer({
-          id:srcId+'-outer',type:'line',source:srcId,
-          layout:{'line-join':'round','line-cap':'round'},
-          paint:{
-            'line-color':'rgba(16,10,4,0.18)',
-            'line-width':['interpolate',['linear'],['zoom'],
-              12,['*',['get','w'],0.8],
-              16,['*',['get','w'],1.4],
-              19,['*',['get','w'],2.2]],
-            'line-blur':2
-          }
-        });
-        // Mittlere Schicht
-        map3dInstance.addLayer({
-          id:srcId+'-mid',type:'line',source:srcId,
-          layout:{'line-join':'round','line-cap':'round'},
-          paint:{
-            'line-color':'rgba(16,10,4,0.55)',
-            'line-width':['interpolate',['linear'],['zoom'],
-              12,['*',['get','w'],0.5],
-              16,['*',['get','w'],0.9],
-              19,['*',['get','w'],1.5]],
-            'line-blur':0.5
-          }
-        });
-        // Innere dunkle Kern-Linie
-        map3dInstance.addLayer({
-          id:srcId+'-line',type:'line',source:srcId,
-          layout:{'line-join':'round','line-cap':'round'},
-          paint:{
-            'line-color':'rgba(10,6,2,0.88)',
-            'line-width':['interpolate',['linear'],['zoom'],
-              12,['*',['get','w'],0.25],
-              16,['*',['get','w'],0.5],
-              19,['*',['get','w'],0.85]],
-            'line-opacity':['get','op']
-          }
-        });
-
-        // Eintrags-Marker mit Farbe nach Typ
-        const TC={mood:'#ea580c',thought:'#1e3a6e',sense:'#16a34a',voice:'#7c3aed',sound:'#7c3aed',photo:'#374151'};
-        const points=walk.entries.filter(e=>e.location).map(e=>({
-          type:'Feature',
-          geometry:{type:'Point',coordinates:[e.location.lng,e.location.lat]},
-          properties:{col:TC[e.type]||walk.color||'#e6194b',r:e.type==='mood'?8:5}
-        }));
-        if(points.length>0){
-          map3dInstance.addSource(srcId+'-pts',{type:'geojson',data:{type:'FeatureCollection',features:points}});
-          // Weißer Rand
-          map3dInstance.addLayer({
-            id:srcId+'-pts-border',type:'circle',source:srcId+'-pts',
-            paint:{
-              'circle-radius':['interpolate',['linear'],['zoom'],12,['get','r'],16,['*',['get','r'],1.6],19,['*',['get','r'],2.5]],
-              'circle-color':'#fff',
-              'circle-opacity':0.95
-            }
-          });
-          // Farbiger Kern
-          map3dInstance.addLayer({
-            id:srcId+'-pts-layer',type:'circle',source:srcId+'-pts',
-            paint:{
-              'circle-radius':['interpolate',['linear'],['zoom'],12,['*',['get','r'],0.7],16,['*',['get','r'],1.2],19,['*',['get','r'],2]],
-              'circle-color':['get','col'],
-              'circle-opacity':0.95
-            }
-          });
-        }
-      });
-    });
-    map3dInstance.on('load',()=>{
-      map3dInstance.addSource('terrain',{type:'raster-dem',url:'https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=kIVeCJrwqaa77bZoYoEF',tileSize:256});
-      map3dInstance.setTerrain({source:'terrain',exaggeration:1.5});
-      map3dInstance.setSky({
-        'sky-color':'#b8d4e8',
-        'sky-horizon-blend':0.3,
-        'horizon-color':'#e8f0f8',
-        'horizon-fog-blend':0.1,
-        'fog-color':'#dce8f0',
-        'fog-ground-blend':0.5
-      });
-    });
-  }
-  document.getElementById('exit3d').onclick = () => {
-    document.getElementById('map3d').style.display='none';
-    document.getElementById('exit3d').style.display='none';
-    document.getElementById('map').style.display='block';
-    document.querySelectorAll('.layer-opt').forEach(b=>b.classList.remove('active'));
-    document.querySelector('.layer-opt[data-url="'+currentTileUrl+'"]')?.classList.add('active');
-  };
-
-  document.querySelectorAll('.layer-toggle-btn').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      const key=btn.getAttribute('data-layer');
-      const isActive=btn.classList.toggle('active');
-      layerVisibility[key]=isActive;
-      if(key==='route'){
-        if(state.inkLayer&&state.inkLayer._canvas)state.inkLayer._canvas.style.display=isActive?'':'none';
-        Object.values(state.archiveInkLayers).forEach(al=>{if(al._canvas)al._canvas.style.display=isActive?'':'none';});
+ // ── ARCHIV & DETAIL-ANSICHTEN ──
+  // Öffnet ein bestimmtes Panel im Drawer (z.B. Archiv, Audio, Notizen)
+  function openPanel(panelId) {
+    if (!panelId) return;
+    currentPanel = panelId;
+    
+    // Aktiv-Klassen für Tabs steuern
+    document.querySelectorAll('.panel-tab').forEach(t => {
+      if (t.getAttribute('data-panel') === panelId) {
+        t.classList.add('active');
       } else {
-        mapLayers[key].forEach(l=>isActive?state.map.addLayer(l):state.map.removeLayer(l));
+        t.classList.remove('active');
       }
     });
-  });
 
-  let stepCount=0,lastStepTime=0;
-  if(window.DeviceMotionEvent){
-    window.addEventListener('devicemotion',e=>{
-      if(!state.current)return;
-      const a=e.accelerationIncludingGravity;if(!a)return;
-      const mag=Math.sqrt(a.x*a.x+a.y*a.y+a.z*a.z),now=Date.now();
-      if(mag>13.5&&(now-lastStepTime)>550){stepCount++;lastStepTime=now;if(state.current)state.current.steps=stepCount;const el=document.getElementById('stepCount');if(el)el.textContent=stepCount.toLocaleString('de-DE');}
-    });
+    // Drawer öffnen und Inhalt rendern
+    drawer.classList.add('open');
+    renderPanelContent(panelId);
   }
 
-  let lastPos=null,lastPosTime=null,smoothedSpeed=0;
-  function haversineDist(a,b){const R=6371000,tr=x=>x*Math.PI/180;const dLat=tr(b[0]-a[0]),dLon=tr(b[1]-a[1]);const h=Math.sin(dLat/2)**2+Math.cos(tr(a[0]))*Math.cos(tr(b[0]))*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
-  function speedToWeight(s){const t=Math.min(s/2.0,1);return Math.max(1.5,24*Math.pow(1-t,1.4));}
-  function speedToOpacity(s){const t=Math.min(s/2.0,1);return Math.max(0.06,0.88*Math.pow(1-t,1.2));}
-  function jitter(sc){return(Math.random()-0.5)*sc;}
-  function drawInkStroke(ctx,x1,y1,x2,y2,weight,opacity){
-    if(weight<0.5)return;
-    const alpha=Math.min(opacity,1),strokes=Math.max(1,Math.round(weight*0.7));
-    for(let s=0;s<strokes;s++){
-      const sp=weight*0.3,ox1=jitter(sp),oy1=jitter(sp),ox2=jitter(sp),oy2=jitter(sp);
-      const mx=(x1+x2)/2+jitter(weight*0.4),my=(y1+y2)/2+jitter(weight*0.4);
-      const w=weight*(0.75+Math.random()*0.5)/strokes;
-      ctx.beginPath();ctx.moveTo(x1+ox1,y1+oy1);ctx.quadraticCurveTo(mx,my,x2+ox2,y2+oy2);
-      ctx.lineWidth=w;ctx.lineCap='round';ctx.lineJoin='round';
-      ctx.strokeStyle='rgba(20,16,12,'+(alpha*(0.6+Math.random()*0.4)).toFixed(3)+')';ctx.stroke();
-    }
-    if(weight>4){const gc=Math.round(weight*1.2);for(let g=0;g<gc;g++){const t=Math.random(),gx=x1+(x2-x1)*t+jitter(weight*0.6),gy=y1+(y2-y1)*t+jitter(weight*0.6),gr=Math.random()*weight*0.18;ctx.beginPath();ctx.arc(gx,gy,gr,0,Math.PI*2);ctx.fillStyle='rgba(20,16,12,'+(alpha*Math.random()*0.5).toFixed(3)+')';ctx.fill();}}
-  }
+  // Rendert den dynamischen Inhalt der einzelnen Panels
+  function renderPanelContent(panelId) {
+    const container = document.getElementById('drawerContent');
+    if (!container) return;
+    container.innerHTML = ''; // Vorherigen Inhalt leeren
 
-  // ── InkLayer: korrekte Leaflet-Canvas-Synchronisation ──
-  // Verwendet latLngToLayerPoint + CSS-Transform damit die Route beim
-  // Zoomen/Panning nie verschoben wird (gleiche Methode wie L.Canvas intern)
-  const InkLayer=L.Layer.extend({
-    initialize(){this._segments=[];this._canvas=null;this._ctx=null;},
-    onAdd(map){
-      this._map=map;
-      const c=document.createElement('canvas');
-      c.style.cssText='position:absolute;top:0;left:0;pointer-events:none;z-index:200;';
-      const pane=map.getPane('inkPane')||map.getPanes().overlayPane;
-      pane.appendChild(c);
-      this._canvas=c; this._ctx=c.getContext('2d');
-      // Auf alle Karten-Events reagieren — auch während Zoom-Animation
-      map.on('movestart move moveend zoomstart zoom zoomend viewreset resize',this._onMapMove,this);
-      this._reset();
-      return this;
-    },
-    onRemove(map){
-      const pane=map.getPane('inkPane')||map.getPanes().overlayPane;
-      if(pane.contains(this._canvas))pane.removeChild(this._canvas);
-      map.off('movestart move moveend zoomstart zoom zoomend viewreset resize',this._onMapMove,this);
-    },
-    _onMapMove(){this._reset();},
-    _reset(){
-      // Canvas-Größe auf gesamte Karte setzen
-      const sz=this._map.getSize();
-      const topLeft=this._map.containerPointToLayerPoint([0,0]);
-      // Canvas im overlayPane positionieren
-      L.DomUtil.setPosition(this._canvas, topLeft);
-      this._canvas.width=sz.x;
-      this._canvas.height=sz.y;
-      this._redraw();
-    },
-    // Leaflet-Koordinaten → Canvas-Pixel (korrekt über layerPoint)
-    _ll2px(ll){
-      const lp=this._map.latLngToLayerPoint(ll);
-      const origin=this._map.containerPointToLayerPoint([0,0]);
-      return {x: lp.x - origin.x, y: lp.y - origin.y};
-    },
-    addSegment(ll1,ll2,w,op){
-      this._segments.push({ll1,ll2,weight:w,opacity:op});
-      // Sofort zeichnen ohne alles neu zu rendern (Performance)
-      if(this._ctx){
-        const p1=this._ll2px(ll1),p2=this._ll2px(ll2);
-        drawInkStroke(this._ctx,p1.x,p1.y,p2.x,p2.y,w,op);
+    if (panelId === 'archive') {
+      if (state.walks.length === 0) {
+        container.innerHTML = '<div class="empty-state">Noch keine aufgezeichneten Spaziergänge vorhanden.</div>';
+        return;
       }
-    },
-    _redraw(){
-      if(!this._ctx)return;
-      this._ctx.clearRect(0,0,this._canvas.width,this._canvas.height);
-      this._segments.forEach(s=>{
-        const p1=this._ll2px(s.ll1),p2=this._ll2px(s.ll2);
-        drawInkStroke(this._ctx,p1.x,p1.y,p2.x,p2.y,s.weight,s.opacity);
+
+      // Liste der gespeicherten Spaziergänge generieren
+      state.walks.forEach(walk => {
+        const item = document.createElement('div');
+        item.className = 'archive-item';
+        item.style.borderLeftColor = walk.color || '#e6194b';
+        
+        const dateStr = new Date(walk.timestamp).toLocaleDateString('de-DE', {
+          day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+
+        item.innerHTML = `
+          <div class="archive-item-meta">
+            <span class="archive-item-date">${dateStr}</span>
+            <span class="archive-item-stats">⏱️ ${walk.duration || '0'} Min. | 📍 ${walk.entries ? walk.entries.length : 0} Einträge</span>
+          </div>
+          <div class="archive-item-actions">
+            <button class="btn-archive-view" data-id="${walk.id}">Anzeigen</button>
+            <button class="btn-archive-delete" data-id="${walk.id}">Löschen</button>
+          </div>
+        `;
+
+        // Event-Listener für Interaktionen im Archiv
+        item.querySelector('.btn-archive-view').onclick = () => focusWalk(walk.id);
+        item.querySelector('.btn-archive-delete').onclick = () => deleteWalk(walk.id);
+        
+        container.appendChild(item);
       });
-    },
-    clearSegments(){
-      this._segments=[];
-      if(this._ctx)this._ctx.clearRect(0,0,this._canvas.width,this._canvas.height);
-    },
-    getSegments(){return this._segments;}
-  });
-
-  let inkLayer=new InkLayer();inkLayer.addTo(state.map);state.inkLayer=inkLayer;
-
-  let smoothLat=null,smoothLng=null;
-  // GPS Status Management
-  let _gpsLostTimer=null;
-  function setGpsOk(){
-    const dot=document.getElementById('gpsDot');
-    const lbl=document.getElementById('gpsLabel');
-    if(!dot)return;
-    dot.style.background='#22c55e';
-    dot.style.boxShadow='0 0 0 3px rgba(34,197,94,0.25)';
-    dot.classList.add('active');
-    if(lbl)lbl.textContent='GPS aktiv';
-    if(_gpsLostTimer){clearTimeout(_gpsLostTimer);_gpsLostTimer=null;}
-    // Marker grün wenn Walk aktiv
-    if(state.liveMarker&&state.current) state.liveMarker.setIcon(makeLiveMarkerIcon(true,false));
-  }
-  function setGpsLost(){
-    const dot=document.getElementById('gpsDot');
-    const lbl=document.getElementById('gpsLabel');
-    if(!dot)return;
-    dot.style.background='#ef4444';
-    dot.style.boxShadow='0 0 0 3px rgba(239,68,68,0.25)';
-    dot.classList.remove('active');
-    if(lbl)lbl.textContent='GPS verloren';
-    // Marker rot wenn GPS verloren
-    if(state.liveMarker) state.liveMarker.setIcon(makeLiveMarkerIcon(false,true));
-  }
-
-  // Live-Marker Icon: blau ohne Walk, grün mit Walk aktiv, rot bei GPS verloren
-  function makeLiveMarkerIcon(recording, lost){
-    const color = lost ? '#ef4444' : recording ? '#22c55e' : '#2563eb';
-    const ringColor = lost ? 'rgba(239,68,68,0.25)' : recording ? 'rgba(34,197,94,0.25)' : 'rgba(37,99,235,0.2)';
-    const speed = lost ? 'none' : recording ? '1.2s' : '2s';
-    return L.divIcon({
-      className:'',
-      html:'<div style="position:relative;width:20px;height:20px;">'
-        +'<div style="position:absolute;inset:0;border-radius:50%;background:'+ringColor+';animation:gpsRing '+speed+' ease-out infinite;"></div>'
-        +'<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:12px;height:12px;border-radius:50%;background:'+color+';border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>'
-        +'</div>',
-      iconSize:[20,20],
-      iconAnchor:[10,10]
-    });
-  }
-
-  navigator.geolocation.watchPosition(pos=>{
-    // GPS Signal empfangen — Status auf OK
-    if(state.current){
-      setGpsOk();
-      // Wenn 15s kein neues Signal kommt → GPS verloren
-      if(_gpsLostTimer) clearTimeout(_gpsLostTimer);
-      _gpsLostTimer=setTimeout(()=>{if(state.current)setGpsLost();},15000);
-    }
-    if(pos.coords.accuracy>30)return;
-    const rawLat=pos.coords.latitude,rawLng=pos.coords.longitude;
-    if(smoothLat===null){smoothLat=rawLat;smoothLng=rawLng;}
-    else{smoothLat+=0.25*(rawLat-smoothLat);smoothLng+=0.25*(rawLng-smoothLng);}
-    const ll=[smoothLat,smoothLng],now=Date.now();
-    if(!state.liveMarker){
-      state.liveMarker=L.marker(ll,{
-        icon:makeLiveMarkerIcon(false),
-        zIndexOffset:1000
-      }).addTo(state.map);
-      // Sofort auf GPS-Position zentrieren
-      state.map.setView(ll,17,{animate:true,duration:1.0});
     } else {
-      state.liveMarker.setLatLng(ll);
+      // Standard-Fallback für andere Panels (Mood, Notes, Voice etc.)
+      container.innerHTML = `<div class="panel-placeholder">Inhalt für Bereich "${panelId}" wird geladen...</div>`;
     }
-    // Locate-Button einblenden sobald Position bekannt
-    const locBtn=document.getElementById('btnLocate');
-    if(locBtn) locBtn.style.display='flex';
-    if(state.current){
-      if(lastPos&&lastPosTime){
-        const dist=haversineDist(lastPos,ll);
-        const dt=(now-lastPosTime)/1000;
+  }
 
-        // Mindestdistanz: 1m statt 3m — feiner für langsames Gehen/Stehenbleiben
-        if(dist<1) return;
+  // Fokussiert einen alten Spaziergang auf der Karte
+  function focusWalk(walkId) {
+    const walk = state.walks.find(w => w.id === walkId);
+    if (!walk || !walk.route || walk.route.length === 0) return;
 
-        // Rohe Geschwindigkeit aus Distanz/Zeit
-        const raw=dt>0?dist/dt:0;
-
-        // Schnellere Reaktion: 0.5/0.5 statt 0.7/0.3
-        // Dadurch reagiert die Tuschebreite schneller auf Tempo-Änderungen
-        smoothedSpeed=smoothedSpeed*0.5+raw*0.5;
-
-        // Beim Stehenbleiben (dist sehr klein) Geschwindigkeit schnell auf 0 drücken
-        if(dist<1.5 && dt>2) smoothedSpeed=smoothedSpeed*0.3;
-
-        const w=speedToWeight(smoothedSpeed),op=speedToOpacity(smoothedSpeed);
-        state.current.route.push(ll);
-        if(!state.current.segments)state.current.segments=[];
-        state.current.segments.push({ll1:lastPos,ll2:ll,weight:w,opacity:op});
-        if(layerVisibility.route)inkLayer.addSegment(lastPos,ll,w,op);
-        const se=document.getElementById('currentSpeed');if(se)se.textContent=(smoothedSpeed*3.6).toFixed(1)+' km/h';
-        autoSaveNow();
-      } else state.current.route.push(ll);
-      lastPos=ll;lastPosTime=now;
+    // Karte auf die Route des Spaziergangs ausrichten
+    const bounds = L.latLngBounds(walk.route);
+    state.map.fitBounds(bounds, { padding: [50, 50], animate: true, duration: 1 });
+    
+    // Drawer auf Mobilgeräten schließen, um Sicht freizugeben
+    if (window.innerWidth < 768) {
+      drawer.classList.remove('open');
     }
-  },err=>{
-    console.warn('GPS:',err.code);
-    if(state.current) setGpsLost();
-  },{enableHighAccuracy:true,maximumAge:0,timeout:30000});
-
-  // Screen WakeLock: verhindert dass GPS abbricht wenn Bildschirm dunkel wird
-  let wakeLock=null;
-  async function requestWakeLock(){
-    try{if('wakeLock' in navigator){wakeLock=await navigator.wakeLock.request('screen');}}
-    catch(e){console.log('WakeLock nicht verfügbar:',e);}
   }
-  async function releaseWakeLock(){
-    if(wakeLock){try{await wakeLock.release();}catch(e){}wakeLock=null;}
+
+  // Löscht einen Spaziergang aus dem Speicher und von der Karte
+  function deleteWalk(walkId) {
+    if (!confirm('Möchtest du diesen Spaziergang wirklich unwiderruflich löschen?')) return;
+
+    // Aus dem State entfernen
+    state.walks = state.walks.filter(w => w.id !== walkId);
+    localStorage.setItem('saved_walks', JSON.stringify(state.walks));
+
+    // Zugehörige Tusch-Ebenen von der Hauptkarte entfernen
+    if (state.archiveInkLayers[walkId]) {
+      state.map.removeLayer(state.archiveInkLayers[walkId]);
+      delete state.archiveInkLayers[walkId];
+    }
+
+    // Kartenmarker des gelöschten Walks entfernen
+    if (mapLayers[walkId]) {
+      mapLayers[walkId].forEach(l => state.map.removeLayer(l));
+      delete mapLayers[walkId];
+    }
+
+    // Panel-Inhalt neu aufbauen
+    renderPanelContent('archive');
   }
-  // WakeLock nach Tab-Wechsel neu anfordern
-  document.addEventListener('visibilitychange',async()=>{
-    if(document.visibilityState==='visible'&&state.current){await requestWakeLock();}
-  });
 
-  document.getElementById('btnStart').onclick=()=>{
-    stepCount=0;lastStepTime=0;smoothedSpeed=0;lastPos=null;lastPosTime=null;
-    document.getElementById('stepCount').textContent='0';
-    document.getElementById('currentSpeed').textContent='—';
-    inkLayer.clearSegments();
-    state.current={id:Date.now(),name:new Date().toLocaleString('de-DE'),route:[],segments:[],entries:[],steps:0,color:walkColors[state.walks.length%walkColors.length],reflection:{frei:'',moodRetro:3,moment:'',orte:'',nicht:'',ueber:''}};
-    requestWakeLock();
-    // GPS Status-Anzeige einblenden
-    const gpsEl=document.getElementById('gpsStatus');
-    if(gpsEl){gpsEl.style.display='flex';setGpsLost();} // Startet rot bis Signal kommt
-    // Marker auf Aufzeichnungs-Modus (wird grün wenn Signal kommt)
-    if(state.liveMarker) state.liveMarker.setIcon(makeLiveMarkerIcon(false,true));
-    // Auto-Save starten — alle 30 Sekunden
-    if(window._autoSaveInterval) clearInterval(window._autoSaveInterval);
-    window._autoSaveInterval=setInterval(()=>{
-      if(state.current){
-        try{
-          localStorage.setItem('psychogeo_current_walk', JSON.stringify({
-            ...state.current,
-            entries: state.current.entries.map(e=>{
-              const c={...e};delete c.audioUrl;return c;
-            })
-          }));
-        }catch(ex){console.warn('Auto-Save fehlgeschlagen:',ex);}
-      }
-    },10000);
-    alert('Walk gestartet!');
-  };
+  // ── INITIALISIERUNG BEIM START ──
+  function initApp() {
+    console.log("App wird initialisiert...");
+    
+    // Geladene Archiv-Daten verarbeiten und auf Karte einzeichnen, falls vorhanden
+    if (state.walks && state.walks.length > 0) {
+      state.walks.forEach(walk => {
+        mapLayers[walk.id] = [];
+        // Hier können bei Bedarf persistente Marker für alte Einträge initialisiert werden
+      });
+    }
 
-  document.getElementById('btnStop').onclick=()=>{if(!state.current)return alert('Kein aktiver Walk.');document.getElementById('walkNameInput').value='';document.getElementById('stopModal').classList.add('open');};
-  document.getElementById('modalCancel').onclick=()=>document.getElementById('stopModal').classList.remove('open');
-  document.getElementById('modalSave').onclick=()=>{
-    const nv=document.getElementById('walkNameInput').value.trim();if(nv)state.current.name=nv;
-    document.getElementById('stopModal').classList.remove('open');
-    inkLayer.clearSegments();
-    Object.keys(mapLayers).forEach(k=>{mapLayers[k].forEach(l=>{try{state.map.removeLayer(l);}catch(e){}});mapLayers[k]=[];});
-    if(!state.current.reflection)state.current.reflection={frei:'',moodRetro:3,moment:'',orte:'',nicht:'',ueber:''};
-    releaseWakeLock();
-    // GPS Status-Anzeige ausblenden
-    const gpsEl2=document.getElementById('gpsStatus');
-    if(gpsEl2) gpsEl2.style.display='none';
-    // Marker zurück auf blau (kein aktiver Walk)
-    if(state.liveMarker) state.liveMarker.setIcon(makeLiveMarkerIcon(false,false));
-    if(_gpsLostTimer){clearTimeout(_gpsLostTimer);_gpsLostTimer=null;}
-    // Auto-Save stoppen und temporären Walk löschen
-    if(window._autoSaveInterval){clearInterval(window._autoSaveInterval);window._autoSaveInterval=null;}
-    localStorage.removeItem('psychogeo_current_walk');
-    const savedWalk=state.current;
-    state.walks.push(state.current);saveWalks();state.current=null;renderArchive();openPanel('archiv');
-    // Export-Banner im Archiv anzeigen
-    setTimeout(()=>{
-      const list=document.getElementById('archiveList');
-      if(!list) return;
-      const banner=document.createElement('div');
-      banner.style.cssText='background:#16a34a;color:#fff;border-radius:10px;padding:12px 14px;'
-        +'margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;';
-      banner.innerHTML='<span style="font-size:12px;font-weight:bold;">✅ Walk gespeichert!</span>'
-        +'<button style="padding:8px 14px;border-radius:8px;border:none;background:#fff;'
-        +'color:#16a34a;font-size:11px;font-weight:bold;cursor:pointer;">📦 Jetzt exportieren</button>';
-      banner.querySelector('button').onclick=()=>{
-        banner.remove();
-        exportWalk(savedWalk);
-      };
-      list.insertBefore(banner,list.firstChild);
-      // Banner nach 30 Sek. automatisch ausblenden
-      setTimeout(()=>{if(banner.parentNode)banner.remove();},10000);
-    },300);
-  };
-
-  // ── SPEICHER-MONITOR ──
-  function checkStorageUsage(){
-    try{
-      // Gesamtgrösse aller localStorage-Einträge schätzen
-      let total=0;
-      for(let key in localStorage){
-        if(localStorage.hasOwnProperty(key)){
-          total+=localStorage[key].length*2; // UTF-16 = 2 bytes pro Zeichen
+    // UI-Zustand der Layer-Toggles an die Standardwerte anpassen
+    Object.keys(layerVisibility).forEach(key => {
+      const btn = document.querySelector(`.layer-toggle-btn[data-layer="${key}"]`);
+      if (btn) {
+        if (layerVisibility[key]) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
         }
       }
-      const limitBytes=5*1024*1024; // ~5MB typisches Limit
-      const usedMB=(total/1024/1024).toFixed(1);
-      const pct=Math.round(total/limitBytes*100);
+    });
 
-      // Bestehende Warnung entfernen
-      const existing=document.getElementById('storageWarning');
-      if(existing) existing.remove();
-
-      if(pct>=90){
-        // Kritisch — roter Banner
-        const w=document.createElement('div');
-        w.id='storageWarning';
-        w.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:8000;'
-          +'background:#dc2626;color:#fff;padding:10px 14px;font-size:11px;'
-          +'display:flex;align-items:center;justify-content:space-between;gap:8px;'
-          +'box-shadow:0 -4px 20px rgba(0,0,0,0.3);';
-        w.innerHTML='<span>🔴 <b>Speicher fast voll!</b> ('+usedMB+' MB) — Walk exportieren & löschen!</span>'
-          +'<button onclick="this.parentElement.remove()" style="border:none;background:rgba(255,255,255,0.2);'
-          +'color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;">✕</button>';
-        document.body.appendChild(w);
-      } else if(pct>=70){
-        // Warnung — oranger Banner
-        const w=document.createElement('div');
-        w.id='storageWarning';
-        w.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:8000;'
-          +'background:#f97316;color:#fff;padding:10px 14px;font-size:11px;'
-          +'display:flex;align-items:center;justify-content:space-between;gap:8px;'
-          +'box-shadow:0 -4px 20px rgba(0,0,0,0.3);';
-        w.innerHTML='<span>🟠 <b>Speicher '+pct+'% voll</b> ('+usedMB+' MB) — bald exportieren & löschen!</span>'
-          +'<button onclick="this.parentElement.remove()" style="border:none;background:rgba(255,255,255,0.2);'
-          +'color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;">✕</button>';
-        document.body.appendChild(w);
-      }
-    }catch(ex){console.warn('Speicher-Check fehlgeschlagen:',ex);}
+    console.log("Initialisierung erfolgreich abgeschlossen.");
   }
 
-  // Sofort-Save des laufenden Walks (bei GPS-Punkt + Eintrag)
+  // Startschuss für die App-Logik
+  initApp();
+});
+  // ── REFLEXION: Leaflet-Karte + Tuschelinie + Sprechblasen-Marker ──
+  // Immediate save of the current walk (at GPS point + entry)
   function autoSaveNow(){
     if(!state.current) return;
     try{
@@ -1102,7 +852,7 @@ window.addEventListener('load', function() {
         })
       }));
     }catch(ex){
-      // Wenn zu voll: ohne grosse Fotos speichern
+      // If too full: save without large photos
       try{
         localStorage.setItem('psychogeo_current_walk', JSON.stringify({
           ...state.current,
@@ -1112,15 +862,15 @@ window.addEventListener('load', function() {
             return c;
           })
         }));
-      }catch(ex2){console.warn('AutoSave fehlgeschlagen (Speicher voll):',ex2);}
+      }catch(ex2){console.warn('AutoSave failed (storage full):',ex2);}
     }
   }
 
   function saveWalks(){
     const ts=state.walks.map(w=>({...w,entries:w.entries.map(e=>{
       const c={...e};
-      delete c.audioUrl; // ObjectURL ist session-only
-      // Audio als base64 mitspeichern wenn vorhanden
+      delete c.audioUrl; // ObjectURL is session-only
+      // Save audio as base64 if available
       if(e.entryId&&audioBlobs[e.entryId]&&!c.audioBase64){
         try{
           const reader=new FileReader();
@@ -1132,33 +882,33 @@ window.addEventListener('load', function() {
               return d;
             })}));
             try{localStorage.setItem('psychogeo_walks',JSON.stringify(walks2));}
-            catch(ex){console.warn('Audio-Save fehlgeschlagen (zu gross):',ex);}
+            catch(ex){console.warn('Audio save failed (too large):',ex);}
           };
           reader.readAsDataURL(audioBlobs[e.entryId]);
         }catch(ex){}
       }
       return c;
     })}));
-    // Erst versuchen mit Fotos
+    // First try with photos
     try{
       localStorage.setItem('psychogeo_walks',JSON.stringify(ts));
-      checkStorageUsage(); // Speicher-Warnung prüfen
+      checkStorageUsage(); // Check storage warning
     }catch(ex){
-      // localStorage voll (wahrscheinlich wegen Fotos) — ohne Fotos speichern
-      console.warn('Speicher voll, speichere ohne Fotos:',ex);
+      // localStorage full (probably due to photos) — save without photos
+      console.warn('Storage full, saving without photos:',ex);
       try{
         const tsNoPhotos=state.walks.map(w=>({...w,entries:w.entries.map(e=>{
           const c={...e};
           delete c.audioUrl;
-          // Fotos weglassen wenn zu gross
+          // Skip photos if too large
           if(e.type==='photo'&&e.dataUrl&&e.dataUrl.length>50000) delete c.dataUrl;
           return c;
         })}));
         localStorage.setItem('psychogeo_walks',JSON.stringify(tsNoPhotos));
-        console.warn('Walk ohne grosse Fotos gespeichert');
+        console.warn('Walk saved without large photos');
       }catch(ex2){
-        // Letzter Ausweg: nur Route und Texte speichern
-        console.error('Kritisch: Walk kann nicht gespeichert werden:',ex2);
+        // Last resort: save only route and texts
+        console.error('Critical: Walk cannot be saved:',ex2);
         try{
           const tsMinimal=state.walks.map(w=>({...w,entries:w.entries.map(e=>{
             const c={...e};
@@ -1167,7 +917,7 @@ window.addEventListener('load', function() {
           })}));
           localStorage.setItem('psychogeo_walks',JSON.stringify(tsMinimal));
         }catch(ex3){
-          alert('⚠️ Speicher voll! Bitte einen alten Walk exportieren und löschen, dann erneut speichern.');
+          alert('⚠️ Storage full! Please export and delete an old walk, then try saving again.');
         }
       }
     }
@@ -1178,7 +928,7 @@ window.addEventListener('load', function() {
   const _livePosCounts={};
   function placeMarker(type,latLng,popupHTML){
     mapLayers[type]=mapLayers[type]||[];
-    // Überlappende Marker versetzen
+    // Shift overlapping markers
     const posKey=latLng.lat.toFixed(5)+','+latLng.lng.toFixed(5);
     _livePosCounts[posKey]=(_livePosCounts[posKey]||0)+1;
     const posIdx=_livePosCounts[posKey]-1;
@@ -1193,7 +943,7 @@ window.addEventListener('load', function() {
     if(layerVisibility[type]!==false){m.addTo(state.map);m.openPopup();}
     return m;
   }
-  function requireWalk(){if(!state.current){alert('Erst START drücken!');return false;}return true;}
+  function requireWalk(){if(!state.current){alert('Press START first!');return false;}return true;}
   function getPos(){if(state.liveMarker)return state.liveMarker.getLatLng();const c=state.map.getCenter();return{lat:c.lat,lng:c.lng};}
   function moodColor(v){if(v<=1)return'#3b82f6';if(v<=2)return'#22c55e';if(v<=3)return'#facc15';if(v<=4)return'#f97316';return'#ef4444';}
   function makeDotIcon(color,size){size=size||20;return L.divIcon({className:'',html:'<div style="width:'+size+'px;height:'+size+'px;border-radius:50%;background:'+color+';border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,0.5),0 0 0 1px rgba(0,0,0,0.1);"></div>',iconSize:[size,size],iconAnchor:[size/2,size/2],popupAnchor:[0,-(size/2+4)]});}
@@ -1224,7 +974,7 @@ window.addEventListener('load', function() {
     photoCanvas.getContext('2d').drawImage(cameraPreview,0,0);
     const dataUrl=photoCanvas.toDataURL('image/jpeg',0.7);
     closeCamera();
-    // Notiz-Modal öffnen
+    // Open note modal
     _pendingPhoto={dataUrl,pos};
     document.getElementById('photoNotePreview').src=dataUrl;
     document.getElementById('photoNoteText').value='';
@@ -1267,10 +1017,10 @@ window.addEventListener('load', function() {
   function stopViz(){if(vizRaf)cancelAnimationFrame(vizRaf);if(audioContext){audioContext.close();audioContext=null;}bars.forEach(b=>b.style.height='8px');}
   async function openAudioModal(type){
     if(!requireWalk())return;audioType=type;
-    document.getElementById('audioStatus').textContent=type==='voice'?'🎙 Sprachnachricht aufnehmen...':'🔊 Umgebungssound aufnehmen...';
+    document.getElementById('audioStatus').textContent=type==='voice'?'🎙 Record voice message...':'🔊 Record ambient sound...';
     audioChunks=[];timerSec=0;document.getElementById('audioTimer').textContent='0:00';
     try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});mediaRecorder=new MediaRecorder(stream);mediaRecorder.ondataavailable=e=>audioChunks.push(e.data);mediaRecorder.onstop=()=>finishRecording(stream);mediaRecorder.start();startViz(stream);timerInterval=setInterval(()=>{timerSec++;document.getElementById('audioTimer').textContent=formatTime(timerSec);},1000);audioModal.classList.add('open');}
-    catch(e){alert('Mikrofon-Zugriff verweigert.');}
+    catch(e){alert('Microphone access denied.');}
   }
   function finishRecording(stream){
     stream.getTracks().forEach(t=>t.stop());stopViz();clearInterval(timerInterval);audioModal.classList.remove('open');
@@ -1282,7 +1032,7 @@ window.addEventListener('load', function() {
     const svgI=audioType==='voice'?'<line x1="8" y1="5" x2="8" y2="11" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/><line x1="5" y1="8" x2="11" y2="8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>':'<circle cx="8" cy="8" r="3" fill="none" stroke="#fff" stroke-width="1.8"/><line x1="8" y1="2" x2="8" y2="5" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>';
     const icon=L.divIcon({className:'',html:'<div style="width:22px;height:22px;border-radius:50%;background:'+color+';border:2.5px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;"><svg width="16" height="16" viewBox="0 0 16 16">'+svgI+'</svg></div>',iconSize:[22,22],iconAnchor:[11,11],popupAnchor:[0,-14]});
     const ph='<div style="min-width:200px;padding:4px;">'
-      +'<b style="font-size:13px;color:'+color+';">'+(audioType==='voice'?'💬 Sprachnachricht':'🎙 Umgebungssound')+'</b>'
+      +'<b style="font-size:13px;color:'+color+';">'+(audioType==='voice'?'💬 Voice Message':'🎙 Ambient Sound')+'</b>'
       +'<div style="font-size:10px;color:#aaa;margin:4px 0;">'+ts+' · '+dur+'</div>'
       +'<audio controls src="'+url+'" style="width:100%;margin-top:6px;height:40px;"></audio>'
       +'</div>';
@@ -1308,12 +1058,12 @@ window.addEventListener('load', function() {
     const pos=getPos(),ts=new Date().toLocaleTimeString();
     state.current.entries.push({type:'mood',location:{lat:pos.lat,lng:pos.lng},timestamp:ts,moodValue:val,markerColor:col,text:note});autoSaveNow();
     const icon=L.divIcon({className:'',html:'<div style="width:22px;height:22px;border-radius:50%;background:'+col+';border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;"><span style="color:#fff;font-size:10px;font-weight:bold;">'+val+'</span></div>',iconSize:[22,22],iconAnchor:[11,11],popupAnchor:[0,-14]});
-    const popup='<div style="min-width:150px;padding:4px;"><b style="font-size:13px;">Stimmung</b><br><div style="margin:8px 0 4px;background:#eee;border-radius:6px;height:10px;overflow:hidden;"><div style="height:100%;width:'+((val-1)/4*100)+'%;background:'+col+';border-radius:6px;"></div></div><span style="font-size:22px;font-weight:bold;color:'+col+';">'+val+'</span><span style="font-size:12px;color:#aaa;"> / 100</span>'+(note?'<br><span style="font-size:11px;color:#555;margin-top:4px;display:block;">'+note+'</span>':'')+'<br><span style="font-size:10px;color:#bbb;">'+ts+'</span></div>';
+    const popup='<div style="min-width:150px;padding:4px;"><b style="font-size:13px;">Mood</b><br><div style="margin:8px 0 4px;background:#eee;border-radius:6px;height:10px;overflow:hidden;"><div style="height:100%;width:'+((val-1)/4*100)+'%;background:'+col+';border-radius:6px;"></div></div><span style="font-size:22px;font-weight:bold;color:'+col+';">'+val+'</span><span style="font-size:12px;color:#aaa;"> / 100</span>'+(note?'<br><span style="font-size:11px;color:#555;margin-top:4px;display:block;">'+note+'</span>':'')+'<br><span style="font-size:10px;color:#bbb;">'+ts+'</span></div>';
     mapLayers['mood']=mapLayers['mood']||[];
     const moodPosKey=pos.lat.toFixed(5)+','+pos.lng.toFixed(5);
     _livePosCounts[moodPosKey]=(_livePosCounts[moodPosKey]||0)+1;
     const moodPosIdx=_livePosCounts[moodPosKey]-1;
-    const moodAngle=(moodPosIdx*137.5)*(Math.PI/180);
+    const moodAngle=(moodPosIdx*137.5)*(Math.PI/180); // Golden angle
     const moodOffset=moodPosIdx===0?0:0.00004*(1+Math.floor(moodPosIdx/8));
     const moodLat=pos.lat+Math.sin(moodAngle)*moodOffset;
     const moodLng=pos.lng+Math.cos(moodAngle)*moodOffset;
@@ -1327,8 +1077,8 @@ window.addEventListener('load', function() {
   document.getElementById('thoughtCancel').onclick=()=>{thoughtModal.style.display='none';};
   document.getElementById('thoughtSave').onclick=()=>{
     if(!requireWalk())return;const t=document.getElementById('thoughtText').value.trim();const pos=getPos();const ts=new Date().toLocaleTimeString();
-    state.current.entries.push({type:'thought',location:{lat:pos.lat,lng:pos.lng},timestamp:ts,text:t||'(kein Text)'});autoSaveNow();
-    const icon=makeDotIcon('#22c55e',20);const popup='<div style="min-width:140px;"><b>Gedanke</b><br><p style="margin:4px 0;font-size:12px;color:#333;">'+(t||'—')+'</p><small style="color:#aaa;">'+ts+'</small></div>';
+    state.current.entries.push({type:'thought',location:{lat:pos.lat,lng:pos.lng},timestamp:ts,text:t||'(no text)'});autoSaveNow();
+    const icon=makeDotIcon('#22c55e',20);const popup='<div style="min-width:140px;"><b>Thought</b><br><p style="margin:4px 0;font-size:12px;color:#333;">'+(t||'—')+'</p><small style="color:#aaa;">'+ts+'</small></div>';
     mapLayers['thought']=mapLayers['thought']||[];const m=L.marker([pos.lat,pos.lng],{icon,zIndexOffset:1000}).bindPopup(popup);mapLayers['thought'].push(m);
     if(layerVisibility['thought']!==false){m.addTo(state.map);m.openPopup();}
     thoughtModal.style.display='none';document.getElementById('thoughtText').value='';
@@ -1339,8 +1089,8 @@ window.addEventListener('load', function() {
   document.getElementById('senseCancel').onclick=()=>{senseModal.style.display='none';};
   document.getElementById('senseSave').onclick=()=>{
     if(!requireWalk())return;const t=document.getElementById('senseText').value.trim();const pos=getPos();const ts=new Date().toLocaleTimeString();
-    state.current.entries.push({type:'sense',location:{lat:pos.lat,lng:pos.lng},timestamp:ts,text:t||'(keine Eingabe)'});autoSaveNow();
-    const icon=makeDotIcon('#f97316',20);const popup='<div style="min-width:140px;"><b>Eindrücke</b><br>'+(t?'<p style="margin:4px 0;font-size:12px;color:#333;">'+t+'</p>':'')+'<small style="color:#aaa;">'+ts+'</small></div>';
+    state.current.entries.push({type:'sense',location:{lat:pos.lat,lng:pos.lng},timestamp:ts,text:t||'(no entry)'});autoSaveNow();
+    const icon=makeDotIcon('#f97316',20);const popup='<div style="min-width:140px;"><b>Impressions</b><br>'+(t?'<p style="margin:4px 0;font-size:12px;color:#333;">'+t+'</p>':'')+'<small style="color:#aaa;">'+ts+'</small></div>';
     mapLayers['sense']=mapLayers['sense']||[];const m=L.marker([pos.lat,pos.lng],{icon,zIndexOffset:1000}).bindPopup(popup);mapLayers['sense'].push(m);
     if(layerVisibility['sense']!==false){m.addTo(state.map);m.openPopup();}
     senseModal.style.display='none';document.getElementById('senseText').value='';
@@ -1363,8 +1113,8 @@ window.addEventListener('load', function() {
         const ai=new InkLayer();ai.addTo(state.map);for(let i=1;i<walk.route.length;i++)ai.addSegment(walk.route[i-1],walk.route[i],6,0.7);state.archiveInkLayers[id]=ai;if(!layerVisibility.route)ai._canvas.style.display='none';
       }
       walk.entries.forEach(e=>{
-        const eTN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Eindrücke',
-                  voice:'💬 Sprachnachricht',sound:'🎙 Umgebungssound',photo:'📸 Foto'};
+        const eTN={mood:'🔋 Mood',thought:'💭 Thought',sense:'👁 Impressions',
+                  voice:'💬 Voice Message',sound:'🎙 Ambient Sound',photo:'📸 Photo'};
         let popup='<div style="min-width:180px;font-size:12px;padding:2px;">'
           +'<b style="color:#333;">'+( eTN[e.type]||(e.type||'').toUpperCase())+'</b>';
         if(e.timestamp) popup+='<div style="font-size:10px;color:#aaa;margin:3px 0;">'+e.timestamp+(e.audioDuration?' · '+e.audioDuration:'')+'</div>';
@@ -1377,12 +1127,12 @@ window.addEventListener('load', function() {
         popup=popup.replace('__AUDIO__',eAudio);
         const dc=e.type==='thought'?'#22c55e':e.type==='sense'?'#f97316':e.type==='mood'?(e.markerColor||walk.color):e.type==='voice'?'#7c3aed':e.type==='sound'?'#f97316':e.type==='photo'?'#555':walk.color;
         const dr=(e.type==='mood'||e.type==='thought'||e.type==='sense')?7:5;
-        // Überlappende Marker leicht versetzen
+        // Shift overlapping markers slightly
         const posKey=e.location.lat.toFixed(5)+','+e.location.lng.toFixed(5);
         if(!group._posCount) group._posCount={};
         group._posCount[posKey]=(group._posCount[posKey]||0)+1;
         const posIdx=group._posCount[posKey]-1;
-        const angle=(posIdx*137.5)*(Math.PI/180); // Goldener Winkel
+        const angle=(posIdx*137.5)*(Math.PI/180); // Golden angle
         const offset=posIdx===0?0:0.00004*(1+Math.floor(posIdx/8));
         const offsetLat=e.location.lat+Math.sin(angle)*offset;
         const offsetLng=e.location.lng+Math.cos(angle)*offset;
@@ -1390,7 +1140,7 @@ window.addEventListener('load', function() {
       });
       group.addTo(state.map);state.activeLayers[id]=group;
       if(header)header.classList.add('shown');if(actions)actions.classList.add('open');
-      // Auto-Zoom: gesamte Route + Marker in den Blick nehmen
+      // Auto-Zoom: bring entire route + markers into view
       if(walk.route&&walk.route.length>1){
         const bounds=L.latLngBounds(walk.route);
         walk.entries.forEach(e=>{if(e.location)bounds.extend([e.location.lat,e.location.lng]);});
@@ -1408,21 +1158,21 @@ window.addEventListener('load', function() {
 
   function openVerlauf(walk){
     rqCurrentWalkId=walk.id;
-    document.getElementById('verlaufTitle').textContent='Reflexion: '+walk.name;
+    document.getElementById('verlaufTitle').textContent='Reflection: '+walk.name;
     document.getElementById('verlaufModal').classList.add('open');
     document.getElementById('verlaufEntryCard').style.display='none';
     document.getElementById('verlaufEntryCard').innerHTML='';
     document.getElementById('verlaufInfo').textContent='';
-    // Karte immer sichtbar, Fragen scrollen darunter
+    // Map always visible, questions scroll below it
     verlaufShowingMap=true;
-    // Panel-Tabs verstecken damit sie das X nicht verdecken
+    // Hide panel tabs so they don't cover the X
     document.getElementById('panelToggles').style.display='none';
     document.getElementById('fabGrid').style.display='none';
     document.getElementById('topBar').style.display='none';
     document.getElementById('verlaufEntryCard').innerHTML='';
     document.getElementById('verlaufInfo').textContent='';
 
-    // Reflexion laden
+    // Load reflection
     const ref=walk.reflection||{};
     document.getElementById('rqFrei').value=ref.frei||'';
     document.getElementById('rqMoment').value=ref.moment||'';
@@ -1439,15 +1189,15 @@ window.addEventListener('load', function() {
     const route=walk.route||[];
 
     if(route.length<2){
-      document.getElementById('verlaufInfo').textContent='Keine Route aufgezeichnet.';
+      document.getElementById('verlaufInfo').textContent='No route recorded.';
       return;
     }
 
-    // Alte Karte entfernen
+    // Remove old map
     if(verlaufMap){verlaufMap.remove();verlaufMap=null;}
     document.getElementById('verlaufMapDiv').innerHTML='';
 
-    // Leaflet-Karte
+    // Leaflet map
     verlaufMap=L.map('verlaufMapDiv',{
       zoomControl:true,
       attributionControl:false,
@@ -1462,11 +1212,11 @@ window.addEventListener('load', function() {
       zoomDelta:1
     });
     verlaufMap.getContainer().style.touchAction='none';
-    // Zoom-Buttons größer für Handy
+    // Zoom buttons larger for mobile phones
     verlaufMap.zoomControl.setPosition('bottomright');
 
-    // Graustufen-Karte
-    // MapTiler Stil via MapLibre GL Leaflet (gleich wie Hauptkarte)
+    // Grayscale map
+    // MapTiler style via MapLibre GL Leaflet (same as main map)
     if(window.maplibregl && window.MaplibreglLeaflet || window.L.maplibreGL){
       try{
         L.maplibreGL({
@@ -1477,7 +1227,7 @@ window.addEventListener('load', function() {
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd'}).addTo(verlaufMap);
       }
     } else {
-      // MapLibre noch nicht geladen — OSM als Fallback, dann nachladen
+      // MapLibre not loaded yet — OSM as fallback, then lazy-load
       const refTile=L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd'}).addTo(verlaufMap);
       if(!window.maplibregl){
         const scr=document.createElement('script');
@@ -1513,13 +1263,13 @@ window.addEventListener('load', function() {
       }
     }
 
-    // ── Tuschlinie: gespeicherte Segmente direkt übernehmen ──
-    // walk.segments enthält ll1, ll2, weight, opacity — exakt wie auf der Hauptkarte
+    // ── Ink line: apply saved segments directly ──
+    // walk.segments contains ll1, ll2, weight, opacity — exactly like on the main map
     const inkCanvas=L.canvas({padding:0.5});
     const segments=walk.segments||[];
 
     if(segments.length>0){
-      // Jedes Segment als eigene Polyline mit originalem Gewicht + Transparenz
+      // Each segment as a separate polyline with original weight + transparency
       segments.forEach(s=>{
         L.polyline([s.ll1,s.ll2],{
           color:'rgba(14,10,4,'+Math.min(s.opacity,1)+')',
@@ -1531,35 +1281,35 @@ window.addEventListener('load', function() {
         }).addTo(verlaufMap);
       });
     } else if(route.length>1){
-      // Fallback: einfache Linie wenn keine Segmente gespeichert
+      // Fallback: simple line if no segments are saved
       L.polyline(route,{
         color:'rgba(14,10,4,0.7)',
         weight:4,lineCap:'round',lineJoin:'round'
       }).addTo(verlaufMap);
     }
-    // Unsichtbare Linie für fitBounds
+    // Invisible line for fitBounds
     const routeLine=L.polyline(route,{opacity:0,weight:0}).addTo(verlaufMap);
 
-    // Start/Ende
+    // Start/End
     L.circleMarker(route[0],{
       radius:7, fillColor:'#22c55e', color:'#fff', weight:2, fillOpacity:1
     }).addTo(verlaufMap).bindTooltip('Start',{permanent:false});
 
     L.circleMarker(route[route.length-1],{
       radius:7, fillColor:'#ef4444', color:'#fff', weight:2, fillOpacity:1
-    }).addTo(verlaufMap).bindTooltip('Ende',{permanent:false});
+    }).addTo(verlaufMap).bindTooltip('End',{permanent:false});
 
-    // ── Eintrags-Marker als Sprechblasen (DivIcon) ──
+    // ── Entry markers as speech bubbles (DivIcon) ──
     const typeColor={mood:'#f97316',thought:'#1e3a6e',sense:'#2d5a2d',voice:'#7c3aed',sound:'#f58231',photo:'#2a2a2a'};
     const typeIcon={mood:'🔋',thought:'💭',sense:'👁',voice:'💬',sound:'🎙',photo:'📸'};
-    const typeText={mood:'Stimmung',thought:'Gedanke',sense:'Eindrücke',voice:'Sprache',sound:'Sound',photo:'Foto'};
+    const typeText={mood:'Mood',thought:'Thought',sense:'Impressions',voice:'Voice',sound:'Sound',photo:'Photo'};
 
     entries.forEach(e=>{
       if(!e.location)return;
       const col=typeColor[e.type]||'#555';
       const ico=typeIcon[e.type]||'●';
 
-      // Inhalt der Blase
+      // Bubble content
       let inner='';
       if(e.type==='mood'&&e.moodValue!=null){
         inner=`<span style="font-size:15px;font-weight:bold;line-height:1;">${e.moodValue}</span><span style="font-size:8px;opacity:0.8;">/5</span>`;
@@ -1570,7 +1320,7 @@ window.addEventListener('load', function() {
         inner=`<span style="font-size:14px;">${ico}</span>`;
       }
 
-            const html=`<div style="
+      const html=`<div style="
         width:34px;height:34px;border-radius:50%;
         background:${col};color:#fff;
         border:3px solid #fff;
@@ -1588,7 +1338,7 @@ window.addEventListener('load', function() {
         popupAnchor:[45,-42]
       });
 
-      // Popup mit vollem Inhalt
+      // Popup with full content
       let popupHTML=`<div style="min-width:180px;font-size:12px;padding:2px;">
         <div style="font-weight:bold;color:${col};margin-bottom:4px;">${ico} ${typeText[e.type]||e.type}</div>`;
       if(e.type==='mood'&&e.moodValue!=null)
@@ -1603,10 +1353,10 @@ window.addEventListener('load', function() {
       L.marker([e.location.lat,e.location.lng],{icon})
         .addTo(verlaufMap)
         .on('click',function(){
-          // Entry-Card unterhalb der Karte anzeigen
+          // Show entry card below the map
           const card=document.getElementById('verlaufEntryCard');
           card.style.display='block';
-          const TN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Eindrücke',voice:'💬 Sprache',sound:'🎙 Sound',photo:'📸 Foto'};
+          const TN={mood:'🔋 Mood',thought:'💭 Thought',sense:'👁 Impressions',voice:'💬 Voice',sound:'🎙 Sound',photo:'📸 Photo'};
           let h='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
             +'<span style="font-weight:bold;font-size:13px;color:'+col+';">'+(TN[e.type]||e.type)+'</span>';
           if(e.type==='mood'&&e.moodValue!=null)
@@ -1619,62 +1369,24 @@ window.addEventListener('load', function() {
           if(aUrl) h+='<audio controls src="'+aUrl+'" style="width:100%;margin-bottom:8px;height:40px;"></audio>';
           if(e.dataUrl) h+='<img src="'+e.dataUrl+'" style="width:100%;border-radius:8px;max-height:200px;object-fit:cover;"/>';
           card.innerHTML=h;
-          card.scrollIntoView({behavior:'smooth',block:'nearest'});
-        })
-        .bindTooltip(typeText[e.type]||e.type,{permanent:false,direction:'top',offset:[0,-18]});
+          card.scrollIntoView({behavior:'smooth',block:'end'});
+        });
     });
 
-    // Karte auf Route zoomen
-    verlaufMap.fitBounds(routeLine.getBounds(),{padding:[30,30]});
+    // Auto-zoom to map bounds
+    try{
+      verlaufMap.fitBounds(routeLine.getBounds(),{padding:[40,40],maxZoom:17,animate:false});
+    }catch(err){}
+    
     setTimeout(()=>{
-      if(verlaufMap){
-        verlaufMap.invalidateSize();
-        // Zoom-Buttons sichtbar machen
-        verlaufMap.zoomControl.setPosition('bottomright');
-      }
-    },300);
-
-    document.getElementById('verlaufInfo').textContent=
-      `${entries.length} Einträge · Zoomen mit 2 Fingern oder +/− · Marker antippen`;
+      try{
+        verlaufMap.invalidateSize(true);
+        verlaufMap.fitBounds(routeLine.getBounds(),{padding:[40,40],maxZoom:17,animate:true,duration:0.5});
+      }catch(err){}
+    },250);
   }
 
-  document.getElementById('verlaufFragenToggle')&&(document.getElementById('verlaufFragenToggle').onclick=()=>{
-    // Scroll zu Reflexionsfragen
-    document.getElementById('reflexionQPanel').scrollIntoView({behavior:'smooth'});
-  });
-  document.getElementById('verlaufClose').onclick=()=>{
-    document.getElementById('verlaufModal').classList.remove('open');
-    if(verlaufMap){verlaufMap.remove();verlaufMap=null;}
-    // Panel-Tabs und FAB wieder einblenden
-    document.getElementById('panelToggles').style.display='';
-    document.getElementById('fabGrid').style.display='';
-    document.getElementById('topBar').style.display='';
-  };
-
-  document.getElementById('rqMoodSlider').addEventListener('input',function(){
-    const v=parseInt(this.value),col=moodColor(v);
-    document.getElementById('rqMoodVal').textContent=v;
-    document.getElementById('rqMoodVal').style.color=col;
-  });
-
-  document.getElementById('rqSaveBtn').onclick=()=>{
-    if(!rqCurrentWalkId)return;
-    const walk=state.walks.find(w=>w.id==rqCurrentWalkId);
-    if(!walk)return;
-    if(!walk.reflection)walk.reflection={};
-    walk.reflection.frei=document.getElementById('rqFrei').value;
-    walk.reflection.moodRetro=parseInt(document.getElementById('rqMoodSlider').value);
-    walk.reflection.moment=document.getElementById('rqMoment').value;
-    walk.reflection.orte=document.getElementById('rqOrte').value;
-    walk.reflection.nicht=document.getElementById('rqNicht').value;
-    walk.reflection.ueber=document.getElementById('rqUeber').value;
-    saveWalks();
-    const btn=document.getElementById('rqSaveBtn');
-    btn.textContent='✓ Gespeichert';btn.style.background='#16a34a';
-    setTimeout(()=>{btn.textContent='💾 Reflexion speichern';btn.style.background='#2563eb';},2000);
-  };
-
-  // ── WALK-VERGLEICH ──
+  // ── WALK COMPARISON ──
   let vergleichMaps={};
   const selectedForVergleich=new Set();
 
@@ -1686,12 +1398,12 @@ window.addEventListener('load', function() {
     const hint=document.getElementById('vglHint');
     if(btn){
       btn.style.display=n>=2?'block':'none';
-      btn.textContent='⚖️ Vergleich starten ('+n+')';
+      btn.textContent='⚖️ Start comparison ('+n+')';
     }
     if(hint){
-      if(n===0) hint.textContent='Tippe bei 2 oder mehr Walks auf ⚖️ um sie zu vergleichen.';
-      else if(n===1) hint.textContent='Noch einen Walk mit ⚖️ auswählen…';
-      else hint.textContent=n+' Walks ausgewählt — jetzt vergleichen!';
+      if(n===0) hint.textContent='Tap ⚖️ on 2 or more walks to compare them.';
+      else if(n===1) hint.textContent='Select another walk with ⚖️…';
+      else hint.textContent=n+' walks selected — compare now!';
       hint.style.color=n>=2?'#7c3aed':'#9ca3af';
       hint.style.fontWeight=n>=2?'bold':'normal';
     }
@@ -1709,7 +1421,7 @@ window.addEventListener('load', function() {
 
     function openAnalyse(walk){
     destroyAnalyseCharts();
-    document.getElementById('analyseWalkName').textContent='Auswertung: '+walk.name;
+    document.getElementById('analyseWalkName').textContent='Analysis: '+walk.name;
     const moodEntries=walk.entries.filter(e=>e.type==='mood'&&e.moodValue!==undefined);
     const aufgezWerte=moodEntries.map(e=>e.moodValue);
     const avgAufgez=aufgezWerte.length?Math.round(aufgezWerte.reduce((a,b)=>a+b,0)/aufgezWerte.length):null;
@@ -1733,23 +1445,23 @@ window.addEventListener('load', function() {
         const seg=chartData.slice(i*ss,(i+1)*ss);const segE=erinData.slice(i*ss,(i+1)*ss);if(!seg.length)break;
         const aS=seg.reduce((a,b)=>a+b,0)/seg.length;const aE=segE.reduce((a,b)=>a+b,0)/segE.length;
         const diff=Math.round(aE-aS);const pct=Math.min(Math.abs(diff),50)*2;const col=diff>=0?'#22c55e':'#ef4444';
-        db.innerHTML+='<div class="disk-row"><div style="width:64px;font-size:10px;color:#6b7280;">Abschn. '+(i+1)+'</div><div class="disk-bar-bg"><div class="disk-bar-fill" style="width:'+pct+'%;background:'+col+';"></div></div><div style="font-size:10px;color:#6b7280;min-width:30px;text-align:right;">'+(diff>=0?'+':'')+diff+'</div></div>';
+        db.innerHTML+='<div class="disk-row"><div style="width:64px;font-size:10px;color:#6b7280;">Sect. '+(i+1)+'</div><div class="disk-bar-bg"><div class="disk-bar-fill" style="width:'+pct+'%;background:'+col+';"></div></div><div style="font-size:10px;color:#6b7280;min-width:30px;text-align:right;">'+(diff>=0?'+':'')+diff+'</div></div>';
       }
     } else {
-      db.innerHTML='<div style="font-size:11px;color:#9ca3af;">Mind. 2 Stimmungsmarker für Segmentauswertung.</div>';
+      db.innerHTML='<div style="font-size:11px;color:#9ca3af;">At least 2 mood markers required for segment analysis.</div>';
     }
-    document.getElementById('refFreiDisplay').textContent=ref.frei||'(keine freie Reflexion)';
+    document.getElementById('refFreiDisplay').textContent=ref.frei||'(no free reflection)';
     const rA=document.getElementById('refAnswersDisplay');
-    const fragen=[{l:'Stärkster Moment',v:ref.moment},{l:'Orte & Einflüsse',v:ref.orte},{l:'Nicht Aufgezeichnetes',v:ref.nicht},{l:'Überraschung',v:ref.ueber}];
+    const fragen=[{l:'Strongest moment',v:ref.moment},{l:'Places & Influences',v:ref.orte},{l:'Not recorded',v:ref.nicht},{l:'Surprise',v:ref.ueber}];
     rA.innerHTML=fragen.map(f=>f.v?'<div style="border-left:3px solid #e5e5e5;padding-left:8px;"><div style="font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;margin-bottom:2px;">'+f.l+'</div><div style="font-size:11px;color:#374151;">'+escHtml(f.v)+'</div></div>':'').join('');
-    // Drawer schließen damit X nicht verdeckt wird
+    // Close drawer so X is not covered
     document.getElementById('drawer').classList.remove('open');
     document.querySelectorAll('.panel-tab').forEach(t=>t.classList.remove('active'));
     document.getElementById('analyseModal').classList.add('open');
     document.getElementById('drawer').classList.remove('open');
     document.querySelectorAll('.panel-tab').forEach(t=>t.classList.remove('active'));
     currentPanel=null;
-    // Panel-Tabs verstecken damit X nicht verdeckt wird
+    // Hide panel tabs so X is not covered
     document.getElementById('panelToggles').style.display='none';
     document.getElementById('fabGrid').style.display='none';
     document.getElementById('topBar').style.display='none';
@@ -1777,12 +1489,12 @@ window.addEventListener('load', function() {
         ?Math.round(moodE.reduce((s,e)=>s+e.moodValue,0)/moodE.length)
         :null;
 
-      // ── Walk-Karte: feste Struktur mit internem Scroll ──
+      // ── Walk Card: fixed structure with internal scroll ──
       const card=document.createElement('div');
       card.style.cssText='background:#fff;border-radius:12px;'
         +'box-shadow:0 2px 12px rgba(0,0,0,0.1);display:flex;flex-direction:column;';
 
-      // Titel (fix oben)
+      // Title (fixed top)
       const ttl=document.createElement('div');
       ttl.style.cssText='display:flex;align-items:center;gap:8px;padding:10px 14px;'
         +'border-bottom:1px solid #f0f0f0;flex-shrink:0;';
@@ -1799,7 +1511,7 @@ window.addEventListener('load', function() {
           :'');
       card.appendChild(ttl);
 
-      // Canvas-Skizze (fix, horizontal scrollbar)
+      // Canvas sketch (fixed, horizontal scrollbar)
       const scroller=document.createElement('div');
       scroller.style.cssText='overflow-x:auto;overflow-y:hidden;flex-shrink:0;position:relative;'
         +'-webkit-overflow-scrolling:touch;background:#dbd8d2;height:160px;';
@@ -1808,7 +1520,7 @@ window.addEventListener('load', function() {
       scroller.appendChild(cv);
       card.appendChild(scroller);
 
-      // Popup fuer Marker-Tap
+      // Popup for marker tap
       const cvPopup=document.createElement('div');
       cvPopup.style.cssText='display:none;position:absolute;top:4px;left:4px;right:4px;'
         +'background:rgba(255,255,255,0.97);border-radius:10px;padding:10px 12px;'
@@ -1822,7 +1534,7 @@ window.addEventListener('load', function() {
       cvPopup.appendChild(cvClose);
       scroller.appendChild(cvPopup);
 
-      // Tap-Handler: naechsten Marker finden und Popup zeigen
+      // Tap handler: find nearest marker and show popup
       cv.addEventListener('click',function(evt){
         const rect=cv.getBoundingClientRect();
         const clickX=evt.clientX-rect.left+scroller.scrollLeft;
@@ -1854,7 +1566,7 @@ window.addEventListener('load', function() {
         });
         if(!best){cvPopup.style.display='none';return;}
         const TC2={mood:'#ea580c',thought:'#2563eb',sense:'#16a34a',voice:'#7c3aed',sound:'#7c3aed',photo:'#374151'};
-        const TN2={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Eindrücke',voice:'💬 Sprache',sound:'🎙 Sound',photo:'📸 Foto'};
+        const TN2={mood:'🔋 Mood',thought:'💭 Thought',sense:'👁 Impressions',voice:'💬 Speech',sound:'🎙 Sound',photo:'📸 Photo'};
         const col2=TC2[best.type]||'#555';
         let html='<div style="padding-right:20px;">'
           +'<b style="color:'+col2+';font-size:12px;">'+(TN2[best.type]||best.type)+'</b>';
@@ -1871,7 +1583,7 @@ window.addEventListener('load', function() {
         cvPopup.style.display='block';
       });
 
-      // Einträge-Liste (scrollbar, max Höhe)
+      // Entries list (scrollbar, max height)
       const eList=document.createElement('div');
       eList.style.cssText='overflow-y:auto;max-height:280px;flex-shrink:0;'
         +'-webkit-overflow-scrolling:touch;touch-action:pan-y;';
@@ -1882,8 +1594,8 @@ window.addEventListener('load', function() {
         hasEntries=true;
         const TC={mood:'#ea580c',thought:'#2563eb',sense:'#16a34a',
                   voice:'#7c3aed',sound:'#7c3aed',photo:'#374151'};
-        const TN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Eindrücke',
-                  voice:'💬 Sprachnachricht',sound:'🎙 Umgebungssound',photo:'📸 Foto'};
+        const TN={mood:'🔋 Mood',thought:'💭 Thought',sense:'👁 Impressions',
+                  voice:'💬 Voice message',sound:'🎙 Ambient sound',photo:'📸 Photo'};
         const col=TC[e.type]||'#555';
         const row=document.createElement('div');
         row.style.cssText='padding:10px 14px;border-bottom:1px solid #f5f5f5;';
@@ -1912,17 +1624,17 @@ window.addEventListener('load', function() {
       });
 
       if(hasEntries){
-        // Einträge-Header
+        // Entries Header
         const eHeader=document.createElement('div');
         eHeader.style.cssText='padding:6px 14px;font-size:9px;font-weight:bold;'
           +'color:#9ca3af;text-transform:uppercase;background:#fafafa;'
           +'border-bottom:1px solid #f0f0f0;border-top:1px solid #f0f0f0;flex-shrink:0;';
-        eHeader.textContent=walk.entries.filter(e=>e.text||e.audioUrl||e.dataUrl||(e.type==='mood'&&e.moodValue!=null)).length+' Einträge';
+        eHeader.textContent=walk.entries.filter(e=>e.text||e.audioUrl||e.dataUrl||(e.type==='mood'&&e.moodValue!=null)).length+' Entries';
         card.appendChild(eHeader);
         card.appendChild(eList);
       }
 
-      // Reflexionszitat
+      // Reflection Quote
       if(ref.frei){
         const q=document.createElement('div');
         q.style.cssText='padding:8px 14px;font-size:10px;color:#888;'
@@ -1933,7 +1645,7 @@ window.addEventListener('load', function() {
 
       list.appendChild(card);
 
-      // Canvas zeichnen
+      // Draw canvas
       setTimeout(()=>{
         try{ drawSkizze(cv, scroller, walk); }
         catch(err){ console.error('drawSkizze error:', err); }
@@ -1957,7 +1669,7 @@ window.addEventListener('load', function() {
       const ctx=canvas.getContext('2d'); ctx.scale(DPR,DPR);
       ctx.fillStyle='#dbd8d2'; ctx.fillRect(0,0,300,H);
       ctx.fillStyle='#999'; ctx.font='12px sans-serif'; ctx.textAlign='center';
-      ctx.fillText('Keine Route',150,H/2);
+      ctx.fillText('No route',150,H/2);
       return;
     }
 
@@ -1973,9 +1685,9 @@ window.addEventListener('load', function() {
       return b;
     }
 
-    // Canvas-Breite: mindestens Bildschirmbreite, max. durch Distanz bestimmt
+    // Canvas width: at least screen width, max determined by distance
     const PAD=36;
-    const TIMELINE_H=22; // Platz für Zeitachse unten
+    const TIMELINE_H=22; // space for timeline below
     const SCENE_H=H-TIMELINE_H;
     const W=Math.max(window.innerWidth||320, Math.round(totalDist*0.32)+PAD*2, 400);
     canvas.width=W*DPR; canvas.height=H*DPR;
@@ -1985,14 +1697,14 @@ window.addEventListener('load', function() {
 
     function rx(d){return PAD+(d/totalDist)*(W-PAD*2);}
     function rxI(i){return rx(cum[Math.min(i,cum.length-1)]);}
-    const RY=Math.round(SCENE_H*0.70); // Route-Linie Y
+    const RY=Math.round(SCENE_H*0.70); // Route line Y
 
-    // ── Himmel ──
+    // ── Sky ──
     const skyG=ctx.createLinearGradient(0,0,0,RY);
     skyG.addColorStop(0,'#c4c1bc'); skyG.addColorStop(1,'#d8d5d0');
     ctx.fillStyle=skyG; ctx.fillRect(0,0,W,SCENE_H);
 
-    // ── Bergsilhouetten ──
+    // ── Mountain Silhouettes ──
     const lats=pts.map(p=>p[0]);
     const minLat=Math.min(...lats), latSpan=Math.max(...lats)-minLat||0.001;
     [SCENE_H*0.20,SCENE_H*0.11,SCENE_H*0.02].forEach((off,li)=>{
@@ -2006,7 +1718,7 @@ window.addEventListener('load', function() {
       ctx.fillStyle='rgba(105,100,94,'+(0.42+li*0.20)+')'; ctx.fill();
     });
 
-    // ── Boden ──
+    // ── Ground ──
     const grd=ctx.createLinearGradient(0,RY,0,SCENE_H);
     grd.addColorStop(0,'#c8c4bc'); grd.addColorStop(1,'#b4b0a8');
     ctx.fillStyle=grd; ctx.fillRect(0,RY,W,SCENE_H-RY);
@@ -2015,7 +1727,7 @@ window.addEventListener('load', function() {
       ctx.fillRect(x,RY-(Math.random()*2),2,2);
     }
 
-    // ── Tuschlinie ──
+    // ── Ink line ──
     const segs=walk.segments||[];
     if(segs.length>0){
       segs.forEach(s=>{
@@ -2039,26 +1751,26 @@ window.addEventListener('load', function() {
       });
     }
 
-    // ── Start/Ende ──
+    // ── Start/End ──
     [{x:rx(0),c:'#16a34a'},{x:rx(totalDist),c:'#dc2626'}].forEach(({x,c})=>{
       ctx.beginPath(); ctx.arc(x,RY,5,0,Math.PI*2);
       ctx.fillStyle=c; ctx.fill();
       ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
     });
 
-    // ── Zeitachse ──
-    // Hintergrund Zeitachse
+    // ── Timeline ──
+    // Timeline background
     ctx.fillStyle='#e8e4de';
     ctx.fillRect(0,SCENE_H,W,TIMELINE_H);
-    // Trennlinie
+    // Separator line
     ctx.beginPath(); ctx.moveTo(0,SCENE_H); ctx.lineTo(W,SCENE_H);
     ctx.strokeStyle='rgba(0,0,0,0.12)'; ctx.lineWidth=1; ctx.stroke();
 
-    // Start- und Endzeit aus Einträgen oder Route ableiten
+    // Derive start and end times from entries or route
     const allEntries=walk.entries.filter(e=>e.location&&e.timestamp);
     let startTime=null, endTime=null;
     if(allEntries.length>0){
-      // Zeitstempel parsen (Format: HH:MM:SS)
+      // Parse timestamp (Format: HH:MM:SS)
       const times=allEntries.map(e=>e.timestamp).filter(Boolean);
       if(times.length>0){
         startTime=times[0];
@@ -2066,13 +1778,13 @@ window.addEventListener('load', function() {
       }
     }
 
-    // Zeitachsen-Linie
+    // Timeline line
     ctx.beginPath();
     ctx.moveTo(PAD, SCENE_H+TIMELINE_H/2);
     ctx.lineTo(W-PAD, SCENE_H+TIMELINE_H/2);
     ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1.5; ctx.stroke();
 
-    // Start-Tick
+    // Start Tick
     ctx.beginPath(); ctx.moveTo(PAD,SCENE_H+4); ctx.lineTo(PAD,SCENE_H+TIMELINE_H-4);
     ctx.strokeStyle='#16a34a'; ctx.lineWidth=2; ctx.stroke();
     if(startTime){
@@ -2080,7 +1792,7 @@ window.addEventListener('load', function() {
       ctx.fillText(startTime.substring(0,5), PAD, SCENE_H+TIMELINE_H-2);
     }
 
-    // Ende-Tick
+    // End Tick
     ctx.beginPath(); ctx.moveTo(W-PAD,SCENE_H+4); ctx.lineTo(W-PAD,SCENE_H+TIMELINE_H-4);
     ctx.strokeStyle='#dc2626'; ctx.lineWidth=2; ctx.stroke();
     if(endTime){
@@ -2088,9 +1800,9 @@ window.addEventListener('load', function() {
       ctx.fillText(endTime.substring(0,5), W-PAD, SCENE_H+TIMELINE_H-2);
     }
 
-    // ── Marker + Zeitachsen-Ticks ──
+    // ── Markers + Timeline Ticks ──
     const TC={mood:'#ea580c',thought:'#2563eb',sense:'#16a34a',voice:'#7c3aed',sound:'#7c3aed',photo:'#374151'};
-    const TLbl={mood:'Stimmung',thought:'Gedanke',sense:'Wahrnehm.',voice:'Sprache',sound:'Sound',photo:'Foto'};
+    const TLbl={mood:'Mood',thought:'Thought',sense:'Percept.',voice:'Speech',sound:'Sound',photo:'Photo'};
     const TI={thought:'◆',sense:'▲',voice:'▶',sound:'◉',photo:'■'};
     const buckets={};
 
@@ -2102,11 +1814,11 @@ window.addEventListener('load', function() {
       buckets[bk]=(buckets[bk]||0)+1;
       const R=14, pinY=RY-18-(buckets[bk]-1)*36;
 
-      // Stiel vom Marker zur Route
+      // Stem from marker to route
       ctx.beginPath(); ctx.moveTo(x,RY-3); ctx.lineTo(x,pinY+R+2);
       ctx.strokeStyle=col+'88'; ctx.lineWidth=1.5; ctx.stroke();
 
-      // Marker-Kreis mit Schatten
+      // Marker circle with shadow
       ctx.save();
       ctx.shadowColor='rgba(0,0,0,0.2)'; ctx.shadowBlur=4; ctx.shadowOffsetY=2;
       ctx.beginPath(); ctx.arc(x,pinY,R,0,Math.PI*2);
@@ -2115,7 +1827,7 @@ window.addEventListener('load', function() {
       ctx.beginPath(); ctx.arc(x,pinY,R,0,Math.PI*2);
       ctx.strokeStyle='#fff'; ctx.lineWidth=2.5; ctx.stroke();
 
-      // Inhalt im Kreis
+      // Content inside circle
       ctx.fillStyle='#fff'; ctx.textAlign='center';
       if(e.type==='mood'&&e.moodValue!=null){
         ctx.font='bold 10px sans-serif'; ctx.fillText(e.moodValue,x,pinY+4);
@@ -2123,16 +1835,16 @@ window.addEventListener('load', function() {
         ctx.font='10px sans-serif'; ctx.fillText(TI[e.type]||'●',x,pinY+4);
       }
 
-      // ── Zeitachsen-Tick für diesen Eintrag ──
+      // ── Timeline Tick for this entry ──
       if(e.timestamp){
         const tickX=x;
-        // Tick-Linie
+        // Tick line
         ctx.beginPath(); ctx.moveTo(tickX,SCENE_H+3); ctx.lineTo(tickX,SCENE_H+TIMELINE_H-3);
-        ctx.strokeStyle=col; ctx.lineWidth=1.5; ctx.stroke();
-        // Raute auf Zeitachse
+        ctx.strokeStyle=col; ctx.lineWidth=1.5; stroke();
+        // Diamond on timeline
         ctx.beginPath(); ctx.arc(tickX,SCENE_H+TIMELINE_H/2,3,0,Math.PI*2);
         ctx.fillStyle=col; ctx.fill();
-        // Zeit-Label (nur wenn nicht zu nah an Start/Ende)
+        // Time label (only if not too close to start/end)
         const distFromEdge=Math.min(tickX-PAD, (W-PAD)-tickX);
         if(distFromEdge>25){
           ctx.fillStyle='rgba(40,30,20,0.7)';
@@ -2154,7 +1866,7 @@ window.addEventListener('load', function() {
     document.getElementById('vglOverlay').style.display='none';
     selectedForVergleich.clear();
     const h=document.getElementById('vglHint');
-    if(h){h.textContent='Tippe bei 2 oder mehr Walks auf ⚖️ um sie zu vergleichen.';h.style.color='#9ca3af';h.style.fontWeight='normal';}
+    if(h){h.textContent='Tap ⚖️ on 2 or more walks to compare them.';h.style.color='#9ca3af';h.style.fontWeight='normal';}
     const b=document.getElementById('btnVergleich');
     if(b) b.style.display='none';
     renderArchive();
@@ -2171,7 +1883,7 @@ window.addEventListener('load', function() {
   }
 
   function renderArchive(){
-    // Walks frisch aus localStorage laden (verhindert Verlust nach Reload)
+    // Freshly load walks from localStorage (prevents loss after reload)
     try{
       const saved=localStorage.getItem('psychogeo_walks');
       if(saved){
@@ -2180,32 +1892,32 @@ window.addEventListener('load', function() {
       }
     }catch(e){}
     const list=document.getElementById('archiveList');
-    if(!state.walks.length){list.innerHTML='<div style="font-size:11px;color:#999;">Noch keine Walks gespeichert.</div>';return;}
+    if(!state.walks.length){list.innerHTML='<div style="font-size:11px;color:#999;">No walks saved yet.</div>';return;}
     list.innerHTML='';
     state.walks.forEach(w=>{
       const item=document.createElement('div');item.className='walk-item';
       const hasRef=w.reflection&&(w.reflection.frei||w.reflection.moment);
 
-      // Vergleich-Auswahl via ⚖️ Button in quickRow (siehe unten)
+      // Comparison selection via ⚖️ button in quickRow (see below)
 
-      // Walk-Header
+      // Walk Header
       const header=document.createElement('div');
       header.className='walk-header';
       header.setAttribute('data-id',w.id);
       header.innerHTML='<span class="color-dot" style="background:'+w.color+'"></span>'
         +'<span class="walk-label">'+escHtml(w.name)
         +(w.steps?'<br><span style="font-size:9px;color:#9ca3af;font-weight:normal;">👣 '
-          +(w.steps||0).toLocaleString('de-DE')+' Schritte'+(hasRef?' · ✍️':'')+' · '
-          +w.entries.length+' Eintr.</span>':'')
-        +'</span><span class="walk-badge">sichtbar</span>';
+          +(w.steps||0).toLocaleString('en-US')+' steps'+(hasRef?' · ✍️':'')+' · '
+          +w.entries.length+' ent.</span>':'')
+        +'</span><span class="walk-badge">visible</span>';
       header.addEventListener('click',()=>toggleWalk(w.id));
       item.appendChild(header);
 
-      // ── Immer sichtbare Schnell-Buttons ──
+      // ── Always Visible Quick Buttons ──
       const quickRow=document.createElement('div');
       quickRow.style.cssText='display:flex;gap:4px;padding:4px 8px 6px;align-items:center;';
-      [{cls:'wb-verlauf',label:'📋 Reflexion',col:'#2563eb'},
-       {cls:'wb-analyse',label:'📊 Auswerten',col:'#16a34a'}
+      [{cls:'wb-verlauf',label:'📋 Reflection',col:'#2563eb'},
+       {cls:'wb-analyse',label:'📊 Analyze',col:'#16a34a'}
       ].forEach(({cls,label,col})=>{
         const btn=document.createElement('button');
         btn.setAttribute('data-cls',cls);
@@ -2215,11 +1927,11 @@ window.addEventListener('load', function() {
         btn.textContent=label;
         quickRow.appendChild(btn);
       });
-      // Vergleich-Checkbox als Button
+      // Comparison checkbox as button
       const vglBtn=document.createElement('button');
       vglBtn.style.cssText='padding:7px 8px;font-size:11px;border-radius:8px;border:1.5px solid '+(selectedForVergleich.has(w.id)?'#7c3aed':'#d1d5db')+';background:'+(selectedForVergleich.has(w.id)?'#7c3aed':'#fff')+';color:'+(selectedForVergleich.has(w.id)?'#fff':'#9ca3af')+';font-weight:bold;cursor:pointer;white-space:nowrap;';
       vglBtn.textContent='⚖️';
-      vglBtn.title='Zum Vergleich hinzufügen';
+      vglBtn.title='Add to comparison';
       vglBtn.onclick=()=>{
         toggleVergleichSelect(w.id);
         const sel=selectedForVergleich.has(w.id);
@@ -2230,18 +1942,18 @@ window.addEventListener('load', function() {
       quickRow.appendChild(vglBtn);
       item.appendChild(quickRow);
 
-      // ── Aufklappbare Aktions-Buttons (nach Header-Klick) ──
+      // ── Expandable Action Buttons (after header click) ──
       const actions=document.createElement('div');
       actions.className='walk-actions';
       actions.setAttribute('data-id',w.id);
       const nameInput=document.createElement('input');
       nameInput.className='walk-name-input'; nameInput.type='text';
-      nameInput.placeholder='Name ändern...'; nameInput.value=escHtml(w.name);
+      nameInput.placeholder='Change name...'; nameInput.value=escHtml(w.name);
       actions.appendChild(nameInput);
       const btnRow=document.createElement('div');
       btnRow.className='walk-btn-row';
       [
-        {cls:'wb-save',  label:'✏️ Umbenennen'},
+        {cls:'wb-save',   label:'✏️ Rename'},
         {cls:'wb-export', label:'📦 Export'},
         {cls:'wb-delete', label:'🗑'},
       ].forEach(({cls,label})=>{
@@ -2252,7 +1964,7 @@ window.addEventListener('load', function() {
       actions.appendChild(btnRow);
       item.appendChild(actions);
 
-      // Button-Handler
+      // Button handlers
       quickRow.querySelector('[data-cls="wb-verlauf"]').onclick=()=>openVerlauf(w);
       quickRow.querySelector('[data-cls="wb-analyse"]').onclick=()=>openAnalyse(w);
       actions.querySelector('.wb-save').onclick=()=>{
@@ -2261,7 +1973,7 @@ window.addEventListener('load', function() {
       };
       actions.querySelector('.wb-export').onclick=()=>exportWalk(w);
       actions.querySelector('.wb-delete').onclick=()=>{
-        if(!confirm('Walk "'+w.name+'" wirklich löschen?'))return;
+        if(!confirm('Really delete walk "'+w.name+'"?'))return;
         if(state.activeLayers[w.id]){state.map.removeLayer(state.activeLayers[w.id]);delete state.activeLayers[w.id];}
         if(state.archiveInkLayers[w.id]){state.map.removeLayer(state.archiveInkLayers[w.id]);delete state.archiveInkLayers[w.id];}
         state.walks=state.walks.filter(x=>x.id!==w.id);saveWalks();renderArchive();
@@ -2269,49 +1981,49 @@ window.addEventListener('load', function() {
 
       list.appendChild(item);
     });
-    // Aktive Walks wieder als 'shown' markieren
+    // Mark active walks as 'shown' again
     Object.keys(state.activeLayers).forEach(id=>{
       const h=list.querySelector('.walk-header[data-id="'+id+'"]');
       const a=list.querySelector('.walk-actions[data-id="'+id+'"]');
       if(h)h.classList.add('shown');
       if(a)a.classList.add('open');
     });
-    // btnVergleich sichtbar wenn mind. 2 ausgewählt
+    // btnVergleich visible if at least 2 are selected
     const bvBtn=document.getElementById('btnVergleich');
     const bvHint=document.getElementById('vglHint');
     const bvN=selectedForVergleich.size;
     if(bvBtn){
       bvBtn.style.display=bvN>=2?'block':'none';
-      bvBtn.textContent='⚖️ Vergleich starten ('+bvN+')';
+      bvBtn.textContent='⚖️ Start comparison ('+bvN+')';
     }
     if(bvHint){
-      if(bvN===0) bvHint.textContent='Tippe bei 2 oder mehr Walks auf ⚖️ um sie zu vergleichen.';
-      else if(bvN===1) bvHint.textContent='Noch einen Walk mit ⚖️ auswählen…';
-      else{bvHint.textContent=bvN+' Walks ausgewählt — jetzt vergleichen!';bvHint.style.color='#7c3aed';bvHint.style.fontWeight='bold';}
+      if(bvN===0) bvHint.textContent='Tap ⚖️ on 2 or more walks to compare them.';
+      else if(bvN===1) bvHint.textContent='Select another walk with ⚖️…';
+      else{bvHint.textContent=bvN+' walks selected — compare now!';bvHint.style.color='#7c3aed';bvHint.style.fontWeight='bold';}
     }
   }
 
   async function exportWalk(walk){
-    if(typeof JSZip==='undefined'){alert('JSZip nicht geladen.');return;}
+    if(typeof JSZip==='undefined'){alert('JSZip not loaded.');return;}
     const overlay=document.getElementById('exportOverlay');const msg=document.getElementById('exportMsg');overlay.classList.add('open');
     try{
       const zip=new JSZip();const folder=zip.folder(walk.name.replace(/[^a-zA-Z0-9äöüÄÖÜß _-]/g,'_'));
-      msg.textContent='Exportiere Daten...';
+      msg.textContent='Exporting data...';
       const ref=walk.reflection||{};
-      folder.file('walk_daten.json',JSON.stringify({
+      folder.file('walk_data.json',JSON.stringify({
         name:walk.name,
-        schritte:walk.steps||0,
-        farbe:walk.color||null,
-        kartenansicht:currentTileUrl,
+        steps:walk.steps||0,
+        color:walk.color||null,
+        mapView:currentTileUrl,
         route:walk.route,
-        segmente:(walk.segments||[]).map(s=>({ll1:s.ll1,ll2:s.ll2,weight:s.weight,opacity:s.opacity})),
-        reflexion:{
-          frei:ref.frei||'',
+        segments:(walk.segments||[]).map(s=>({ll1:s.ll1,ll2:s.ll2,weight:s.weight,opacity:s.opacity})),
+        reflection:{
+          free:ref.frei||'',
           moodRetro:ref.moodRetro!==undefined?ref.moodRetro:null,
           moment:ref.moment||'',
-          orte:ref.orte||'',
-          nichtErfasst:ref.nicht||'',
-          ueberraschung:ref.ueber||''
+          places:ref.orte||'',
+          notRecorded:ref.nicht||'',
+          surprise:ref.ueber||''
         },
         entries:walk.entries.map(e=>({
           type:e.type,
@@ -2325,48 +2037,48 @@ window.addEventListener('load', function() {
           hasAudio:!!(e.audioUrl||e.audioBase64||(e.entryId&&audioBlobs[e.entryId])),
           hasPhoto:!!e.dataUrl
         }))
-      },null,2));
-      let gpx='<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Begleitinstrument PRO">\n  <trk>\n    <n>'+escHtml(walk.name)+'</n>\n    <trkseg>\n';
+        },null,2));
+      let gpx='<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Accompanying Instrument PRO">\n  <trk>\n    <n>'+escHtml(walk.name)+'</n>\n    <trkseg>\n';
       walk.route.forEach(p=>{gpx+='      <trkpt lat="'+p[0]+'" lon="'+p[1]+'"></trkpt>\n';});
       gpx+='    </trkseg>\n  </trk>\n</gpx>';
       folder.file('route.gpx',gpx);
 
-      // ── GeoJSON Export — für uMap / map.iterations.at ──
+      // ── GeoJSON Export — for uMap / map.iterations.at ──
       const geojson={
         type:'FeatureCollection',
         features:[
-          // Route als LineString
+          // Route as LineString
           {
             type:'Feature',
             properties:{name:walk.name,type:'route',color:walk.color||'#e6194b'},
             geometry:{type:'LineString',coordinates:walk.route.map(p=>[p[1],p[0]])}
           },
-          // Einträge als Points
+          // Entries as Points
           ...walk.entries
             .filter(e=>e.location)
             .map(e=>({
               type:'Feature',
               properties:(()=>{
-                const TN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Eindrücke',
-                  voice:'💬 Sprachnachricht',sound:'🎙 Umgebungssound',photo:'📸 Foto'};
+                const TN={mood:'🔋 Mood',thought:'💭 Thought',sense:'👁 Impressions',
+                  voice:'💬 Voice Message',sound:'🎙 Ambient Sound',photo:'📸 Photo'};
                 const TC={mood:'#ea580c',thought:'#1e3a6e',sense:'#2d5a2d',
                   voice:'#7c3aed',sound:'#7c3aed',photo:'#374151'};
-                // Beschreibung aufbauen
+                // Build description
                 let desc='';
-                if(e.moodValue!=null) desc='Stimmung: '+e.moodValue+'/5';
+                if(e.moodValue!=null) desc='Mood: '+e.moodValue+'/5';
                 if(e.text) desc+=(desc?'\n':'')+e.text;
-                if(e.audioDuration) desc+=(desc?'\n':'')+'Aufnahmedauer: '+e.audioDuration;
-                if(e.type==='photo'&&!e.text) desc='📸 Foto (keine Notiz)';
-                // Foto als Base64 direkt ins GeoJSON (uMap zeigt es per img-Tag)
+                if(e.audioDuration) desc+=(desc?'\n':'')+'Recording duration: '+e.audioDuration;
+                if(e.type==='photo'&&!e.text) desc='📸 Photo (no note)';
+                // Photo as Base64 directly into GeoJSON (uMap shows it via img tag)
                 const imgTag=e.dataUrl
                   ?'<img src="'+e.dataUrl+'" style="max-width:200px;border-radius:6px;margin-top:6px;"/>'
-                  :'';
-                // Audio: base64 als data-URL
+                  : '';
+                // Audio: base64 as data-URL
                 const aBase=e.audioBase64||(e.entryId&&audioBlobs[e.entryId]
-                  ?null:null); // Blob kann nicht serialisiert werden
+                  ?null:null); // Blob cannot be serialized
                 const audioTag=e.audioBase64
                   ?'<audio controls src="'+e.audioBase64+'" style="width:100%;margin-top:6px;"></audio>'
-                  :'';
+                  : '';
                 return {
                   name:(TN[e.type]||e.type)+(e.timestamp?' ('+e.timestamp+')':''),
                   description:desc+(imgTag?'\n\n'+imgTag:'')+(audioTag?'\n\n'+audioTag:''),
@@ -2384,11 +2096,11 @@ window.addEventListener('load', function() {
         ]
       };
       folder.file('route_umap.geojson',JSON.stringify(geojson,null,2));
-      let pc=0;walk.entries.forEach(e=>{if(e.type==='photo'&&e.dataUrl){pc++;folder.file('foto_'+pc+'.jpg',e.dataUrl.split(',')[1],{base64:true});}});
+      let pc=0;walk.entries.forEach(e=>{if(e.type==='photo'&&e.dataUrl){pc++;folder.file('photo_'+pc+'.jpg',e.dataUrl.split(',')[1],{base64:true});}});
       let ac=0;walk.entries.forEach(e=>{
         if(e.type==='voice'||e.type==='sound'){
           ac++;
-          const fname=(e.type==='voice'?'sprache':'sound')+'_'+ac;
+          const fname=(e.type==='voice'?'voice':'sound')+'_'+ac;
           if(e.entryId&&audioBlobs[e.entryId]){
             folder.file(fname+'.mp4',audioBlobs[e.entryId]);
           } else if(e.audioBase64){
@@ -2398,45 +2110,45 @@ window.addEventListener('load', function() {
           }
         }
       });
-      // ── Reflexion.txt ──
+      // ── Reflection.txt ──
       if(ref.frei||ref.moment){
-        folder.file('reflexion.txt',
-          'REFLEXION: '+walk.name+'\n'+'='.repeat(40)+'\n'
-          +'\nFreie Reflexion:\n'+(ref.frei||'—')
-          +'\n\nStimmung retrospektiv: '+(ref.moodRetro!==undefined?ref.moodRetro+'/5':'—')
-          +'\n\nStärkster Moment:\n'+(ref.moment||'—')
-          +'\n\nOrte & Einflüsse:\n'+(ref.orte||'—')
-          +'\n\nNicht Erfasstes:\n'+(ref.nicht||'—')
-          +'\n\nÜberraschung:\n'+(ref.ueber||'—')+'\n'
+        folder.file('reflection.txt',
+          'REFLECTION: '+walk.name+'\n'+'='.repeat(40)+'\n'
+          +'\nFree Reflection:\n'+(ref.frei||'—')
+          +'\n\nMood Retrospective: '+(ref.moodRetro!==undefined?ref.moodRetro+'/5':'—')
+          +'\n\nStrongest Moment:\n'+(ref.moment||'—')
+          +'\n\nPlaces & Influences:\n'+(ref.orte||'—')
+          +'\n\nUnrecorded Elements:\n'+(ref.nicht||'—')
+          +'\n\nSurprise:\n'+(ref.ueber||'—')+'\n'
         );
       }
-      // ── Eintraege.txt — alle Texteingaben exportieren ──
+      // ── Entries.txt — Export all text entries ──
       const textEntries=walk.entries.filter(e=>e.text||(e.type==='mood'&&e.moodValue!=null)||e.type==='photo');
       if(textEntries.length>0){
-        let txt='EINTRÄGE: '+walk.name+'\n'+'='.repeat(40)+'\n';
-        const typeNames={mood:'Stimmung',thought:'Gedanke',sense:'Eindrücke',voice:'Sprachnachricht',sound:'Umgebungssound',photo:'Foto'};
+        let txt='ENTRIES: '+walk.name+'\n'+'='.repeat(40)+'\n';
+        const typeNames={mood:'Mood',thought:'Thought',sense:'Impressions',voice:'Voice Message',sound:'Ambient Sound',photo:'Photo'};
         textEntries.forEach((e,i)=>{
           txt+='\n['+(i+1)+'] '+(typeNames[e.type]||e.type).toUpperCase();
           if(e.timestamp) txt+=' | '+e.timestamp;
           if(e.location) txt+=' | GPS: '+e.location.lat.toFixed(6)+', '+e.location.lng.toFixed(6);
           txt+='\n';
-          if(e.type==='mood'&&e.moodValue!=null) txt+='Stimmung: '+e.moodValue+'/5\n';
+          if(e.type==='mood'&&e.moodValue!=null) txt+='Mood: '+e.moodValue+'/5\n';
           if(e.text) txt+=e.text+'\n';
-          if(e.audioDuration) txt+='Audio-Dauer: '+e.audioDuration+'\n';
-          if(e.type==='photo') txt+='📸 Foto'+(e.text?' — '+e.text:'')+'\n';
+          if(e.audioDuration) txt+='Audio Duration: '+e.audioDuration+'\n';
+          if(e.type==='photo') txt+='📸 Photo'+(e.text?' — '+e.text:'')+'\n';
         });
-        folder.file('eintraege.txt',txt);
+        folder.file('entries.txt',txt);
       }
-      msg.textContent='Erstelle Kartenbild...';
+      msg.textContent='Creating map snapshot...';
       await takeMapSnapshot(walk,folder);
-      msg.textContent='Erstelle Reflexionskarte...';
+      msg.textContent='Creating reflection map...';
       await takeReflexionSnapshot(walk,folder);
-      msg.textContent='Erstelle Auswertung...';
+      msg.textContent='Creating evaluation...';
       await takeAuswertungSnapshot(walk,folder);
-      msg.textContent='Erstelle ZIP...';
-      const blob=await zip.generateAsync({type:'blob'},m=>{msg.textContent='Packe... '+Math.round(m.percent)+'%';});
+      msg.textContent='Creating ZIP...';
+      const blob=await zip.generateAsync({type:'blob'},m=>{msg.textContent='Packing... '+Math.round(m.percent)+'%';});
       const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=walk.name.replace(/[^a-zA-Z0-9äöüÄÖÜß _-]/g,'_')+'_export.zip';a.click();setTimeout(()=>URL.revokeObjectURL(url),5000);
-    }catch(err){alert('Export fehlgeschlagen: '+err.message);}finally{overlay.classList.remove('open');}
+    }catch(err){alert('Export failed: '+err.message);}finally{overlay.classList.remove('open');}
   }
 
   let umapCurrentWalk=null;
@@ -2452,15 +2164,15 @@ window.addEventListener('load', function() {
     if(!umapCurrentWalk) return;
     const walk=umapCurrentWalk;
 
-    // Farben und Labels exakt wie in der App
+    // Colors and labels exactly as in the app
     const TC={mood:'#ea580c',thought:'#2563eb',sense:'#16a34a',
               voice:'#7c3aed',sound:'#7c3aed',photo:'#374151'};
-    const TN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Eindrücke',
-              voice:'💬 Sprachnachricht',sound:'🎙 Umgebungssound',photo:'📸 Foto'};
+    const TN={mood:'🔋 Mood',thought:'💭 Thought',sense:'👁 Impressions',
+              voice:'💬 Voice Message',sound:'🎙 Ambient Sound',photo:'📸 Photo'};
 
     const features=[];
 
-    // ── Ebene 1: Route als Linie ──
+    // ── Layer 1: Route as Line ──
     features.push({
       type:'Feature',
       properties:{
@@ -2473,12 +2185,12 @@ window.addEventListener('load', function() {
       geometry:{type:'LineString',coordinates:walk.route.map(p=>[p[1],p[0]])}
     });
 
-    // ── Ebenen 2–7: Einträge nach Typ, exakt wie in der App ──
+    // ── Layers 2–7: Entries by type, exactly as in the app ──
     walk.entries.filter(e=>e.location).forEach(e=>{
       const col=TC[e.type]||'#555';
       const typName=TN[e.type]||e.type;
 
-      // Popup-Inhalt: alles was erfasst wurde, direkt sichtbar ohne Vorlage
+      // Popup Content: everything recorded, directly visible without template
       let popupLines=[];
       popupLines.push('<b style="color:'+col+';">'+typName+'</b>');
       if(e.timestamp) popupLines.push('<small>'+e.timestamp+'</small>');
@@ -2487,25 +2199,25 @@ window.addEventListener('load', function() {
       if(e.text)
         popupLines.push('<p style="margin:6px 0;font-size:13px;color:#333;">'+e.text+'</p>');
       else if(e.type==='photo')
-        popupLines.push('<p style="margin:6px 0;font-size:11px;color:#aaa;">(keine Notiz)</p>');
+        popupLines.push('<p style="margin:6px 0;font-size:11px;color:#aaa;">(no note)</p>');
       if(e.dataUrl)
         popupLines.push('<img src="'+e.dataUrl+'" style="width:100%;max-width:280px;border-radius:8px;margin-top:6px;"/>');
       if(e.audioBase64)
         popupLines.push('<audio controls src="'+e.audioBase64+'" style="width:100%;margin-top:6px;"></audio>');
       if(e.audioDuration&&!e.audioBase64)
-        popupLines.push('<small>🎙 Aufnahme ('+e.audioDuration+') — Audio nach Reload nicht mehr verfügbar</small>');
+        popupLines.push('<small>🎙 Recording ('+e.audioDuration+') — Audio no longer available after reload</small>');
 
-      // Marker-Label: kurz und klar
+      // Marker Label: short and clear
       let markerName=typName;
       if(e.moodValue!=null) markerName='🔋 '+e.moodValue+'/5';
       else if(e.text) markerName=typName+': '+e.text.substring(0,40)+(e.text.length>40?'…':'');
-      else if(e.dataUrl) markerName='📸 Foto';
+      else if(e.dataUrl) markerName='📸 Photo';
       else if(e.audioBase64||e.audioDuration) markerName=typName+' (Audio)';
 
       features.push({
         type:'Feature',
         properties:{
-          layer:typName,           // uMap gruppiert nach 'layer'
+          layer:typName,           // uMap groups by 'layer'
           name:markerName,
           description:popupLines.join('<br>'),
           'marker-color':col,
@@ -2534,7 +2246,7 @@ window.addEventListener('load', function() {
 
   async function takeMapSnapshot(walk,folder){
     try{
-      const W=1200,H=900,P=80;const route=walk.route||[];if(route.length<2){folder.file('karte.png','');return;}
+      const W=1200,H=900,P=80;const route=walk.route||[];if(route.length<2){folder.file('map.png','');return;}
       let minLat=Infinity,maxLat=-Infinity,minLng=Infinity,maxLng=-Infinity;
       route.forEach(([lat,lng])=>{minLat=Math.min(minLat,lat);maxLat=Math.max(maxLat,lat);minLng=Math.min(minLng,lng);maxLng=Math.max(maxLng,lng);});
       const lS=maxLat-minLat||0.001,lnS=maxLng-minLng||0.001;
@@ -2542,25 +2254,25 @@ window.addEventListener('load', function() {
       function toXY(lat,lng){return{x:P+(lng-minLng)*sc,y:H-P-(lat-minLat)*sc};}
       const canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;
       const ctx=canvas.getContext('2d');
-      // Hintergrund: warmes Papier-Weiss
+      // Background: warm paper white
       ctx.fillStyle='#f8f5f0';ctx.fillRect(0,0,W,H);
-      // Feines Raster
+      // Fine grid
       ctx.strokeStyle='rgba(0,0,0,0.05)';ctx.lineWidth=1;
       for(let x=0;x<W;x+=60){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
       for(let y=0;y<H;y+=60){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
-      // Rahmen
+      // Border
       ctx.strokeStyle='rgba(0,0,0,0.08)';ctx.lineWidth=2;ctx.strokeRect(1,1,W-2,H-2);
       const segs=walk.segments||[];
       if(segs.length>0){
-        // Skaliere weight und opacity für bessere Sichtbarkeit im Export
-        // Minimum-Werte anheben damit auch schnelle Abschnitte sichtbar sind
+        // Scale weight and opacity for better visibility in export
+        // Raise minimum values so that fast sections remain visible
         const maxW=Math.max(...segs.map(s=>s.weight),1);
-        const minOpacity=0.45; // immer gut sichtbar
+        const minOpacity=0.45; // always well visible
         segs.forEach(s=>{
           const p1=toXY(s.ll1[0],s.ll1[1]),p2=toXY(s.ll2[0],s.ll2[1]);
-          // Normalisiertes Gewicht: mind. 3px, max. 18px
+          // Normalized weight: min 3px, max 18px
           const w=Math.max(3, Math.min(18, s.weight * (8/Math.max(maxW,1)) + 3));
-          // Opazität: mind. minOpacity
+          // Opacity: min minOpacity
           const op=Math.max(minOpacity, s.opacity);
           drawInkStroke(ctx,p1.x,p1.y,p2.x,p2.y,w,op);
         });
@@ -2568,7 +2280,7 @@ window.addEventListener('load', function() {
         ctx.beginPath();
         route.forEach(([lat,lng],i)=>{const{x,y}=toXY(lat,lng);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
         ctx.strokeStyle='rgba(20,16,12,0.82)';ctx.lineWidth=6;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();
-        // Zweite Schicht für Tuscheeffekt
+        // Second layer for ink effect
         ctx.beginPath();
         route.forEach(([lat,lng],i)=>{const{x,y}=toXY(lat,lng);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
         ctx.strokeStyle='rgba(20,16,12,0.35)';ctx.lineWidth=11;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();
@@ -2579,10 +2291,10 @@ window.addEventListener('load', function() {
         const col=e.type==='mood'?(e.markerColor||'#f97316'):(dc[e.type]||walk.color);
         const r=(e.type==='mood'||e.type==='thought'||e.type==='sense')?12:9;
         const{x,y}=toXY(e.location.lat,e.location.lng);
-        // Schatten
+        // Shadow
         ctx.save();ctx.shadowColor='rgba(0,0,0,0.2)';ctx.shadowBlur=6;ctx.shadowOffsetY=2;
         ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();ctx.restore();
-        // Weisser Rand
+        // White border
         ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.strokeStyle='#fff';ctx.lineWidth=2.5;ctx.stroke();
         // Text
         ctx.fillStyle='#fff';ctx.textAlign='center';ctx.font='bold '+(r>10?'10':'8')+'px sans-serif';
@@ -2593,22 +2305,22 @@ window.addEventListener('load', function() {
         else if(e.type==='photo') ctx.fillText('📸',x,y+4);
       });
       const sp=toXY(route[0][0],route[0][1]),ep=toXY(route[route.length-1][0],route[route.length-1][1]);
-      [{pt:sp,col:'#16a34a',label:'Start'},{pt:ep,col:'#dc2626',label:'Ende'}].forEach(({pt,col,label})=>{
+      [{pt:sp,col:'#16a34a',label:'Start'},{pt:ep,col:'#dc2626',label:'End'}].forEach(({pt,col,label})=>{
         ctx.save();ctx.shadowColor='rgba(0,0,0,0.25)';ctx.shadowBlur=8;ctx.shadowOffsetY=3;
         ctx.beginPath();ctx.arc(pt.x,pt.y,11,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();ctx.restore();
         ctx.beginPath();ctx.arc(pt.x,pt.y,11,0,Math.PI*2);ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.stroke();
         ctx.fillStyle='#fff';ctx.font='bold 9px sans-serif';ctx.textAlign='center';ctx.fillText(label[0],pt.x,pt.y+4);
       });
-      const b64=canvas.toDataURL('image/png').split(',')[1];if(b64)folder.file('karte.png',b64,{base64:true});
+      const b64=canvas.toDataURL('image/png').split(',')[1];if(b64)folder.file('map.png',b64,{base64:true});
     }catch(err){console.error('Snapshot:',err);}
   }
 
-  // ── REFLEXIONSKARTE SNAPSHOT ──
+  // ── REFLECTION MAP SNAPSHOT ──
   async function takeReflexionSnapshot(walk, folder){
     try{
       const route=walk.route||[];
       const entries=walk.entries.filter(e=>e.location);
-      if(route.length<2){folder.file('reflexionskarte.png','');return;}
+      if(route.length<2){folder.file('reflection_map.png','');return;}
 
       const W=1200,H=900,P=60;
       let minLat=Infinity,maxLat=-Infinity,minLng=Infinity,maxLng=-Infinity;
@@ -2621,20 +2333,20 @@ window.addEventListener('load', function() {
       const canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;
       const ctx=canvas.getContext('2d');
 
-      // Hintergrund dunkel wie Reflexionsmodal
+      // Background dark like reflection modal
       ctx.fillStyle='#1a1a1a';ctx.fillRect(0,0,W,H);
-      // Feines Raster
+      // Fine grid
       ctx.strokeStyle='rgba(255,255,255,0.04)';ctx.lineWidth=1;
       for(let x=0;x<W;x+=60){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
       for(let y=0;y<H;y+=60){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
 
-      // Titel
+      // Title
       ctx.fillStyle='#ffffff';ctx.font='bold 22px sans-serif';ctx.textAlign='left';
-      ctx.fillText('Reflexionskarte: '+walk.name,P,36);
+      ctx.fillText('Reflection Map: '+walk.name,P,36);
       ctx.fillStyle='rgba(255,255,255,0.4)';ctx.font='14px sans-serif';
-      ctx.fillText(entries.length+' Einträge · '+route.length+' GPS-Punkte',P,58);
+      ctx.fillText(entries.length+' entries · '+route.length+' GPS points',P,58);
 
-      // Tuschelinie
+      // Ink line
       const segs=walk.segments||[];
       if(segs.length>0){
         const maxW=Math.max(...segs.map(s=>s.weight),1);
@@ -2650,16 +2362,16 @@ window.addEventListener('load', function() {
         ctx.strokeStyle='rgba(255,255,255,0.8)';ctx.lineWidth=5;ctx.lineCap='round';ctx.stroke();
       }
 
-      // Start/Ende
+      // Start/End
       const sp=toXY(route[0][0],route[0][1]),ep=toXY(route[route.length-1][0],route[route.length-1][1]);
-      [{pt:sp,col:'#22c55e',label:'Start'},{pt:ep,col:'#ef4444',label:'Ende'}].forEach(({pt,col,label})=>{
+      [{pt:sp,col:'#22c55e',label:'Start'},{pt:ep,col:'#ef4444',label:'End'}].forEach(({pt,col,label})=>{
         ctx.save();ctx.shadowColor='rgba(0,0,0,0.5)';ctx.shadowBlur=10;
         ctx.beginPath();ctx.arc(pt.x,pt.y,12,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();ctx.restore();
         ctx.beginPath();ctx.arc(pt.x,pt.y,12,0,Math.PI*2);ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.stroke();
         ctx.fillStyle='#fff';ctx.font='bold 9px sans-serif';ctx.textAlign='center';ctx.fillText(label[0],pt.x,pt.y+4);
       });
 
-      // Eintrags-Marker
+      // Entry Markers
       const TC={mood:'#ea580c',thought:'#1e3a6e',sense:'#16a34a',voice:'#7c3aed',sound:'#7c3aed',photo:'#374151'};
       const TI={mood:'●',thought:'◆',sense:'▲',voice:'▶',sound:'◉',photo:'■'};
       entries.forEach(e=>{
@@ -2674,8 +2386,8 @@ window.addEventListener('load', function() {
         ctx.fillText(e.type==='mood'&&e.moodValue!=null?e.moodValue:(TI[e.type]||'●'),x,y+4);
       });
 
-      // Legende
-      const types=[['mood','#ea580c','Stimmung'],['thought','#1e3a6e','Gedanke'],['sense','#16a34a','Eindrücke'],['voice','#7c3aed','Sprache'],['sound','#7c3aed','Sound'],['photo','#374151','Foto']];
+      // Legend
+      const types=[['mood','#ea580c','Mood'],['thought','#1e3a6e','Thought'],['sense','#16a34a','Impressions'],['voice','#7c3aed','Voice'],['sound','#7c3aed','Sound'],['photo','#374151','Photo']];
       let lx=P,ly=H-30;
       ctx.font='11px sans-serif';
       types.forEach(([type,col,label])=>{
@@ -2688,42 +2400,42 @@ window.addEventListener('load', function() {
       });
 
       const b64=canvas.toDataURL('image/png').split(',')[1];
-      if(b64)folder.file('reflexionskarte.png',b64,{base64:true});
-    }catch(err){console.error('ReflexionSnapshot:',err);}
+      if(b64)folder.file('reflection_map.png',b64,{base64:true});
+    }catch(err){console.error('ReflectionSnapshot:',err);}
   }
 
-  // ── AUSWERTUNGS-SCREENSHOT ──
+  // ── EVALUATION SCREENSHOT ──
   async function takeAuswertungSnapshot(walk, folder){
     try{
       const ref=walk.reflection||{};
       const moodEntries=walk.entries.filter(e=>e.type==='mood'&&e.moodValue!=null);
-      if(moodEntries.length===0&&!ref.frei&&!ref.moment){folder.file('auswertung.png','');return;}
+      if(moodEntries.length===0&&!ref.frei&&!ref.moment){folder.file('evaluation.png','');return;}
 
       const W=1000,H=700,PAD=50;
       const canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;
       const ctx=canvas.getContext('2d');
 
-      // Hintergrund
+      // Background
       ctx.fillStyle='#f8f8f8';ctx.fillRect(0,0,W,H);
       ctx.strokeStyle='rgba(0,0,0,0.06)';ctx.lineWidth=1;
       for(let x=0;x<W;x+=50){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
       for(let y=0;y<H;y+=50){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
 
-      // Titel
+      // Title
       ctx.fillStyle='#111';ctx.font='bold 20px sans-serif';ctx.textAlign='left';
-      ctx.fillText('Auswertung: '+walk.name,PAD,40);
+      ctx.fillText('Evaluation: '+walk.name,PAD,40);
 
-      // Stimmungswerte
+      // Mood values
       const aufgezWerte=moodEntries.map(e=>e.moodValue);
       const avgAufgez=aufgezWerte.length?Math.round(aufgezWerte.reduce((a,b)=>a+b,0)/aufgezWerte.length):null;
       const moodRetro=ref.moodRetro!=null?ref.moodRetro:null;
       const diskrepanz=(avgAufgez!=null&&moodRetro!=null)?(moodRetro-avgAufgez):null;
 
-      // Stat-Boxen
+      // Stat Boxes
       const stats=[
-        {label:'Ø Stimmung',val:avgAufgez!=null?avgAufgez+'':'—',col:'#1D9E75'},
-        {label:'Erinnert',val:moodRetro!=null?moodRetro+'':'—',col:'#534AB7'},
-        {label:'Abweichung',val:diskrepanz!=null?(diskrepanz>=0?'+':'')+diskrepanz:'—',col:diskrepanz>0?'#534AB7':diskrepanz<0?'#dc2626':'#374151'}
+        {label:'Ø Mood',val:avgAufgez!=null?avgAufgez+'':'—',col:'#1D9E75'},
+        {label:'Remembered',val:moodRetro!=null?moodRetro+'':'—',col:'#534AB7'},
+        {label:'Deviation',val:diskrepanz!=null?(diskrepanz>=0?'+':'')+diskrepanz:'—',col:diskrepanz>0?'#534AB7':diskrepanz<0?'#dc2626':'#374151'}
       ];
       stats.forEach((s,i)=>{
         const bx=PAD+i*220,by=60,bw=200,bh=70;
@@ -2739,19 +2451,19 @@ window.addEventListener('load', function() {
         const labels=moodEntries.map((e,i)=>e.timestamp?e.timestamp.substring(0,5):(i+1)+'.');
         const erinData=aufgezWerte.map(v=>moodRetro!=null?Math.min(5,Math.max(1,Math.round(v*0.4+moodRetro*0.6))):v);
 
-        // Schicht 1 — Aufgezeichnet
+        // Layer 1 — Recorded
         ctx.fillStyle='#0F6E56';ctx.font='bold 11px sans-serif';ctx.textAlign='left';
-        ctx.fillText('SCHICHT 1 — AUFGEZEICHNETE STIMMUNG',chartX,chartY-8);
+        ctx.fillText('LAYER 1 — RECORDED MOOD',chartX,chartY-8);
         drawMiniChart(ctx,chartX,chartY,chartW,chartH,aufgezWerte,labels,'#1D9E75','rgba(29,158,117,0.1)');
 
-        // Schicht 2 — Erinnert
+        // Layer 2 — Remembered
         const chartY2=chartY+chartH+40;
         ctx.fillStyle='#534AB7';ctx.font='bold 11px sans-serif';
-        ctx.fillText('SCHICHT 2 — SELBSTREFLEXION',chartX,chartY2-8);
+        ctx.fillText('LAYER 2 — SELF-REFLECTION',chartX,chartY2-8);
         drawMiniChart(ctx,chartX,chartY2,chartW,chartH,erinData,labels,'#534AB7','rgba(83,74,183,0.1)');
       }
 
-      // Reflexionstext
+      // Reflection text
       if(ref.frei){
         const ty=aufgezWerte.length>=2?540:200;
         ctx.fillStyle='#374151';ctx.font='italic 13px sans-serif';ctx.textAlign='left';
@@ -2768,8 +2480,8 @@ window.addEventListener('load', function() {
       }
 
       const b64=canvas.toDataURL('image/png').split(',')[1];
-      if(b64)folder.file('auswertung.png',b64,{base64:true});
-    }catch(err){console.error('AuswertungSnapshot:',err);}
+      if(b64)folder.file('evaluation.png',b64,{base64:true});
+    }catch(err){console.error('EvaluationSnapshot:',err);}
   }
 
   function drawMiniChart(ctx,x,y,w,h,data,labels,color,fill){
@@ -2813,41 +2525,41 @@ window.addEventListener('load', function() {
     if(!obSteps) return;
     obSteps.forEach((s,i)=>s.style.display=i===n?'flex':'none');
     obDots.forEach((d,i)=>d.style.background=i===n?'#111':'#ddd');
-    document.getElementById('ob-next').textContent=n===obTotal-1?'Starten ✓':'Weiter →';
+    document.getElementById('ob-next').textContent=n===obTotal-1?'Start ✓':'Next →';
     document.getElementById('ob-back').style.display=n>0?'block':'none';
     document.getElementById('ob-skip').style.display=n===obTotal-1?'none':'block';
     obCurrentStep=n;
   }
 
   function initOnboarding(){
-    // Gerät erkennen
+    // Detect device
     const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;
     const isAndroid=/Android/.test(navigator.userAgent);
 
-    // Device-spezifischer Hinweis Schritt 1
+    // Device-specific hint step 1
     const hint=document.getElementById('ob-device-hint');
     if(isIOS){
       hint.style.cssText='background:#fef3c7;border-radius:10px;padding:12px 14px;font-size:11px;color:#92400e;line-height:1.7;border-left:4px solid #f59e0b;';
-      hint.innerHTML='<b>📱 iPhone erkannt:</b><br>Verwende <b>Safari</b> als Browser. Erlaube unter Einstellungen → Safari → Standort den Zugriff.';
+      hint.innerHTML='<b>📱 iPhone detected:</b><br>Use <b>Safari</b> as your browser. Allow access under Settings → Safari → Location.';
     } else if(isAndroid){
       hint.style.cssText='background:#ecfdf5;border-radius:10px;padding:12px 14px;font-size:11px;color:#065f46;line-height:1.7;border-left:4px solid #10b981;';
-      hint.innerHTML='<b>🤖 Android erkannt:</b><br>Verwende <b>Chrome</b> als Browser. Wähle bei der Standort-Abfrage <b>"Immer erlauben"</b>.';
+      hint.innerHTML='<b>🤖 Android detected:</b><br>Use <b>Chrome</b> as your browser. Select <b>"Always allow"</b> when prompted for location access.';
     } else {
       hint.style.cssText='background:#f0f4ff;border-radius:10px;padding:12px 14px;font-size:11px;color:#1e3a6e;line-height:1.7;';
-      hint.innerHTML='<b>💡 Wichtig:</b><br>Auf dem Handy: iPhone → Safari, Android → Chrome verwenden.';
+      hint.innerHTML='<b>💡 Important:</b><br>On mobile: use Safari for iPhone, Chrome for Android.';
     }
 
-    // Display-Hinweis Schritt 4
+    // Display hint step 4
     const dHint=document.getElementById('ob-display-hint');
     if(isIOS){
-      dHint.innerHTML='<b>iPhone:</b> Einstellungen → Anzeige & Helligkeit → Automatische Sperre → <b>"Nie"</b><br>Nach dem Walk bitte zurücksetzen.';
+      dHint.innerHTML='<b>iPhone:</b> Settings → Display & Brightness → Auto-Lock → <b>"Never"</b><br>Please reset this after your walk.';
     } else if(isAndroid){
-      dHint.innerHTML='<b>Android:</b> Einstellungen → Anzeige → Ruhezustand/Sleep → <b>längste Zeit</b> wählen oder "Nie".<br>Energiesparmodus für die Testdauer deaktivieren.';
+      dHint.innerHTML='<b>Android:</b> Settings → Display → Screen timeout/Sleep → choose the <b>longest time</b> or "Never".<br>Disable power saving mode for the duration of the test.';
     } else {
-      dHint.innerHTML='Stelle die automatische Sperre auf die längste verfügbare Zeit.';
+      dHint.innerHTML='Set auto-lock to the longest available time.';
     }
 
-    // Onboarding anzeigen — Version-Key damit neue Version immer erscheint
+    // Show onboarding — version key ensures new version always appears
     const OB_VERSION='v10';
     if(localStorage.getItem('ob_done')!==OB_VERSION){
       document.getElementById('onboardingModal').style.display='flex';
@@ -2862,7 +2574,7 @@ window.addEventListener('load', function() {
     function goTo(n){
       steps.forEach((s,i)=>s.style.display=i===n?'flex':'none');
       dots.forEach((d,i)=>d.style.background=i===n?'#111':'#ddd');
-      document.getElementById('ob-next').textContent=n===total-1?'Starten ✓':'Weiter →';
+      document.getElementById('ob-next').textContent=n===total-1?'Start ✓':'Next →';
       document.getElementById('ob-back').style.display=n>0?'block':'none';
       document.getElementById('ob-skip').style.display=n===total-1?'none':'block';
       currentStep=n;
@@ -2892,7 +2604,7 @@ window.addEventListener('load', function() {
     goToStep(0);
   };
 
-  // Fix Drawer-Höhe auf Mobile — Android UND iPhone Safari
+  // Fix drawer height on mobile — Android AND iPhone Safari
   function fixDrawerHeight(){
     const d=document.getElementById('drawer');
     if(!d) return;
@@ -2907,10 +2619,10 @@ window.addEventListener('load', function() {
   }
 
   renderArchive();
-  checkStorageUsage(); // Speicher beim Start prüfen
+  checkStorageUsage(); // Check storage on startup
 
-  // ── Wiederherstellung eines unterbrochenen Walks ──
-  // Läuft nach renderArchive damit saveWalks/openPanel verfügbar sind
+  // ── Recovery of an interrupted walk ──
+  // Runs after renderArchive so that saveWalks/openPanel are available
   (function checkRecovery(){
     const saved = localStorage.getItem('psychogeo_current_walk');
     if(!saved) return;
@@ -2921,23 +2633,23 @@ window.addEventListener('load', function() {
       localStorage.removeItem('psychogeo_current_walk');
       return;
     }
-    // Banner anzeigen
+    // Show banner
     const banner = document.createElement('div');
     banner.id = 'recoveryBanner';
     banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;'
       +'background:#dc2626;color:#fff;padding:14px 16px;font-size:12px;'
       +'display:flex;align-items:center;justify-content:space-between;gap:10px;'
       +'box-shadow:0 4px 20px rgba(0,0,0,0.3);flex-wrap:wrap;';
-    banner.innerHTML = '<div><b>⚠️ Unterbrochener Walk gefunden!</b><br>'
+    banner.innerHTML = '<div><b>⚠️ Interrupted walk found!</b><br>'
       +'<span style="font-size:11px;opacity:0.9;">"'+recovered.name
-      +'" — '+recovered.route.length+' GPS-Punkte, '+recovered.entries.length+' Einträge</span></div>'
+      +'" — '+recovered.route.length+' GPS points, '+recovered.entries.length+' entries</span></div>'
       +'<div style="display:flex;gap:8px;flex-shrink:0;">'
       +'<button id="recoverBtn" style="padding:8px 14px;border-radius:8px;border:none;'
       +'background:#fff;color:#dc2626;font-size:11px;font-weight:bold;cursor:pointer;'
-      +'-webkit-tap-highlight-color:transparent;">💾 Wiederherstellen</button>'
+      +'-webkit-tap-highlight-color:transparent;">💾 Recover</button>'
       +'<button id="discardBtn" style="padding:8px 14px;border-radius:8px;border:none;'
       +'background:rgba(255,255,255,0.2);color:#fff;font-size:11px;font-weight:bold;cursor:pointer;'
-      +'-webkit-tap-highlight-color:transparent;">✕ Verwerfen</button>'
+      +'-webkit-tap-highlight-color:transparent;">✕ Discard</button>'
       +'</div>';
     document.body.appendChild(banner);
 
@@ -2946,23 +2658,23 @@ window.addEventListener('load', function() {
         if(!recovered.reflection) recovered.reflection={frei:'',moodRetro:3,moment:'',orte:'',nicht:'',ueber:''};
         if(!recovered.segments) recovered.segments=[];
         if(!recovered.entries) recovered.entries=[];
-        recovered.name = recovered.name + ' (wiederhergestellt)';
+        recovered.name = recovered.name + ' (recovered)';
         state.walks.push(recovered);
         saveWalks();
         localStorage.removeItem('psychogeo_current_walk');
         banner.remove();
         renderArchive();
         openPanel('archiv');
-        // Grüner Bestätigungs-Banner
+        // Green confirmation banner
         const ok=document.createElement('div');
         ok.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;background:#16a34a;'
           +'color:#fff;padding:12px 16px;font-size:12px;font-weight:bold;text-align:center;'
           +'box-shadow:0 4px 20px rgba(0,0,0,0.3);';
-        ok.textContent='✅ Walk wiederhergestellt und im Archiv gespeichert!';
+        ok.textContent='✅ Walk recovered and saved to archive!';
         document.body.appendChild(ok);
         setTimeout(()=>ok.remove(), 4000);
       } catch(err){
-        alert('Fehler beim Wiederherstellen: '+err.message);
+        alert('Error during recovery: '+err.message);
       }
     });
 
@@ -2973,340 +2685,73 @@ window.addEventListener('load', function() {
   })();
 });
 </script>
-<!-- REFLEXIONS-MODAL -->
 <div id="verlaufModal">
-  <div id="verlaufBox" style="width:100%;height:100%;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;background:#111;">
-    <div class="verlauf-header" style="position:sticky;top:0;z-index:20;">
-      <div class="verlauf-title" id="verlaufTitle">Reflexion</div>
-      <button class="verlauf-close" id="verlaufClose">✕</button>
-    </div>
 
-    <!-- Karte: feste Höhe 55vh -->
-    <div id="verlaufMapDiv" style="width:100%;height:55vh;min-height:260px;flex-shrink:0;overflow:hidden;touch-action:none;z-index:1;"></div>
-
-    <!-- Eintrag-Popup nach Marker-Tap -->
-    <div id="verlaufEntryCard" style="background:#1e1e1e;border-top:2px solid #2563eb;padding:10px 14px;font-size:11px;color:#ddd;display:none;flex-shrink:0;"></div>
-    <div id="verlaufInfo" style="font-size:10px;color:#6b7280;padding:6px 14px 2px;flex-shrink:0;"></div>
-
-    <!-- Scroll-Hinweis -->
-    <div id="verlaufScrollHint" style="display:flex;flex-direction:column;align-items:center;padding:10px 14px 6px;flex-shrink:0;cursor:pointer;" onclick="document.getElementById('reflexionQPanel').scrollIntoView({behavior:'smooth'});">
-      <div style="font-size:10px;color:#9ca3af;margin-bottom:4px;">Nach unten scrollen für Reflexionsfragen</div>
-      <div style="font-size:20px;animation:bounceDown 1.5s infinite;">↓</div>
-    </div>
-
-    <!-- Trennlinie -->
-    <div style="height:1px;background:rgba(255,255,255,0.08);flex-shrink:0;"></div>
-
-    <!-- Reflexionsfragen direkt darunter -->
-    <div id="verlaufEntries" style="display:none;"></div>
-    <div id="reflexionQPanel" style="display:flex;flex-direction:column;gap:10px;padding:14px 14px 40px;background:#f5f5f5;flex-shrink:0;">
-      <div style="font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;border-bottom:1px solid #e5e5e5;padding-bottom:6px;">Reflexion nach dem Walk</div>
-      <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #1D9E75;">
-        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Wie erinnerst du den Walk insgesamt?</div>
-        <textarea id="rqFrei" rows="3" placeholder="Freie Beschreibung..." style="width:100%;font-size:12px;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;font-family:sans-serif;background:#fff;"></textarea>
-      </div>
-      <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #7c3aed;">
-        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Stimmung rückblickend (1 = sehr tief · 5 = sehr hoch)</div>
-        <div style="display:flex;align-items:center;gap:10px;">
-          <input type="range" id="rqMoodSlider" min="1" max="5" value="3" step="1" style="flex:1;"/>
-          <span id="rqMoodVal" style="font-size:16px;font-weight:bold;color:#facc15;min-width:30px;text-align:right;">3</span>
-        </div>
-      </div>
-      <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #f97316;">
-        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Welche Momente blieb am stärksten in Erinnerung?</div>
-        <textarea id="rqMoment" rows="2" placeholder="Ort, Situation, Eindruck..." style="width:100%;font-size:12px;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;font-family:sans-serif;background:#fff;"></textarea>
-      </div>
-      <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #22c55e;">
-        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Orte die deine Stimmung beeinflusst haben?</div>
-        <textarea id="rqOrte" rows="2" placeholder="Park, Kreuzung, Lärm..." style="width:100%;font-size:12px;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;font-family:sans-serif;background:#fff;"></textarea>
-      </div>
-      <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #3b82f6;">
-        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Was war bedeutsam aber wurde nicht aufgezeichnet? Gibt es etwas was Das Begleitinstrument nicht aufzeichnen kann, aber sollte?</div>
-        <textarea id="rqNicht" rows="2" placeholder="Was fehlt in den Daten?" style="width:100%;font-size:12px;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;font-family:sans-serif;background:#fff;"></textarea>
-      </div>
-      <div style="background:#f9f9f9;border-radius:10px;padding:10px 12px;border-left:3px solid #BA7517;">
-        <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Was überrascht dich beim Blick auf die Aufzeichnung?</div>
-        <textarea id="rqUeber" rows="2" placeholder="Diskrepanz, Überraschung..." style="width:100%;font-size:12px;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;font-family:sans-serif;background:#fff;"></textarea>
-      </div>
-      <button id="rqSaveBtn" style="width:100%;padding:13px;border-radius:10px;border:none;background:#2563eb;color:#fff;font-size:12px;font-weight:bold;cursor:pointer;">💾 Reflexion speichern</button>
-    </div>
-  </div>
-</div>
-
-
-
-<!-- STIMMUNGS-MODAL -->
-<div id="moodModal" style="display:none;align-items:center;justify-content:center;">
-  <div style="background:#fff;border-radius:20px;padding:28px 24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:16px;">
-    <div style="font-size:14px;font-weight:bold;color:#111;text-align:center;">🔋 Stimmung</div>
-    <div style="height:16px;border-radius:8px;background:linear-gradient(to right,#3b82f6,#22c55e,#facc15,#f97316,#ef4444);position:relative;">
-      <div id="moodThumb" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;background:#fff;border:3px solid #facc15;box-shadow:0 2px 8px rgba(0,0,0,0.3);pointer-events:none;"></div>
-    </div>
-    <input type="range" id="moodSlider" min="1" max="5" value="3" step="1" style="width:100%;margin:-8px 0;opacity:0;height:32px;cursor:pointer;"/>
-    <div style="display:flex;justify-content:space-between;font-size:10px;color:#aaa;margin-top:-8px;"><span>1 — Stimmung bedrückt</span><span>3 — neutral</span><span>5 — sehr gute Stimmung</span></div>
-    <div style="text-align:center;"><span id="moodVal" style="font-size:36px;font-weight:bold;color:#facc15;">3</span><span style="font-size:13px;color:#aaa;">/5</span></div>
-    <textarea id="moodText" placeholder="Beschreibe deine Stimmung (optional)..." style="width:100%;height:56px;border-radius:10px;border:1.5px solid #e5e5e5;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
-    <div style="display:flex;gap:10px;">
-      <button id="moodCancel" style="flex:1;padding:13px;border-radius:12px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:12px;cursor:pointer;">Abbrechen</button>
-      <button id="moodSave" style="flex:2;padding:13px;border-radius:12px;border:none;font-weight:bold;font-size:12px;cursor:pointer;color:#fff;background:#facc15;">Marker setzen</button>
-    </div>
-  </div>
-</div>
-<!-- GEDANKEN-MODAL -->
-<div id="thoughtModal" style="display:none;align-items:center;justify-content:center;">
-  <div style="background:#fff;border-radius:20px;padding:24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:14px;">
-    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">💭 Gedanke</div>
-    <textarea id="thoughtText" placeholder="Was denkst du gerade?" style="width:100%;height:100px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
-    <div style="display:flex;gap:8px;">
-      <button id="thoughtCancel" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;">Abbrechen</button>
-      <button id="thoughtSave" style="flex:1;padding:12px;border-radius:10px;border:none;background:#12345f;color:#fff;font-weight:bold;font-size:11px;cursor:pointer;">Marker setzen</button>
-    </div>
-  </div>
-</div>
-<!-- WAHRNEHMUNG-MODAL -->
-<div id="senseModal" style="display:none;align-items:center;justify-content:center;">
-  <div style="background:#fff;border-radius:20px;padding:24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:14px;">
-    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">👁 Eindrücke</div>
-    <textarea id="senseText" placeholder="Was nimmst du wahr?" style="width:100%;height:100px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
-    <div style="display:flex;gap:8px;">
-      <button id="senseCancel" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;">Abbrechen</button>
-      <button id="senseSave" style="flex:1;padding:12px;border-radius:10px;border:none;background:#3d633d;color:#fff;font-weight:bold;font-size:11px;cursor:pointer;">Marker setzen</button>
-    </div>
-  </div>
-</div>
-
-
-<!-- UMAP-EXPORT MODAL -->
-<div id="umapModal" style="display:none;position:fixed;inset:0;z-index:6000;background:rgba(0,0,0,0.75);align-items:center;justify-content:center;padding:20px;">
-  <div style="background:#fff;border-radius:16px;width:min(94vw,440px);padding:24px;display:flex;flex-direction:column;gap:14px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;">
-      <div style="font-size:14px;font-weight:bold;color:#111;">🗺 GeoJSON exportieren</div>
-      <button id="umapClose" style="border:none;background:#f0f0f0;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:14px;">✕</button>
-    </div>
-    <div style="background:#f0f4ff;border-radius:10px;padding:12px 14px;font-size:12px;color:#1e3a6e;line-height:1.7;">
-      Enthält Route + alle Einträge (Stimmung, Gedanken, Wahrnehmung, Fotos) — bereit zum Import in uMap.
-    </div>
-    <button id="umapDownloadBtn" style="width:100%;padding:14px;border-radius:10px;border:none;background:#2563eb;color:#fff;font-size:14px;font-weight:bold;cursor:pointer;-webkit-tap-highlight-color:transparent;">📥 GeoJSON herunterladen</button>
-  </div>
-</div>
-<!-- ONBOARDING MODAL -->
-<div id="onboardingModal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.92);align-items:center;justify-content:center;padding:16px;">
-  <div style="background:#fff;border-radius:20px;width:min(96vw,420px);max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;">
-
-    <!-- Header -->
-    <div style="background:#111;border-radius:20px 20px 0 0;padding:20px 20px 16px;text-align:center;flex-shrink:0;">
-      <div style="font-size:28px;margin-bottom:8px;"></div>
-      <div style="font-size:16px;font-weight:bold;color:#fff;">Begleitinstrument</div>
-      <div style="font-size:11px;color:#9ca3af;margin-top:4px;">Was passiert alles auf deinem Spaziergang? Halte Eindrücke und deine Wahrnehmung mit dem Begleitinstrument fest</div>
-    </div>
-
-    <!-- Schritte -->
-    <div id="onboarding-steps" style="padding:16px;display:flex;flex-direction:column;gap:0;">
-
-      <!-- Schritt 1 -->
-      <div class="ob-step" data-step="0" style="display:flex;flex-direction:column;gap:12px;">
-        <div style="text-align:center;padding:8px 0;">
-          <div style="font-size:40px;">📍</div>
-          <div style="font-size:15px;font-weight:bold;color:#111;margin-top:8px;">Willkommen!</div>
-          <div style="font-size:12px;color:#6b7280;margin-top:6px;line-height:1.6;">Was passiert alles auf deinem Spaziergang? Halte Eindrücke und deine Wahrnehmung mit dem Begleitinstrument fest. Diese Webbasierte-App begleitet dich auf Spaziergängen und zeichnet auf was du erlebst — Route, Stimmung, Gedanken, Fotos und Audio</div>
-        </div>
-        <div style="background:#f0f4ff;border-radius:10px;padding:12px 14px;font-size:11px;color:#1e3a6e;line-height:1.7;">
-          <b>Bevor du startest:</b><br>
-          Schalte während der Benutzung das GPS ein. Erlaube der App Zugriff auf <b>Standort, Mikrofon und Kamera</b> wenn du danach gefragt wirst - erlauben drücken.
-        </div>
-        <!-- iOS / Android Hinweis -->
-        <div id="ob-device-hint" style="border-radius:10px;padding:12px 14px;font-size:11px;line-height:1.7;"></div>
-      </div>
-
-      <!-- Schritt 2 -->
-      <div class="ob-step" data-step="1" style="display:none;flex-direction:column;gap:12px;">
-        <div style="text-align:center;padding:8px 0;">
-          <div style="font-size:40px;">🚶</div>
-          <div style="font-size:15px;font-weight:bold;color:#111;margin-top:8px;">Spaziergang aufzeichnen</div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
-            <span style="font-size:22px;">▶️</span>
-            <div><b style="font-size:12px;">START</b><br><span style="font-size:11px;color:#6b7280;">Tippe auf START und warte bis der GPS-Punkt erscheint.</span></div>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
-            <span style="font-size:22px;">📸🎙💬👁💭🔋</span>
-            <div><b style="font-size:12px;">Aufzeichnen</b><br><span style="font-size:11px;color:#6b7280;">Die Buttons links: 📸 Foto,🎙 Umgebungssound, 💬 Sprachnachricht, 👁 Wahrnehmung, 💭 Gedanke, 🔋 Stimmung.</span></div>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
-            <span style="font-size:22px;">⏹️</span>
-            <div><b style="font-size:12px;">STOP / SAVE</b><br><span style="font-size:11px;color:#6b7280;">Walk beenden, Namen vergeben und der Spaziergang wird im Archiv gespeichert.</span></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Schritt 3 -->
-      <div class="ob-step" data-step="2" style="display:none;flex-direction:column;gap:12px;">
-        <div style="text-align:center;padding:8px 0;">
-          <div style="font-size:40px;">📋</div>
-          <div style="font-size:15px;font-weight:bold;color:#111;margin-top:8px;">Nach dem Spaziergang</div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
-            <span style="font-size:22px;">📂</span>
-            <div><b style="font-size:12px;">Archiv öffnen</b><br><span style="font-size:11px;color:#6b7280;">Tippe oben rechts auf "Archiv" um deine Spaziergang auf der Map zu sehen sowie Umzubenennen, zu Exportieren und zu Löschen.</span></div>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
-            <span style="font-size:22px;">📋</span>
-            <div><b style="font-size:12px;">Reflexion</b><br><span style="font-size:11px;color:#6b7280;">Warte etwas, dann beantworte die Reflexionsfragen.</span></div>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
-            <span style="font-size:22px;">📦</span>
-            <div><b style="font-size:12px;">Export</b><br><span style="font-size:11px;color:#6b7280;">Exportiere deinen Walk als ZIP — alle Daten, Fotos und Audio.</span></div>
-          </div>
-          <div style="background:#f0f4ff;border-radius:10px;padding:10px 12px;font-size:11px;color:#1e3a6e;line-height:1.8;">
-            <b>Wo findest du den Export?</b><br>
-            Archiv → Spaziergang im Archiv antippen → Aktionen aufklappen → <b>📦 Export</b><br><br>
-            📱 <b>iPhone:</b> Die ZIP-Datei landet in <b>Dateien → Downloads</b>. Von dort per Whatsapp oder Mail senden.<br>
-            🤖 <b>Android:</b> Die ZIP-Datei landet im <b>Downloads-Ordner</b>. Von dort per Whatsapp oder Mail senden.
-          </div>
-        </div>
-      </div>
-
-      <!-- Schritt 3b — Ansicht & Ebenen -->
-      <div class="ob-step" data-step="3" style="display:none;flex-direction:column;gap:12px;">
-        <div style="text-align:center;padding:8px 0;">
-          <div style="font-size:40px;">🗺</div>
-          <div style="font-size:15px;font-weight:bold;color:#111;margin-top:8px;">Ansicht & Ebenen</div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
-            <span style="font-size:22px;">🗺</span>
-            <div><b style="font-size:12px;">Ansicht</b><br><span style="font-size:11px;color:#6b7280;">Wechsle zwischen der eigenen Karte, Standard, Satellit, Graustufen oder 3D-Ansicht.</span></div>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
-            <span style="font-size:22px;">☰</span>
-            <div><b style="font-size:12px;">Ebenen</b><br><span style="font-size:11px;color:#6b7280;">Zeigt Schrittzähler und Tempo. Einzelne Ebenen (Fotos, Audio, Stimmung...) ein- und ausblenden.</span></div>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
-            <span style="font-size:22px;">🏔</span>
-            <div><b style="font-size:12px;">3D Ansicht</b><br><span style="font-size:11px;color:#6b7280;">Zeigt in 3D echte Geländemodell und Gebäuden.</span></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Schritt 4 — Auswertung erklärt -->
-      <div class="ob-step" data-step="4" style="display:none;flex-direction:column;gap:12px;">
-        <div style="text-align:center;padding:8px 0;">
-          <div style="font-size:40px;">📊</div>
-          <div style="font-size:15px;font-weight:bold;color:#111;margin-top:8px;">Die Auswertung</div>
-          <div style="font-size:11px;color:#6b7280;margin-top:6px;line-height:1.6;">Zeigt die Lücke zwischen Erleben und Erinnern</div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <div style="background:#f0fdf4;border-radius:10px;padding:10px 12px;border-left:4px solid #1D9E75;">
-            <div style="font-size:11px;font-weight:bold;color:#065f46;margin-bottom:4px;">Schicht 1 — Aufgezeichnet</div>
-            <div style="font-size:11px;color:#374151;line-height:1.6;">Deine Stimmungswerte (🔋 1–5) die du <b>während</b> des Walks gesetzt hast.</div>
-          </div>
-          <div style="background:#f5f3ff;border-radius:10px;padding:10px 12px;border-left:4px solid #534AB7;">
-            <div style="font-size:11px;font-weight:bold;color:#3730a3;margin-bottom:4px;">Schicht 2 — Erinnert</div>
-            <div style="font-size:11px;color:#374151;line-height:1.6;">Wie du den Walk <b>im Nachhinein</b> bewertest (aus den Reflexionsfragen).</div>
-          </div>
-          <div style="background:#fff7ed;border-radius:10px;padding:10px 12px;border-left:4px solid #f97316;">
-            <div style="font-size:11px;font-weight:bold;color:#92400e;margin-bottom:4px;">Diskrepanz</div>
-            <div style="font-size:11px;color:#374151;line-height:1.6;">Die <b>Differenz</b> zwischen beiden — wie wurde der Spaziergang erinnert? Grün = Erinnerung besser, Rot = schlechter.</div>
-          </div>
-        </div>
-        <div style="background:#f0f4ff;border-radius:10px;padding:10px 12px;font-size:10px;color:#1e3a6e;line-height:1.6;">
-          💡 Tipp: Setze mindestens 3–4 Stimmungsmarker (🔋) während des Walks für aussagekräftige Diagramme.
-        </div>
-      </div>
-
-      <!-- Schritt 5 — Vergleich & GeoJSON -->
-      <div class="ob-step" data-step="5" style="display:none;flex-direction:column;gap:12px;">
-        <div style="text-align:center;padding:8px 0;">
-          <div style="font-size:40px;">⚖️</div>
-          <div style="font-size:15px;font-weight:bold;color:#111;margin-top:8px;">Vergleichen & Auswerten</div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
-            <span style="font-size:22px;">📊</span>
-            <div><b style="font-size:12px;">Auswerten</b><br><span style="font-size:11px;color:#6b7280;">Zeigt aufgezeichnete vs. erinnerte Stimmung und die Abweichung.</span></div>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
-            <span style="font-size:22px;">⚖️</span>
-            <div><b style="font-size:12px;">Vergleich</b><br><span style="font-size:11px;color:#6b7280;">Tippe bei 2+ Walks auf ⚖️ — dann "Vergleich starten" um sie untereinander zu sehen.</span></div>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
-            <span style="font-size:22px;">🗺</span>
-            <div><b style="font-size:12px;">GeoJSON Export</b><br><span style="font-size:11px;color:#6b7280;">Exportiere deinen Walk und schicke mir diesen zu (über Archiv → Spaziergang antippen → 📦 Export).</span></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Schritt 6 — Display aktiv halten -->
-      <div class="ob-step" data-step="6" style="display:none;flex-direction:column;gap:12px;">
+  <div class="ob-step" data-step="6" style="display:none;flex-direction:column;gap:12px;">
         <div style="text-align:center;padding:8px 0;">
           <div style="font-size:40px;">⚠️</div>
-          <div style="font-size:15px;font-weight:bold;color:#111;margin-top:8px;">Wichtiger Hinweis</div>
+          <div style="font-size:15px;font-weight:bold;color:#111;margin-top:8px;">Important Note</div>
         </div>
         <div style="background:#fff7ed;border-radius:10px;padding:12px 14px;border-left:4px solid #f97316;font-size:11px;color:#92400e;line-height:1.8;">
-          <b>Display aktiv halten!</b><br>
-          Wenn aus dem Browser während des Spaziergang herausgehst, unterbricht die GPS-Aufzeichnung. Beim wieder öffnen der Seite zeichnet das GPS wieder mit dem aktuellen Standort wieder auf<br><br>
+          <b>Keep your screen active!</b><br>
+          If you leave the browser during your walk, the GPS recording will pause. When you reopen the page, the GPS will resume recording from your current location.<br><br>
           <span id="ob-display-hint"></span>
         </div>
         <div style="background:#f0fdf4;border-radius:10px;padding:12px 14px;font-size:11px;color:#166534;line-height:1.7;">
-          ✅ Gehe ins Freie — GPS funktioniert drinnen schlecht<br>
-          ✅ Warte nach START bis der blaue Punkt erscheint<br>
-          ✅ Exportiere nach dem Walk um alles zu sichern
+          ✅ Go outdoors — GPS does not work well indoors<br>
+          ✅ Wait until the blue dot appears after pressing START<br>
+          ✅ Export after your walk to save everything
         </div>
         <div style="background:#f8f8f8;border-radius:10px;padding:12px 14px;font-size:11px;color:#374151;line-height:1.8;border:1px solid #e5e5e5;">
-          <b>📡 GPS-Statusanzeige:</b><br>
-          Während der Aufzeichnung siehst du neben START/STOP:<br>
+          <b>📡 GPS Status Indicator:</b><br>
+          During the recording, you will see next to START/STOP:<br>
           <span style="display:inline-flex;align-items:center;gap:6px;margin-top:4px;">
             <span style="width:10px;height:10px;border-radius:50%;background:#22c55e;display:inline-block;"></span>
-            <b style="color:#16a34a;">GPS aktiv</b> — Signal vorhanden, Route wird aufgezeichnet
+            <b style="color:#16a34a;">GPS active</b> — Signal available, route is being recorded
           </span><br>
           <span style="display:inline-flex;align-items:center;gap:6px;margin-top:4px;">
             <span style="width:10px;height:10px;border-radius:50%;background:#ef4444;display:inline-block;"></span>
-            <b style="color:#dc2626;">GPS verloren</b> — kein Signal, Route wird unterbrochen
+            <b style="color:#dc2626;">GPS lost</b> — No signal, route recording is interrupted
           </span>
         </div>
         <div style="background:#f0f4ff;border-radius:10px;padding:12px 14px;font-size:11px;color:#1e3a6e;line-height:1.8;">
-          <b>📦 Export nach dem Walk:</b><br>
-          Archiv → Walk antippen → <b>📦 Export</b><br><br>
-          📱 <b>iPhone:</b> ZIP landet in <b>Dateien → Downloads</b><br>
-          Weiterleiten per Whatsapp oder Mail<br><br>
-          🤖 <b>Android:</b> ZIP landet im <b>Downloads-Ordner</b><br>
-          Weiterleiten per WhatsApp oder Mail
+          <b>📦 Exporting after the walk:</b><br>
+          Archive → Tap Walk → <b>📦 Export</b><br><br>
+          📱 <b>iPhone:</b> ZIP file will save to <b>Files → Downloads</b><br>
+          Forward via WhatsApp or Email<br><br>
+          🤖 <b>Android:</b> ZIP file will save to your <b>Downloads folder</b><br>
+          Forward via WhatsApp or Email
         </div>
       </div>
 
 
-      <!-- Schritt 7 — Auto-Save & Wiederherstellung -->
       <div class="ob-step" data-step="7" style="display:none;flex-direction:column;gap:12px;">
         <div style="text-align:center;padding:8px 0;">
           <div style="font-size:40px;">💾</div>
-          <div style="font-size:15px;font-weight:bold;color:#111;margin-top:8px;">Datensicherheit</div>
-          <div style="font-size:11px;color:#6b7280;margin-top:6px;line-height:1.6;">Deine Daten sind automatisch geschützt</div>
+          <div style="font-size:15px;font-weight:bold;color:#111;margin-top:8px;">Data Security</div>
+          <div style="font-size:11px;color:#6b7280;margin-top:6px;line-height:1.6;">Your data is protected automatically</div>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;">
           <div style="background:#f0fdf4;border-radius:10px;padding:12px 14px;border-left:4px solid #16a34a;font-size:11px;color:#166534;line-height:1.8;">
             <b>🔄 Auto-Save</b><br>
-            Die App speichert deinen laufenden Walk automatisch — alle 10 Sekunden sowie bei jedem neuen GPS-Punkt und jedem Eintrag (Foto, Audio, Stimmung...).<br><br>
-            Auch wenn das GPS abbricht oder die Seite abstürzt, sind deine Daten gesichert.
+            The app automatically saves your current walk — every 10 seconds, as well as with every new GPS point and every entry (photo, audio, mood...).<br><br>
+            Even if the GPS drops out or the page crashes, your data is secure.
           </div>
           <div style="background:#fff7ed;border-radius:10px;padding:12px 14px;border-left:4px solid #f97316;font-size:11px;color:#92400e;line-height:1.8;">
-            <b>⚠️ Wenn etwas schiefgeht:</b><br>
-            Öffne die App einfach wieder — es erscheint oben ein <b style="color:#dc2626;">roter Banner</b>:<br>
-            <span style="background:#dc2626;color:#fff;border-radius:6px;padding:2px 8px;font-size:10px;display:inline-block;margin-top:4px;">⚠️ Unterbrochener Walk gefunden!</span><br><br>
-            Tippe auf <b>💾 Wiederherstellen</b> — der Walk wird sofort ins Archiv gespeichert.
+            <b>⚠️ If something goes wrong:</b><br>
+            Simply open the app again — a <b style="color:#dc2626;">red banner</b> will appear at the top:<br>
+            <span style="background:#dc2626;color:#fff;border-radius:6px;padding:2px 8px;font-size:10px;display:inline-block;margin-top:4px;">⚠️ Interrupted walk found!</span><br><br>
+            Tap <b>💾 Recover</b> — the walk will immediately be saved to the archive.
           </div>
           <div style="background:#f0f4ff;border-radius:10px;padding:10px 12px;font-size:11px;color:#1e3a6e;line-height:1.7;">
-            🔒 <b>Datenschutz:</b> Alle Daten bleiben ausschließlich auf deinem Gerät. Es wird nichts automatisch übertragen oder in einer Cloud gespeichert.
+            🔒 <b>Privacy:</b> All data remains exclusively on your device. Nothing is automatically transmitted or stored in a cloud.
           </div>
         </div>
       </div>
 
     </div>
 
-    <!-- Navigation -->
     <div style="padding:12px 16px;display:flex;flex-direction:column;gap:10px;flex-shrink:0;border-top:1px solid #f0f0f0;">
-      <!-- Punkte -->
       <div style="display:flex;gap:6px;justify-content:center;">
         <div class="ob-dot" data-dot="0" style="width:8px;height:8px;border-radius:50%;background:#111;"></div>
         <div class="ob-dot" data-dot="1" style="width:8px;height:8px;border-radius:50%;background:#ddd;"></div>
@@ -3317,12 +2762,11 @@ window.addEventListener('load', function() {
         <div class="ob-dot" data-dot="6" style="width:8px;height:8px;border-radius:50%;background:#ddd;"></div>
         <div class="ob-dot" data-dot="7" style="width:8px;height:8px;border-radius:50%;background:#ddd;"></div>
       </div>
-      <!-- Buttons -->
       <div style="display:flex;gap:8px;align-items:center;">
-        <button id="ob-back" style="padding:10px 14px;border-radius:8px;border:none;background:#f0f0f0;color:#6b7280;font-size:12px;font-weight:bold;cursor:pointer;display:none;">← Zurück</button>
+        <button id="ob-back" style="padding:10px 14px;border-radius:8px;border:none;background:#f0f0f0;color:#6b7280;font-size:12px;font-weight:bold;cursor:pointer;display:none;">← Back</button>
         <div style="flex:1;"></div>
-        <button id="ob-skip" style="padding:10px 14px;border-radius:8px;border:none;background:#f0f0f0;color:#6b7280;font-size:11px;cursor:pointer;">Direkt starten</button>
-        <button id="ob-next" style="padding:10px 20px;border-radius:8px;border:none;background:#111;color:#fff;font-size:12px;font-weight:bold;cursor:pointer;">Weiter →</button>
+        <button id="ob-skip" style="padding:10px 14px;border-radius:8px;border:none;background:#f0f0f0;color:#6b7280;font-size:11px;cursor:pointer;">Start directly</button>
+        <button id="ob-next" style="padding:10px 20px;border-radius:8px;border:none;background:#111;color:#fff;font-size:12px;font-weight:bold;cursor:pointer;">Next →</button>
       </div>
     </div>
 
@@ -3330,11 +2774,10 @@ window.addEventListener('load', function() {
 </div>
 
 
-<!-- VERGLEICH-VOLLBILD -->
 <div id="vglOverlay" style="display:none;position:fixed;inset:0;z-index:5000;background:#f0ede8;flex-direction:column;overflow:hidden;">
   <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#fff;flex-shrink:0;border-bottom:1px solid #e5e5e5;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-    <div style="color:#111;font-size:14px;font-weight:bold;">⚖️ Walk-Vergleich</div>
-    <button id="vglClose" style="padding:8px 18px;border-radius:8px;border:none;background:#f0f0f0;color:#333;font-size:12px;font-weight:bold;cursor:pointer;">✕ Schließen</button>
+    <div style="color:#111;font-size:14px;font-weight:bold;">⚖️ Walk Comparison</div>
+    <button id="vglClose" style="padding:8px 18px;border-radius:8px;border:none;background:#f0f0f0;color:#333;font-size:12px;font-weight:bold;cursor:pointer;">✕ Close</button>
   </div>
   <div id="vglList" style="flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:12px;display:flex;flex-direction:column;gap:12px;background:#f0ede8;"></div>
   <div id="vglInfo" style="display:none;background:#fff;color:#333;padding:12px 16px;font-size:12px;flex-shrink:0;border-top:1px solid #e5e5e5;max-height:150px;overflow-y:auto;box-shadow:0 -2px 8px rgba(0,0,0,0.06);"></div>
