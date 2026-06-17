@@ -214,7 +214,7 @@
 <body>
 <div id="map"></div>
 <div id="map3d" style="display:none;position:fixed;inset:0;z-index:2;"></div>
-<button id="exit3d" style="display:none;position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:1003;padding:10px 18px;border-radius:10px;border:none;background:rgba(0,0,0,0.75);color:#fff;font-size:11px;font-weight:bold;cursor:pointer;">✕ 3D verlassen</button>
+<button id="exit3d" style="display:none;position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:1003;padding:10px 18px;border-radius:10px;border:none;background:rgba(0,0,0,0.75);color:#fff;font-size:11px;font-weight:bold;cursor:pointer;align-items:center;gap:6px;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg> 3D verlassen</button>
 <div id="topBar">
   <button id="btnStart" class="btn btn-blue">START</button>
   <button id="btnStop" class="btn btn-red">STOP / SAVE</button>
@@ -223,28 +223,28 @@
     <span id="gpsLabel">GPS aktiv</span>
   </div>
 </div>
-<div id="gpsHint">📡 GPS wird gesucht – bitte kurz warten…</div>
+<div id="gpsHint"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="19" r="1.3" fill="currentColor" stroke="none"/><path d="M9 16a4 4 0 0 1 6 0"/><path d="M6 13a8 8 0 0 1 12 0"/><path d="M3 10a12 12 0 0 1 18 0"/></svg> GPS wird gesucht – bitte kurz warten…</div>
 <!-- Wo bin ich Button -->
-<button id="btnLocate" style="display:none;position:fixed;bottom:24px;right:16px;z-index:1002;height:44px;padding:0 16px;border-radius:22px;border:none;background:rgba(255,255,255,0.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 4px 16px rgba(0,0,0,0.2);cursor:pointer;font-size:13px;font-weight:bold;color:#333;align-items:center;justify-content:center;gap:6px;-webkit-tap-highlight-color:transparent;white-space:nowrap;">📍 Wo bin ich?</button>
+<button id="btnLocate" style="display:none;position:fixed;bottom:24px;right:16px;z-index:1002;height:44px;padding:0 16px;border-radius:22px;border:none;background:rgba(255,255,255,0.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 4px 16px rgba(0,0,0,0.2);cursor:pointer;font-size:13px;font-weight:bold;color:#333;align-items:center;justify-content:center;gap:6px;-webkit-tap-highlight-color:transparent;white-space:nowrap;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><path d="M7 13A7 7 0 1 1 17 13L12 21Z"/><circle cx="12" cy="9.3" r="2.3"/></svg> Wo bin ich?</button>
 <div id="panelToggles">
-  <button class="panel-tab" data-panel="ansicht">🗺 Ansicht</button>
-  <button class="panel-tab" data-panel="ebenen">☰ Ebenen</button>
-  <button class="panel-tab" data-panel="archiv">📂 Archiv</button>
-  <button class="panel-tab" id="btnHelp" style="background:#f5f0e8;color:#555;">❓ Hilfe</button>
+  <button class="panel-tab" data-panel="ansicht">Ansicht</button>
+  <button class="panel-tab" data-panel="ebenen">Ebenen</button>
+  <button class="panel-tab" data-panel="archiv">Archiv</button>
+  <button class="panel-tab" id="btnHelp" style="background:#f5f0e8;color:#555;display:flex;align-items:center;gap:5px;justify-content:center;"><span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;border:1.6px solid currentColor;font-size:9px;font-weight:bold;line-height:1;">?</span> Hilfe</button>
 </div>
 <div id="drawer">
   <div id="drawerHeader">
     <span id="drawerTitle">Panel</span>
-    <button id="drawerClose">✕</button>
+    <button id="drawerClose"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg></button>
   </div>
   <div id="drawerBody">
     <div class="section" id="sec-ansicht" style="display:none;">
       <div class="section-label">Kartenansicht</div>
-      <button class="layer-opt" data-url="maptiler-vector" data-style="https://api.maptiler.com/maps/019e02c9-c89f-7ac4-a445-8682af45becc/style.json?key=kIVeCJrwqaa77bZoYoEF">✦ Eigene Karte</button>
+      <button class="layer-opt" data-url="maptiler-vector" data-style="https://api.maptiler.com/maps/019e02c9-c89f-7ac4-a445-8682af45becc/style.json?key=kIVeCJrwqaa77bZoYoEF"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M12 3L13.5 9L20 10.5L13.5 12L12 18L10.5 12L4 10.5L10.5 9Z"/></svg> Eigene Karte</button>
       <button class="layer-opt active" data-url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png">Standard</button>
       <button class="layer-opt" data-url="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}">Satellit</button>
       <button class="layer-opt" data-url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png">Graustufen</button>
-      <button class="layer-opt" data-type="3d">🏔 3D Ansicht</button>
+      <button class="layer-opt" data-type="3d"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M3 20L9 8L13 14L17 7L21 20Z"/></svg> 3D Ansicht</button>
     </div>
     <div class="section" id="sec-ebenen" style="display:none;">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
@@ -269,32 +269,32 @@
     <div class="section" id="sec-archiv" style="display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
         <div class="section-label" style="border:none;padding:0;margin:0;">Walks</div>
-        <button id="btnVergleich" style="padding:8px 14px;border-radius:8px;border:none;background:#7c3aed;color:#fff;font-size:11px;font-weight:bold;cursor:pointer;display:none;">⚖️ Vergleich starten</button>
+        <button id="btnVergleich" style="padding:8px 14px;border-radius:8px;border:none;background:#7c3aed;color:#fff;font-size:11px;font-weight:bold;cursor:pointer;display:none;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><line x1="7" y1="5" x2="7" y2="19"/><line x1="17" y1="5" x2="17" y2="19"/><line x1="7" y1="5" x2="17" y2="5"/><path d="M4 9A3 3 0 0 0 10 9"/><path d="M14 13A3 3 0 0 0 20 13"/></svg> Vergleich starten</button>
       </div>
-      <div id="vglHint" style="font-size:10px;color:#9ca3af;margin-bottom:8px;">Tippe bei 2 oder mehr Walks auf ⚖️ um sie zu vergleichen.</div>
+      <div id="vglHint" style="font-size:10px;color:#9ca3af;margin-bottom:8px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;">Tippe bei 2 oder mehr Walks auf <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="5" x2="7" y2="19"/><line x1="17" y1="5" x2="17" y2="19"/><line x1="7" y1="5" x2="17" y2="5"/><path d="M4 9A3 3 0 0 0 10 9"/><path d="M14 13A3 3 0 0 0 20 13"/></svg> um sie zu vergleichen.</div>
       <div id="archiveList" style="padding-bottom:20px;"><div style="font-size:11px;color:#999;">Noch keine Walks gespeichert.</div></div>
     </div>
   </div>
 </div>
 <!-- MODERNES FAB-PANEL — Reihenfolge: Foto, Sound, Sprache, Wahrnehmung, Gedanke, Stimmung -->
 <div id="fabGrid">
-  <button id="fabPhoto"   class="fab" data-label="Foto aufnehmen">📸<span class="fab-lbl">Foto</span></button>
-  <button id="fabSound"   class="fab" data-label="Umgebungssound">🎙<span class="fab-lbl" style="font-size:6px;">Umgebungssound</span></button>
-  <button id="fabMsg"     class="fab" data-label="Sprachnachricht">💬<span class="fab-lbl" style="font-size:6px;">Sprachnachricht</span></button>
+  <button id="fabPhoto"   class="fab" data-label="Foto aufnehmen"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 7L9.7 4.6H14.3L15.5 7"/><rect x="2.5" y="7" width="19" height="13" rx="2.5"/><circle cx="12" cy="13.7" r="3.4"/></svg><span class="fab-lbl">Foto</span></button>
+  <button id="fabSound"   class="fab" data-label="Umgebungssound"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg><span class="fab-lbl" style="font-size:6px;">Umgebungssound</span></button>
+  <button id="fabMsg"     class="fab" data-label="Sprachnachricht"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="11" r="8"/><path d="M9 18L6 21L7.5 17.5"/></svg><span class="fab-lbl" style="font-size:6px;">Sprachnachricht</span></button>
   <div class="fab-divider"></div>
-  <button id="fabSense"   class="fab" data-label="Eindrücke">👁<span class="fab-lbl">Eindrücke</span></button>
-  <button id="fabThought" class="fab" data-label="Gedanke">💭<span class="fab-lbl">Gedanke</span></button>
+  <button id="fabSense"   class="fab" data-label="Eindrücke"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12A10 6 0 0 1 22 12A10 6 0 0 1 2 12Z"/><circle cx="12" cy="12" r="3"/></svg><span class="fab-lbl">Eindrücke</span></button>
+  <button id="fabThought" class="fab" data-label="Gedanke"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="11" rx="5.5"/><circle cx="8" cy="18.5" r="1.6"/><circle cx="5.5" cy="21" r="1"/></svg><span class="fab-lbl">Gedanke</span></button>
   <div class="fab-divider"></div>
-  <button id="fabMood"    class="fab" data-label="Stimmung">🔋<span class="fab-lbl">Stimmung</span></button>
+  <button id="fabMood"    class="fab" data-label="Stimmung"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="8.5" cy="10" r="1"/><circle cx="15.5" cy="10" r="1"/><path d="M7.5 14.5A5 4 0 0 0 16.5 14.5"/></svg><span class="fab-lbl">Stimmung</span></button>
 </div>
 <div id="cameraModal">
-  <button id="closeCamera">✕</button>
+  <button id="closeCamera"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg></button>
   <video id="cameraPreview" autoplay playsinline muted></video>
-  <button id="captureBtn">📸 Foto aufnehmen</button>
+  <button id="captureBtn"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M8.5 7L9.7 4.6H14.3L15.5 7"/><rect x="2.5" y="7" width="19" height="13" rx="2.5"/><circle cx="12" cy="13.7" r="3.4"/></svg> Foto aufnehmen</button>
   <canvas id="photoCanvas" style="display:none;"></canvas>
 </div>
 <div id="audioModal">
-  <button id="closeAudio">✕</button>
+  <button id="closeAudio"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg></button>
   <div id="audioStatus">Aufnahme läuft...</div>
   <div id="audioTimer">0:00</div>
   <div id="audioViz">
@@ -304,7 +304,7 @@
     <div class="bar" style="height:12px"></div><div class="bar" style="height:28px"></div>
     <div class="bar" style="height:14px"></div><div class="bar" style="height:8px"></div>
   </div>
-  <button id="stopAudioBtn">⏹ Aufnahme beenden</button>
+  <button id="stopAudioBtn"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" stroke="none" style="vertical-align:-2px;"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg> Aufnahme beenden</button>
 </div>
 <div id="stopModal">
   <div class="modal-box">
@@ -313,21 +313,21 @@
     <input id="walkNameInput" type="text" placeholder="z.B. Morgenspaziergang Zentrum"/>
     <div class="modal-btns">
       <button id="modalCancel">Abbrechen</button>
-      <button id="modalSave">💾 Speichern</button>
+      <button id="modalSave"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="4" y="3" width="16" height="18" rx="2"/><rect x="8" y="5" width="6" height="4"/><rect x="7" y="14" width="10" height="6" rx="1"/></svg> Speichern</button>
     </div>
   </div>
 </div>
-<div id="exportOverlay"><div id="exportBox"><div style="font-size:24px;">📦</div><div id="exportMsg">Exportiere...</div></div></div>
+<div id="exportOverlay"><div id="exportBox"><div style="font-size:24px;"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3L20 7.5V16.5L12 21L4 16.5V7.5Z"/><line x1="12" y1="3" x2="12" y2="12"/><line x1="12" y1="12" x2="20" y2="7.5"/><line x1="12" y1="12" x2="4" y2="7.5"/></svg></div><div id="exportMsg">Exportiere...</div></div></div>
 <input type="file" id="photoInput" accept="image/*" capture="environment"/>
 <!-- FOTO-NOTIZ MODAL -->
 <div id="photoNoteModal" style="display:none;position:fixed;inset:0;z-index:2500;background:rgba(0,0,0,0.82);align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:20px;padding:24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:14px;">
-    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">📸 Foto-Notiz</div>
+    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 7L9.7 4.6H14.3L15.5 7"/><rect x="2.5" y="7" width="19" height="13" rx="2.5"/><circle cx="12" cy="13.7" r="3.4"/></svg> Foto-Notiz</div>
     <img id="photoNotePreview" style="width:100%;border-radius:10px;max-height:180px;object-fit:cover;"/>
     <textarea id="photoNoteText" placeholder="Notiz zum Foto (optional)..." style="width:100%;height:80px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
     <div style="display:flex;gap:8px;">
       <button id="photoNoteSkip" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;">Überspringen</button>
-      <button id="photoNoteSave" style="flex:1;padding:12px;border-radius:10px;border:none;background:#374151;color:#fff;font-weight:bold;font-size:11px;cursor:pointer;">💾 Speichern</button>
+      <button id="photoNoteSave" style="flex:1;padding:12px;border-radius:10px;border:none;background:#374151;color:#fff;font-weight:bold;font-size:11px;cursor:pointer;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="4" y="3" width="16" height="18" rx="2"/><rect x="8" y="5" width="6" height="4"/><rect x="7" y="14" width="10" height="6" rx="1"/></svg> Speichern</button>
     </div>
   </div>
 </div>
@@ -336,12 +336,12 @@
   <div id="analyseBox">
     <div class="analyse-header">
       <div class="analyse-title" id="analyseWalkName">Auswertung</div>
-      <button class="analyse-close" id="analyseClose">✕</button>
+      <button class="analyse-close" id="analyseClose"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg></button>
     </div>
     <div id="analyseHinweis" style="background:#f0f4ff;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:#374151;line-height:1.6;">
       <b style="color:#2563eb;">Wie funktioniert die Auswertung?</b><br>
       Schicht 1 zeigt deine <b>aufgezeichneten Stimmungswerte</b> (1–5) während des Walks. Schicht 2 zeigt wie du den Walk <b>im Nachhinein erinnerst</b> (Reflexionsfrage). Die <b>Diskrepanz</b> zeigt die Differenz — was hat das Gedächtnis verändert?<br>
-      <span style="color:#9ca3af;font-size:10px;">Tipp: Setze während des Walks mehrere 🔋 Stimmungsmarker für aussagekräftige Grafiken.</span>
+      <span style="color:#9ca3af;font-size:10px;display:inline-flex;align-items:center;gap:3px;flex-wrap:wrap;">Tipp: Setze während des Walks mehrere <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="8.5" cy="10" r="1"/><circle cx="15.5" cy="10" r="1"/><path d="M7.5 14.5A5 4 0 0 0 16.5 14.5"/></svg> Stimmungsmarker für aussagekräftige Grafiken.</span>
     </div>
     <div class="stat-row" style="margin-bottom:12px;">
       <div class="stat-box"><div class="stat-val" id="aStat1">—</div><div class="stat-lbl">Ø Stimmung (1-5)</div></div>
@@ -371,7 +371,7 @@
 <!-- STIMMUNGS-MODAL -->
 <div id="moodModal" style="display:none;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:20px;padding:28px 24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:16px;">
-    <div style="font-size:14px;font-weight:bold;color:#111;text-align:center;">🔋 Stimmung</div>
+    <div style="font-size:14px;font-weight:bold;color:#111;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="8.5" cy="10" r="1"/><circle cx="15.5" cy="10" r="1"/><path d="M7.5 14.5A5 4 0 0 0 16.5 14.5"/></svg> Stimmung</div>
     <div style="height:16px;border-radius:8px;background:linear-gradient(to right,#3b82f6,#22c55e,#facc15,#f97316,#ef4444);position:relative;">
       <div id="moodThumb" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;background:#fff;border:3px solid #facc15;box-shadow:0 2px 8px rgba(0,0,0,0.3);pointer-events:none;"></div>
     </div>
@@ -388,7 +388,7 @@
 <!-- GEDANKEN-MODAL -->
 <div id="thoughtModal" style="display:none;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:20px;padding:24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:14px;">
-    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">💭 Gedanke</div>
+    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="11" rx="5.5"/><circle cx="8" cy="18.5" r="1.6"/><circle cx="5.5" cy="21" r="1"/></svg> Gedanke</div>
     <textarea id="thoughtText" placeholder="Was denkst du gerade?" style="width:100%;height:100px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
     <div style="display:flex;gap:8px;">
       <button id="thoughtCancel" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;">Abbrechen</button>
@@ -399,7 +399,7 @@
 <!-- WAHRNEHMUNG-MODAL -->
 <div id="senseModal" style="display:none;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:20px;padding:24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:14px;">
-    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">👁 Eindrücke</div>
+    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12A10 6 0 0 1 22 12A10 6 0 0 1 2 12Z"/><circle cx="12" cy="12" r="3"/></svg> Eindrücke</div>
     <textarea id="senseText" placeholder="Was nimmst du wahr?" style="width:100%;height:100px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
     <div style="display:flex;gap:8px;">
       <button id="senseCancel" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;">Abbrechen</button>
@@ -410,6 +410,51 @@
 <script>
 window.addEventListener('load', function() {
   const walkColors=['#e6194b','#3cb44b','#ffe119','#4363d8','#f58231','#911eb4','#42d4f4','#f032e6'];
+  // ── Einheitliches Icon-Set (ersetzt Emojis durch klare, einheitliche Strich-Icons) ──
+  const ICONS={
+    camera:'<path d="M8.5 7L9.7 4.6H14.3L15.5 7"/><rect x="2.5" y="7" width="19" height="13" rx="2.5"/><circle cx="12" cy="13.7" r="3.4"/>',
+    mic:'<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/>',
+    message:'<circle cx="12" cy="11" r="8"/><path d="M9 18L6 21L7.5 17.5"/>',
+    eye:'<path d="M2 12A10 6 0 0 1 22 12A10 6 0 0 1 2 12Z"/><circle cx="12" cy="12" r="3"/>',
+    thought:'<rect x="4" y="4" width="16" height="11" rx="5.5"/><circle cx="8" cy="18.5" r="1.6"/><circle cx="5.5" cy="21" r="1"/>',
+    smile:'<circle cx="12" cy="12" r="9"/><circle cx="8.5" cy="10" r="1"/><circle cx="15.5" cy="10" r="1"/><path d="M7.5 14.5A5 4 0 0 0 16.5 14.5"/>',
+    save:'<rect x="4" y="3" width="16" height="18" rx="2"/><rect x="8" y="5" width="6" height="4"/><rect x="7" y="14" width="10" height="6" rx="1"/>',
+    package:'<path d="M12 3L20 7.5V16.5L12 21L4 16.5V7.5Z"/><line x1="12" y1="3" x2="12" y2="12"/><line x1="12" y1="12" x2="20" y2="7.5"/><line x1="12" y1="12" x2="4" y2="7.5"/>',
+    scale:'<line x1="7" y1="5" x2="7" y2="19"/><line x1="17" y1="5" x2="17" y2="19"/><line x1="7" y1="5" x2="17" y2="5"/><path d="M4 9A3 3 0 0 0 10 9"/><path d="M14 13A3 3 0 0 0 20 13"/>',
+    clipboard:'<rect x="5" y="4" width="14" height="17" rx="2"/><rect x="9" y="2" width="6" height="3" rx="1"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="13" y2="18"/>',
+    barchart:'<rect x="5" y="13" width="3.4" height="7"/><rect x="10.3" y="8" width="3.4" height="12"/><rect x="15.6" y="4" width="3.4" height="16"/>',
+    pencil:'<line x1="5" y1="19" x2="16" y2="8"/><path d="M16 8L19 5L21 7L18 10Z"/><line x1="4" y1="20" x2="6" y2="20"/>',
+    trash:'<rect x="9" y="3" width="6" height="2" rx="1"/><path d="M6 8H18L17 21H7Z"/><line x1="10" y1="11" x2="10" y2="18"/><line x1="14" y1="11" x2="14" y2="18"/>',
+    mountain:'<path d="M3 20L9 8L13 14L17 7L21 20Z"/>',
+    sparkles:'<path d="M12 3L13.5 9L20 10.5L13.5 12L12 18L10.5 12L4 10.5L10.5 9Z"/><line x1="18" y1="4" x2="18" y2="7"/><line x1="16.5" y1="5.5" x2="19.5" y2="5.5"/>',
+    map:'<path d="M4 5L9 3L15 5L20 3V19L15 21L9 19L4 21Z"/><line x1="9" y1="3" x2="9" y2="19"/><line x1="15" y1="5" x2="15" y2="21"/>',
+    layers:'<path d="M12 3L21 8.5L12 14L3 8.5Z"/><path d="M3.5 13L12 18.5L20.5 13"/>',
+    folder:'<path d="M3 7H9L11 9H21V19H3Z"/>',
+    pin:'<path d="M7 13A7 7 0 1 1 17 13L12 21Z"/><circle cx="12" cy="9.3" r="2.3"/>',
+    x:'<line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/>',
+    check:'<polyline points="4,12 9.5,18 20,6"/>',
+    checkcircle:'<circle cx="12" cy="12" r="9"/><polyline points="7.5,12.5 10.5,15.5 16.5,8.5"/>',
+    warning:'<path d="M12 3L22 20H2Z"/><line x1="12" y1="9" x2="12" y2="14.5"/><circle cx="12" cy="17.3" r="0.9" fill="currentColor" stroke="none"/>',
+    alertcircle:'<circle cx="12" cy="12" r="9"/><line x1="12" y1="7" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.9" fill="currentColor" stroke="none"/>',
+    footprints:'<path d="M5 14a3 4 0 1 0 6 0a3 4 0 1 0-6 0Z"/><circle cx="8" cy="9" r="1.3" fill="currentColor" stroke="none"/><path d="M13 19a3 4 0 1 0 6 0a3 4 0 1 0-6 0Z"/><circle cx="16" cy="14" r="1.3" fill="currentColor" stroke="none"/>',
+    arrowdown:'<line x1="12" y1="4" x2="12" y2="20"/><polyline points="6,14 12,20 18,14"/>',
+    arrowleft:'<line x1="6" y1="12" x2="18" y2="12"/><polyline points="13,5 6,12 13,19"/>',
+    arrowright:'<line x1="4" y1="12" x2="20" y2="12"/><polyline points="14,6 20,12 14,18"/>',
+    download:'<line x1="12" y1="3" x2="12" y2="14"/><polyline points="7,9 12,14 17,9"/><polyline points="4,15 4,19 20,19 20,15"/>',
+    refresh:'<path d="M4 12a8 8 0 0 1 14.5-5"/><polyline points="14.5,4.5 18.5,7 15,9.5"/><path d="M20 12a8 8 0 0 1-14.5 5"/><polyline points="9.5,19.5 5.5,17 9,14.5"/>',
+    lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7A4 4 0 0 1 16 7V11"/><circle cx="12" cy="15.5" r="1.3"/><line x1="12" y1="16.8" x2="12" y2="18.3"/>',
+    phone:'<rect x="7" y="2" width="10" height="20" rx="2.2"/><line x1="10" y1="19" x2="14" y2="19"/>',
+    bulb:'<circle cx="12" cy="10" r="6.5"/><line x1="9.5" y1="16.3" x2="14.5" y2="16.3"/><line x1="10" y1="19" x2="14" y2="19"/><line x1="10.5" y1="21.5" x2="13.5" y2="21.5"/>',
+    signal:'<circle cx="12" cy="19" r="1.3" fill="currentColor" stroke="none"/><path d="M9 16a4 4 0 0 1 6 0"/><path d="M6 13a8 8 0 0 1 12 0"/><path d="M3 10a12 12 0 0 1 18 0"/>',
+    stop:'<rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor" stroke="none"/>',
+    play:'<path d="M7 4L19 12L7 20Z" fill="currentColor" stroke="none"/>',
+    menu:'<line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/>',
+    volume:'<path d="M4 9V15H8L14 20V4L8 9Z"/><path d="M16.5 9A4 4 0 0 1 16.5 15"/>'
+  };
+  function svgIcon(name,size,extra){
+    size=size||16;
+    return '<svg viewBox="0 0 24 24" width="'+size+'" height="'+size+'" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-'+Math.round(size*0.18)+'px;flex-shrink:0;'+(extra||'')+'">'+(ICONS[name]||'')+'</svg>';
+  }
   const layerVisibility={route:true,mood:true,thought:true,sense:true,sound:true,voice:true,photo:true};
   const mapLayers={route:[],mood:[],thought:[],sense:[],sound:[],voice:[],photo:[]};
   let state={walks:JSON.parse(localStorage.getItem('psychogeo_walks')||'[]'),current:null,map:null,liveMarker:null,activeLayers:{},currentTile:null,archiveInkLayers:{}};
@@ -452,7 +497,7 @@ window.addEventListener('load', function() {
   })();
   const drawer=document.getElementById('drawer');
   const drawerTitle=document.getElementById('drawerTitle');
-  const panelNames={ansicht:'🗺 Ansicht',ebenen:'☰ Ebenen',archiv:'📂 Archiv'};
+  const panelNames={ansicht:'Ansicht',ebenen:'Ebenen',archiv:'Archiv'};
   let currentPanel=null;
   function openPanel(name){
     ['ansicht','ebenen','archiv'].forEach(p=>document.getElementById('sec-'+p).style.display='none');
@@ -777,6 +822,39 @@ window.addEventListener('load', function() {
     }
     if(weight>4){const gc=Math.round(weight*1.2);for(let g=0;g<gc;g++){const t=Math.random(),gx=x1+(x2-x1)*t+jitter(weight*0.6),gy=y1+(y2-y1)*t+jitter(weight*0.6),gr=Math.random()*weight*0.18;ctx.beginPath();ctx.arc(gx,gy,gr,0,Math.PI*2);ctx.fillStyle='rgba(20,16,12,'+(alpha*Math.random()*0.5).toFixed(3)+')';ctx.fill();}}
   }
+  // ── Mini-Icons fürs Canvas (ersetzt Emoji-fillText in PNG-Snapshots durch gezeichnete Symbole) ──
+  function drawMiniIcon(ctx,name,x,y,r){
+    ctx.save();
+    ctx.strokeStyle='#fff';ctx.fillStyle='#fff';
+    ctx.lineWidth=Math.max(1.2,r*0.22);ctx.lineCap='round';ctx.lineJoin='round';
+    if(name==='thought'){
+      ctx.beginPath();ctx.ellipse(x,y-r*0.15,r*0.9,r*0.62,0,0,Math.PI*2);ctx.stroke();
+      ctx.beginPath();ctx.arc(x-r*0.55,y+r*0.62,r*0.16,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(x-r*0.85,y+r*0.92,r*0.11,0,Math.PI*2);ctx.fill();
+    }else if(name==='sense'){
+      ctx.beginPath();
+      ctx.moveTo(x-r,y);
+      ctx.quadraticCurveTo(x,y-r*0.75,x+r,y);
+      ctx.quadraticCurveTo(x,y+r*0.75,x-r,y);
+      ctx.closePath();ctx.stroke();
+      ctx.beginPath();ctx.arc(x,y,r*0.26,0,Math.PI*2);ctx.fill();
+    }else if(name==='mic'){
+      const w=r*0.5,h=r*1.05;
+      ctx.beginPath();
+      ctx.moveTo(x-w/2,y-h/2+w/2);
+      ctx.arc(x,y-h/2+w/2,w/2,Math.PI,0);
+      ctx.lineTo(x+w/2,y+h/2-w/2);
+      ctx.arc(x,y+h/2-w/2,w/2,0,Math.PI);
+      ctx.closePath();ctx.fill();
+      ctx.beginPath();ctx.arc(x,y+h*0.12,r*0.8,Math.PI*0.12,Math.PI*0.88);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(x,y+h/2+r*0.05);ctx.lineTo(x,y+r);ctx.stroke();
+    }else if(name==='camera'){
+      ctx.beginPath();ctx.rect(x-r*0.95,y-r*0.5,r*1.9,r*1.2);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(x-r*0.35,y-r*0.5);ctx.lineTo(x-r*0.2,y-r*0.78);ctx.lineTo(x+r*0.2,y-r*0.78);ctx.lineTo(x+r*0.35,y-r*0.5);ctx.stroke();
+      ctx.beginPath();ctx.arc(x,y+r*0.08,r*0.42,0,Math.PI*2);ctx.stroke();
+    }
+    ctx.restore();
+  }
   // ── InkLayer: korrekte Leaflet-Canvas-Synchronisation ──
   // Verwendet latLngToLayerPoint + CSS-Transform damit die Route beim
   // Zoomen/Panning nie verschoben wird (gleiche Methode wie L.Canvas intern)
@@ -1022,9 +1100,9 @@ window.addEventListener('load', function() {
       const banner=document.createElement('div');
       banner.style.cssText='background:#16a34a;color:#fff;border-radius:10px;padding:12px 14px;'
         +'margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;';
-      banner.innerHTML='<span style="font-size:12px;font-weight:bold;">✅ Walk gespeichert!</span>'
+      banner.innerHTML='<span style="font-size:12px;font-weight:bold;display:inline-flex;align-items:center;gap:6px;">'+svgIcon('checkcircle',14)+' Walk gespeichert!</span>'
         +'<button style="padding:8px 14px;border-radius:8px;border:none;background:#fff;'
-        +'color:#16a34a;font-size:11px;font-weight:bold;cursor:pointer;">📦 Jetzt exportieren</button>';
+        +'color:#16a34a;font-size:11px;font-weight:bold;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">'+svgIcon('package',13)+' Jetzt exportieren</button>';
       banner.querySelector('button').onclick=()=>{
         banner.remove();
         exportWalk(savedWalk);
@@ -1058,9 +1136,9 @@ window.addEventListener('load', function() {
           +'background:#dc2626;color:#fff;padding:10px 14px;font-size:11px;'
           +'display:flex;align-items:center;justify-content:space-between;gap:8px;'
           +'box-shadow:0 -4px 20px rgba(0,0,0,0.3);';
-        w.innerHTML='<span>🔴 <b>Speicher fast voll!</b> ('+usedMB+' MB) — Walk exportieren & löschen!</span>'
+        w.innerHTML='<span style="display:inline-flex;align-items:center;gap:6px;">'+svgIcon('alertcircle',14)+' <b>Speicher fast voll!</b> ('+usedMB+' MB) — Walk exportieren & löschen!</span>'
           +'<button onclick="this.parentElement.remove()" style="border:none;background:rgba(255,255,255,0.2);'
-          +'color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;">✕</button>';
+          +'color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;">'+svgIcon('x',11)+'</button>';
         document.body.appendChild(w);
       } else if(pct>=70){
         // Warnung — oranger Banner
@@ -1070,9 +1148,9 @@ window.addEventListener('load', function() {
           +'background:#f97316;color:#fff;padding:10px 14px;font-size:11px;'
           +'display:flex;align-items:center;justify-content:space-between;gap:8px;'
           +'box-shadow:0 -4px 20px rgba(0,0,0,0.3);';
-        w.innerHTML='<span>🟠 <b>Speicher '+pct+'% voll</b> ('+usedMB+' MB) — bald exportieren & löschen!</span>'
+        w.innerHTML='<span style="display:inline-flex;align-items:center;gap:6px;">'+svgIcon('warning',14)+' <b>Speicher '+pct+'% voll</b> ('+usedMB+' MB) — bald exportieren & löschen!</span>'
           +'<button onclick="this.parentElement.remove()" style="border:none;background:rgba(255,255,255,0.2);'
-          +'color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;">✕</button>';
+          +'color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;">'+svgIcon('x',11)+'</button>';
         document.body.appendChild(w);
       }
     }catch(ex){console.warn('Speicher-Check fehlgeschlagen:',ex);}
@@ -1152,7 +1230,7 @@ window.addEventListener('load', function() {
           })}));
           localStorage.setItem('psychogeo_walks',JSON.stringify(tsMinimal));
         }catch(ex3){
-          alert('⚠️ Speicher voll! Bitte einen alten Walk exportieren und löschen, dann erneut speichern.');
+          alert('Achtung: Speicher voll! Bitte einen alten Walk exportieren und löschen, dann erneut speichern.');
         }
       }
     }
@@ -1246,7 +1324,7 @@ window.addEventListener('load', function() {
   function stopViz(){if(vizRaf)cancelAnimationFrame(vizRaf);if(audioContext){audioContext.close();audioContext=null;}bars.forEach(b=>b.style.height='8px');}
   async function openAudioModal(type){
     if(!requireWalk())return;audioType=type;
-    document.getElementById('audioStatus').textContent=type==='voice'?'🎙 Sprachnachricht aufnehmen...':'🔊 Umgebungssound aufnehmen...';
+    document.getElementById('audioStatus').innerHTML=type==='voice'?(svgIcon('mic',13)+' Sprachnachricht aufnehmen...'):(svgIcon('volume',13)+' Umgebungssound aufnehmen...');
     audioChunks=[];timerSec=0;document.getElementById('audioTimer').textContent='0:00';
     try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});mediaRecorder=new MediaRecorder(stream);mediaRecorder.ondataavailable=e=>audioChunks.push(e.data);mediaRecorder.onstop=()=>finishRecording(stream);mediaRecorder.start();startViz(stream);timerInterval=setInterval(()=>{timerSec++;document.getElementById('audioTimer').textContent=formatTime(timerSec);},1000);audioModal.classList.add('open');}
     catch(e){alert('Mikrofon-Zugriff verweigert.');}
@@ -1261,7 +1339,7 @@ window.addEventListener('load', function() {
     const svgI=audioType==='voice'?'<line x1="8" y1="5" x2="8" y2="11" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/><line x1="5" y1="8" x2="11" y2="8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>':'<circle cx="8" cy="8" r="3" fill="none" stroke="#fff" stroke-width="1.8"/><line x1="8" y1="2" x2="8" y2="5" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>';
     const icon=L.divIcon({className:'',html:'<div style="width:22px;height:22px;border-radius:50%;background:'+color+';border:2.5px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;"><svg width="16" height="16" viewBox="0 0 16 16">'+svgI+'</svg></div>',iconSize:[22,22],iconAnchor:[11,11],popupAnchor:[0,-14]});
     const ph='<div style="min-width:200px;padding:4px;">'
-      +'<b style="font-size:13px;color:'+color+';">'+(audioType==='voice'?'💬 Sprachnachricht':'🎙 Umgebungssound')+'</b>'
+      +'<b style="font-size:13px;color:'+color+';display:inline-flex;align-items:center;gap:5px;">'+(audioType==='voice'?(svgIcon('message',13)+' Sprachnachricht'):(svgIcon('volume',13)+' Umgebungssound'))+'</b>'
       +'<div style="font-size:10px;color:#aaa;margin:4px 0;">'+ts+' · '+dur+'</div>'
       +'<audio controls src="'+url+'" style="width:100%;margin-top:6px;height:40px;"></audio>'
       +'</div>';
@@ -1338,8 +1416,8 @@ window.addEventListener('load', function() {
         const ai=new InkLayer();ai.addTo(state.map);for(let i=1;i<walk.route.length;i++)ai.addSegment(walk.route[i-1],walk.route[i],6,0.7);state.archiveInkLayers[id]=ai;if(!layerVisibility.route)ai._canvas.style.display='none';
       }
       walk.entries.forEach(e=>{
-        const eTN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Eindrücke',
-                  voice:'💬 Sprachnachricht',sound:'🎙 Umgebungssound',photo:'📸 Foto'};
+        const eTN={mood:svgIcon('smile',12)+' Stimmung',thought:svgIcon('thought',12)+' Gedanke',sense:svgIcon('eye',12)+' Eindrücke',
+                  voice:svgIcon('message',12)+' Sprachnachricht',sound:svgIcon('mic',12)+' Umgebungssound',photo:svgIcon('camera',12)+' Foto'};
         let popup='<div style="min-width:180px;font-size:12px;padding:2px;">'
           +'<b style="color:#333;">'+( eTN[e.type]||(e.type||'').toUpperCase())+'</b>';
         if(e.timestamp) popup+='<div style="font-size:10px;color:#aaa;margin:3px 0;">'+e.timestamp+(e.audioDuration?' · '+e.audioDuration:'')+'</div>';
@@ -1512,7 +1590,7 @@ window.addEventListener('load', function() {
     }).addTo(verlaufMap).bindTooltip('Ende',{permanent:false});
     // ── Eintrags-Marker als Sprechblasen (DivIcon) ──
     const typeColor={mood:'#f97316',thought:'#1e3a6e',sense:'#2d5a2d',voice:'#7c3aed',sound:'#f58231',photo:'#2a2a2a'};
-    const typeIcon={mood:'🔋',thought:'💭',sense:'👁',voice:'💬',sound:'🎙',photo:'📸'};
+    const typeIcon={mood:svgIcon('smile',15,'stroke-width:2.3;'),thought:svgIcon('thought',15,'stroke-width:2.3;'),sense:svgIcon('eye',15,'stroke-width:2.3;'),voice:svgIcon('message',15,'stroke-width:2.3;'),sound:svgIcon('mic',15,'stroke-width:2.3;'),photo:svgIcon('camera',15,'stroke-width:2.3;')};
     const typeText={mood:'Stimmung',thought:'Gedanke',sense:'Eindrücke',voice:'Sprache',sound:'Sound',photo:'Foto'};
     entries.forEach(e=>{
       if(!e.location)return;
@@ -1562,7 +1640,7 @@ window.addEventListener('load', function() {
           // Entry-Card unterhalb der Karte anzeigen
           const card=document.getElementById('verlaufEntryCard');
           card.style.display='block';
-          const TN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Eindrücke',voice:'💬 Sprache',sound:'🎙 Sound',photo:'📸 Foto'};
+          const TN={mood:svgIcon('smile',12)+' Stimmung',thought:svgIcon('thought',12)+' Gedanke',sense:svgIcon('eye',12)+' Eindrücke',voice:svgIcon('message',12)+' Sprache',sound:svgIcon('mic',12)+' Sound',photo:svgIcon('camera',12)+' Foto'};
           let h='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
             +'<span style="font-weight:bold;font-size:13px;color:'+col+';">'+(TN[e.type]||e.type)+'</span>';
           if(e.type==='mood'&&e.moodValue!=null)
@@ -1621,8 +1699,8 @@ window.addEventListener('load', function() {
     walk.reflection.ueber=document.getElementById('rqUeber').value;
     saveWalks();
     const btn=document.getElementById('rqSaveBtn');
-    btn.textContent='✓ Gespeichert';btn.style.background='#16a34a';
-    setTimeout(()=>{btn.textContent='💾 Reflexion speichern';btn.style.background='#2563eb';},2000);
+    btn.innerHTML=svgIcon('check',13)+' Gespeichert';btn.style.background='#16a34a';
+    setTimeout(()=>{btn.innerHTML=svgIcon('save',13)+' Reflexion speichern';btn.style.background='#2563eb';},2000);
   };
   // ── WALK-VERGLEICH ──
   let vergleichMaps={};
@@ -1635,11 +1713,11 @@ window.addEventListener('load', function() {
     const hint=document.getElementById('vglHint');
     if(btn){
       btn.style.display=n>=2?'block':'none';
-      btn.textContent='⚖️ Vergleich starten ('+n+')';
+      btn.innerHTML=svgIcon('scale',13)+' Vergleich starten ('+n+')';
     }
     if(hint){
-      if(n===0) hint.textContent='Tippe bei 2 oder mehr Walks auf ⚖️ um sie zu vergleichen.';
-      else if(n===1) hint.textContent='Noch einen Walk mit ⚖️ auswählen…';
+      if(n===0) hint.innerHTML='Tippe bei 2 oder mehr Walks auf '+svgIcon('scale',11)+' um sie zu vergleichen.';
+      else if(n===1) hint.innerHTML='Noch einen Walk mit '+svgIcon('scale',11)+' auswählen…';
       else hint.textContent=n+' Walks ausgewählt — jetzt vergleichen!';
       hint.style.color=n>=2?'#7c3aed':'#9ca3af';
       hint.style.fontWeight=n>=2?'bold':'normal';
@@ -1736,7 +1814,7 @@ window.addEventListener('load', function() {
           ?'<span style="color:'+moodColor(avg)+';font-size:12px;font-weight:bold;">'+avg+'/5</span>'
           :'')
         +(ref.moodRetro!=null
-          ?'<span style="color:#aaa;font-size:10px;margin-left:6px;">↩'+ref.moodRetro+'/5</span>'
+          ?'<span style="color:#aaa;font-size:10px;margin-left:6px;display:inline-flex;align-items:center;gap:2px;">'+svgIcon('arrowleft',10)+ref.moodRetro+'/5</span>'
           :'');
       card.appendChild(ttl);
       // Canvas-Skizze (fix, horizontal scrollbar)
@@ -1754,7 +1832,7 @@ window.addEventListener('load', function() {
         +'box-shadow:0 4px 20px rgba(0,0,0,0.18);z-index:10;font-size:11px;'
         +'max-height:140px;overflow-y:auto;-webkit-overflow-scrolling:touch;';
       const cvClose=document.createElement('button');
-      cvClose.textContent='✕';
+      cvClose.innerHTML=svgIcon('x',12);
       cvClose.style.cssText='position:absolute;top:6px;right:8px;border:none;'
         +'background:transparent;font-size:14px;cursor:pointer;color:#555;padding:2px 6px;';
       cvClose.onclick=(ev)=>{ev.stopPropagation();cvPopup.style.display='none';};
@@ -1792,7 +1870,7 @@ window.addEventListener('load', function() {
         });
         if(!best){cvPopup.style.display='none';return;}
         const TC2={mood:'#ea580c',thought:'#2563eb',sense:'#16a34a',voice:'#7c3aed',sound:'#7c3aed',photo:'#374151'};
-        const TN2={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Eindrücke',voice:'💬 Sprache',sound:'🎙 Sound',photo:'📸 Foto'};
+        const TN2={mood:svgIcon('smile',12)+' Stimmung',thought:svgIcon('thought',12)+' Gedanke',sense:svgIcon('eye',12)+' Eindrücke',voice:svgIcon('message',12)+' Sprache',sound:svgIcon('mic',12)+' Sound',photo:svgIcon('camera',12)+' Foto'};
         const col2=TC2[best.type]||'#555';
         let html='<div style="padding-right:20px;">'
           +'<b style="color:'+col2+';font-size:12px;">'+(TN2[best.type]||best.type)+'</b>';
@@ -1818,8 +1896,8 @@ window.addEventListener('load', function() {
         hasEntries=true;
         const TC={mood:'#ea580c',thought:'#2563eb',sense:'#16a34a',
                   voice:'#7c3aed',sound:'#7c3aed',photo:'#374151'};
-        const TN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Eindrücke',
-                  voice:'💬 Sprachnachricht',sound:'🎙 Umgebungssound',photo:'📸 Foto'};
+        const TN={mood:svgIcon('smile',12)+' Stimmung',thought:svgIcon('thought',12)+' Gedanke',sense:svgIcon('eye',12)+' Eindrücke',
+                  voice:svgIcon('message',12)+' Sprachnachricht',sound:svgIcon('mic',12)+' Umgebungssound',photo:svgIcon('camera',12)+' Foto'};
         const col=TC[e.type]||'#555';
         const row=document.createElement('div');
         row.style.cssText='padding:10px 14px;border-bottom:1px solid #f5f5f5;';
@@ -2063,7 +2141,7 @@ window.addEventListener('load', function() {
     document.getElementById('vglOverlay').style.display='none';
     selectedForVergleich.clear();
     const h=document.getElementById('vglHint');
-    if(h){h.textContent='Tippe bei 2 oder mehr Walks auf ⚖️ um sie zu vergleichen.';h.style.color='#9ca3af';h.style.fontWeight='normal';}
+    if(h){h.innerHTML='Tippe bei 2 oder mehr Walks auf '+svgIcon('scale',11)+' um sie zu vergleichen.';h.style.color='#9ca3af';h.style.fontWeight='normal';}
     const b=document.getElementById('btnVergleich');
     if(b) b.style.display='none';
     renderArchive();
@@ -2093,15 +2171,15 @@ window.addEventListener('load', function() {
     state.walks.forEach(w=>{
       const item=document.createElement('div');item.className='walk-item';
       const hasRef=w.reflection&&(w.reflection.frei||w.reflection.moment);
-      // Vergleich-Auswahl via ⚖️ Button in quickRow (siehe unten)
+      // Vergleich-Auswahl via Waage-Button in quickRow (siehe unten)
       // Walk-Header
       const header=document.createElement('div');
       header.className='walk-header';
       header.setAttribute('data-id',w.id);
       header.innerHTML='<span class="color-dot" style="background:'+w.color+'"></span>'
         +'<span class="walk-label">'+escHtml(w.name)
-        +(w.steps?'<br><span style="font-size:9px;color:#9ca3af;font-weight:normal;">👣 '
-          +(w.steps||0).toLocaleString('de-DE')+' Schritte'+(hasRef?' · ✍️':'')+' · '
+        +(w.steps?'<br><span style="font-size:9px;color:#9ca3af;font-weight:normal;">'+svgIcon('footprints',9)+' '
+          +(w.steps||0).toLocaleString('de-DE')+' Schritte'+(hasRef?' · '+svgIcon('pencil',9):'')+' · '
           +w.entries.length+' Eintr.</span>':'')
         +'</span><span class="walk-badge">sichtbar</span>';
       header.addEventListener('click',()=>toggleWalk(w.id));
@@ -2109,21 +2187,21 @@ window.addEventListener('load', function() {
       // ── Immer sichtbare Schnell-Buttons ──
       const quickRow=document.createElement('div');
       quickRow.style.cssText='display:flex;gap:4px;padding:4px 8px 6px;align-items:center;';
-      [{cls:'wb-verlauf',label:'📋 Reflexion',col:'#2563eb'},
-       {cls:'wb-analyse',label:'📊 Auswerten',col:'#16a34a'}
+      [{cls:'wb-verlauf',label:svgIcon('clipboard',11)+' Reflexion',col:'#2563eb'},
+       {cls:'wb-analyse',label:svgIcon('barchart',11)+' Auswerten',col:'#16a34a'}
       ].forEach(({cls,label,col})=>{
         const btn=document.createElement('button');
         btn.setAttribute('data-cls',cls);
         btn.style.cssText='flex:1;padding:7px 3px;font-size:10px;border-radius:8px;'
           +'border:1.5px solid '+col+';background:#fff;color:'+col+';font-weight:bold;'
           +'cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap;';
-        btn.textContent=label;
+        btn.innerHTML=label;
         quickRow.appendChild(btn);
       });
       // Vergleich-Checkbox als Button
       const vglBtn=document.createElement('button');
       vglBtn.style.cssText='padding:7px 8px;font-size:11px;border-radius:8px;border:1.5px solid '+(selectedForVergleich.has(w.id)?'#7c3aed':'#d1d5db')+';background:'+(selectedForVergleich.has(w.id)?'#7c3aed':'#fff')+';color:'+(selectedForVergleich.has(w.id)?'#fff':'#9ca3af')+';font-weight:bold;cursor:pointer;white-space:nowrap;';
-      vglBtn.textContent='⚖️';
+      vglBtn.innerHTML=svgIcon('scale',13);
       vglBtn.title='Zum Vergleich hinzufügen';
       vglBtn.onclick=()=>{
         toggleVergleichSelect(w.id);
@@ -2145,12 +2223,12 @@ window.addEventListener('load', function() {
       const btnRow=document.createElement('div');
       btnRow.className='walk-btn-row';
       [
-        {cls:'wb-save',  label:'✏️ Umbenennen'},
-        {cls:'wb-export', label:'📦 Export'},
-        {cls:'wb-delete', label:'🗑'},
+        {cls:'wb-save',  label:svgIcon('pencil',12)+' Umbenennen'},
+        {cls:'wb-export', label:svgIcon('package',12)+' Export'},
+        {cls:'wb-delete', label:svgIcon('trash',12)},
       ].forEach(({cls,label})=>{
         const btn=document.createElement('button');
-        btn.className='walk-btn '+cls; btn.textContent=label;
+        btn.className='walk-btn '+cls; btn.innerHTML=label;
         btnRow.appendChild(btn);
       });
       actions.appendChild(btnRow);
@@ -2184,11 +2262,11 @@ window.addEventListener('load', function() {
     const bvN=selectedForVergleich.size;
     if(bvBtn){
       bvBtn.style.display=bvN>=2?'block':'none';
-      bvBtn.textContent='⚖️ Vergleich starten ('+bvN+')';
+      bvBtn.innerHTML=svgIcon('scale',13)+' Vergleich starten ('+bvN+')';
     }
     if(bvHint){
-      if(bvN===0) bvHint.textContent='Tippe bei 2 oder mehr Walks auf ⚖️ um sie zu vergleichen.';
-      else if(bvN===1) bvHint.textContent='Noch einen Walk mit ⚖️ auswählen…';
+      if(bvN===0) bvHint.innerHTML='Tippe bei 2 oder mehr Walks auf '+svgIcon('scale',11)+' um sie zu vergleichen.';
+      else if(bvN===1) bvHint.innerHTML='Noch einen Walk mit '+svgIcon('scale',11)+' auswählen…';
       else{bvHint.textContent=bvN+' Walks ausgewählt — jetzt vergleichen!';bvHint.style.color='#7c3aed';bvHint.style.fontWeight='bold';}
     }
   }
@@ -2247,8 +2325,8 @@ window.addEventListener('load', function() {
             .map(e=>({
               type:'Feature',
               properties:(()=>{
-                const TN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Eindrücke',
-                  voice:'💬 Sprachnachricht',sound:'🎙 Umgebungssound',photo:'📸 Foto'};
+                const TN={mood:svgIcon('smile',12)+' Stimmung',thought:svgIcon('thought',12)+' Gedanke',sense:svgIcon('eye',12)+' Eindrücke',
+                  voice:svgIcon('message',12)+' Sprachnachricht',sound:svgIcon('mic',12)+' Umgebungssound',photo:svgIcon('camera',12)+' Foto'};
                 const TC={mood:'#ea580c',thought:'#1e3a6e',sense:'#2d5a2d',
                   voice:'#7c3aed',sound:'#7c3aed',photo:'#374151'};
                 // Beschreibung aufbauen
@@ -2256,7 +2334,7 @@ window.addEventListener('load', function() {
                 if(e.moodValue!=null) desc='Stimmung: '+e.moodValue+'/5';
                 if(e.text) desc+=(desc?'\n':'')+e.text;
                 if(e.audioDuration) desc+=(desc?'\n':'')+'Aufnahmedauer: '+e.audioDuration;
-                if(e.type==='photo'&&!e.text) desc='📸 Foto (keine Notiz)';
+                if(e.type==='photo'&&!e.text) desc=svgIcon('camera',12)+' Foto (keine Notiz)';
                 // Foto als Base64 direkt ins GeoJSON (uMap zeigt es per img-Tag)
                 const imgTag=e.dataUrl
                   ?'<img src="'+e.dataUrl+'" style="max-width:200px;border-radius:6px;margin-top:6px;"/>'
@@ -2323,7 +2401,7 @@ window.addEventListener('load', function() {
           if(e.type==='mood'&&e.moodValue!=null) txt+='Stimmung: '+e.moodValue+'/5\n';
           if(e.text) txt+=e.text+'\n';
           if(e.audioDuration) txt+='Audio-Dauer: '+e.audioDuration+'\n';
-          if(e.type==='photo') txt+='📸 Foto'+(e.text?' — '+e.text:'')+'\n';
+          if(e.type==='photo') txt+='Foto'+(e.text?' — '+e.text:'')+'\n';
         });
         folder.file('eintraege.txt',txt);
       }
@@ -2353,8 +2431,8 @@ window.addEventListener('load', function() {
     // Farben und Labels exakt wie in der App
     const TC={mood:'#ea580c',thought:'#2563eb',sense:'#16a34a',
               voice:'#7c3aed',sound:'#7c3aed',photo:'#374151'};
-    const TN={mood:'🔋 Stimmung',thought:'💭 Gedanke',sense:'👁 Eindrücke',
-              voice:'💬 Sprachnachricht',sound:'🎙 Umgebungssound',photo:'📸 Foto'};
+    const TN={mood:svgIcon('smile',12)+' Stimmung',thought:svgIcon('thought',12)+' Gedanke',sense:svgIcon('eye',12)+' Eindrücke',
+              voice:svgIcon('message',12)+' Sprachnachricht',sound:svgIcon('mic',12)+' Umgebungssound',photo:svgIcon('camera',12)+' Foto'};
     const features=[];
     // ── Ebene 1: Route als Linie ──
     features.push({
@@ -2387,12 +2465,12 @@ window.addEventListener('load', function() {
       if(e.audioBase64)
         popupLines.push('<audio controls src="'+e.audioBase64+'" style="width:100%;margin-top:6px;"></audio>');
       if(e.audioDuration&&!e.audioBase64)
-        popupLines.push('<small>🎙 Aufnahme ('+e.audioDuration+') — Audio nach Reload nicht mehr verfügbar</small>');
+        popupLines.push('<small>'+svgIcon('mic',12)+' Aufnahme ('+e.audioDuration+') — Audio nach Reload nicht mehr verfügbar</small>');
       // Marker-Label: kurz und klar
       let markerName=typName;
-      if(e.moodValue!=null) markerName='🔋 '+e.moodValue+'/5';
+      if(e.moodValue!=null) markerName=svgIcon('smile',12)+' '+e.moodValue+'/5';
       else if(e.text) markerName=typName+': '+e.text.substring(0,40)+(e.text.length>40?'…':'');
-      else if(e.dataUrl) markerName='📸 Foto';
+      else if(e.dataUrl) markerName=svgIcon('camera',12)+' Foto';
       else if(e.audioBase64||e.audioDuration) markerName=typName+' (Audio)';
       features.push({
         type:'Feature',
@@ -2477,10 +2555,10 @@ window.addEventListener('load', function() {
         // Text
         ctx.fillStyle='#fff';ctx.textAlign='center';ctx.font='bold '+(r>10?'10':'8')+'px sans-serif';
         if(e.moodValue!=null) ctx.fillText(e.moodValue,x,y+4);
-        else if(e.type==='thought') ctx.fillText('💭',x,y+4);
-        else if(e.type==='sense') ctx.fillText('👁',x,y+4);
-        else if(e.type==='voice'||e.type==='sound') ctx.fillText('🎙',x,y+4);
-        else if(e.type==='photo') ctx.fillText('📸',x,y+4);
+        else if(e.type==='thought') drawMiniIcon(ctx,'thought',x,y,r*0.6);
+        else if(e.type==='sense') drawMiniIcon(ctx,'sense',x,y,r*0.6);
+        else if(e.type==='voice'||e.type==='sound') drawMiniIcon(ctx,'mic',x,y,r*0.6);
+        else if(e.type==='photo') drawMiniIcon(ctx,'camera',x,y,r*0.6);
       });
       const sp=toXY(route[0][0],route[0][1]),ep=toXY(route[route.length-1][0],route[route.length-1][1]);
       [{pt:sp,col:'#16a34a',label:'Start'},{pt:ep,col:'#dc2626',label:'Ende'}].forEach(({pt,col,label})=>{
@@ -2692,13 +2770,13 @@ window.addEventListener('load', function() {
     const hint=document.getElementById('ob-device-hint');
     if(isIOS){
       hint.style.cssText='background:#fef3c7;border-radius:10px;padding:12px 14px;font-size:11px;color:#92400e;line-height:1.7;border-left:4px solid #f59e0b;';
-      hint.innerHTML='<b>📱 iPhone erkannt:</b><br>Verwende <b>Safari</b> als Browser. Erlaube unter Einstellungen → Safari → Standort den Zugriff.';
+      hint.innerHTML='<b>'+svgIcon('phone',13)+' iPhone erkannt:</b><br>Verwende <b>Safari</b> als Browser. Erlaube unter Einstellungen → Safari → Standort den Zugriff.';
     } else if(isAndroid){
       hint.style.cssText='background:#ecfdf5;border-radius:10px;padding:12px 14px;font-size:11px;color:#065f46;line-height:1.7;border-left:4px solid #10b981;';
-      hint.innerHTML='<b>🤖 Android erkannt:</b><br>Verwende <b>Chrome</b> als Browser. Wähle bei der Standort-Abfrage <b>"Immer erlauben"</b>.';
+      hint.innerHTML='<b>'+svgIcon('phone',13)+' Android erkannt:</b><br>Verwende <b>Chrome</b> als Browser. Wähle bei der Standort-Abfrage <b>"Immer erlauben"</b>.';
     } else {
       hint.style.cssText='background:#f0f4ff;border-radius:10px;padding:12px 14px;font-size:11px;color:#1e3a6e;line-height:1.7;';
-      hint.innerHTML='<b>💡 Wichtig:</b><br>Auf dem Handy: iPhone → Safari, Android → Chrome verwenden.';
+      hint.innerHTML='<b>'+svgIcon('bulb',13)+' Wichtig:</b><br>Auf dem Handy: iPhone → Safari, Android → Chrome verwenden.';
     }
     // Display-Hinweis Schritt 4
     const dHint=document.getElementById('ob-display-hint');
@@ -2782,16 +2860,16 @@ window.addEventListener('load', function() {
       +'background:#dc2626;color:#fff;padding:14px 16px;font-size:12px;'
       +'display:flex;align-items:center;justify-content:space-between;gap:10px;'
       +'box-shadow:0 4px 20px rgba(0,0,0,0.3);flex-wrap:wrap;';
-    banner.innerHTML = '<div><b>⚠️ Unterbrochener Walk gefunden!</b><br>'
+    banner.innerHTML = '<div><b>'+svgIcon('warning',13)+' Unterbrochener Walk gefunden!</b><br>'
       +'<span style="font-size:11px;opacity:0.9;">"'+recovered.name
       +'" — '+recovered.route.length+' GPS-Punkte, '+recovered.entries.length+' Einträge</span></div>'
       +'<div style="display:flex;gap:8px;flex-shrink:0;">'
       +'<button id="recoverBtn" style="padding:8px 14px;border-radius:8px;border:none;'
       +'background:#fff;color:#dc2626;font-size:11px;font-weight:bold;cursor:pointer;'
-      +'-webkit-tap-highlight-color:transparent;">💾 Wiederherstellen</button>'
+      +'-webkit-tap-highlight-color:transparent;">'+svgIcon('save',13)+' Wiederherstellen</button>'
       +'<button id="discardBtn" style="padding:8px 14px;border-radius:8px;border:none;'
       +'background:rgba(255,255,255,0.2);color:#fff;font-size:11px;font-weight:bold;cursor:pointer;'
-      +'-webkit-tap-highlight-color:transparent;">✕ Verwerfen</button>'
+      +'-webkit-tap-highlight-color:transparent;">'+svgIcon('x',13)+' Verwerfen</button>'
       +'</div>';
     document.body.appendChild(banner);
     document.getElementById('recoverBtn').addEventListener('click', function(){
@@ -2811,7 +2889,7 @@ window.addEventListener('load', function() {
         ok.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;background:#16a34a;'
           +'color:#fff;padding:12px 16px;font-size:12px;font-weight:bold;text-align:center;'
           +'box-shadow:0 4px 20px rgba(0,0,0,0.3);';
-        ok.textContent='✅ Walk wiederhergestellt und im Archiv gespeichert!';
+        ok.innerHTML=svgIcon('checkcircle',13)+' Walk wiederhergestellt und im Archiv gespeichert!';
         document.body.appendChild(ok);
         setTimeout(()=>ok.remove(), 4000);
       } catch(err){
@@ -2830,7 +2908,7 @@ window.addEventListener('load', function() {
   <div id="verlaufBox" style="width:100%;height:100%;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;background:#111;">
     <div class="verlauf-header" style="position:sticky;top:0;z-index:20;">
       <div class="verlauf-title" id="verlaufTitle">Reflexion</div>
-      <button class="verlauf-close" id="verlaufClose">✕</button>
+      <button class="verlauf-close" id="verlaufClose"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg></button>
     </div>
     <!-- Karte: feste Höhe 55vh -->
     <div id="verlaufMapDiv" style="width:100%;height:55vh;min-height:260px;flex-shrink:0;overflow:hidden;touch-action:none;z-index:1;"></div>
@@ -2840,7 +2918,7 @@ window.addEventListener('load', function() {
     <!-- Scroll-Hinweis -->
     <div id="verlaufScrollHint" style="display:flex;flex-direction:column;align-items:center;padding:10px 14px 6px;flex-shrink:0;cursor:pointer;" onclick="document.getElementById('reflexionQPanel').scrollIntoView({behavior:'smooth'});">
       <div style="font-size:10px;color:#9ca3af;margin-bottom:4px;">Nach unten scrollen für Reflexionsfragen</div>
-      <div style="font-size:20px;animation:bounceDown 1.5s infinite;">↓</div>
+      <div style="animation:bounceDown 1.5s infinite;color:#9ca3af;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="4" x2="12" y2="20"/><polyline points="6,14 12,20 18,14"/></svg></div>
     </div>
     <!-- Trennlinie -->
     <div style="height:1px;background:rgba(255,255,255,0.08);flex-shrink:0;"></div>
@@ -2875,14 +2953,14 @@ window.addEventListener('load', function() {
         <div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;">Was überrascht dich beim Blick auf die Aufzeichnung?</div>
         <textarea id="rqUeber" rows="2" placeholder="Diskrepanz, Überraschung..." style="width:100%;font-size:12px;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;font-family:sans-serif;background:#fff;"></textarea>
       </div>
-      <button id="rqSaveBtn" style="width:100%;padding:13px;border-radius:10px;border:none;background:#2563eb;color:#fff;font-size:12px;font-weight:bold;cursor:pointer;">💾 Reflexion speichern</button>
+      <button id="rqSaveBtn" style="width:100%;padding:13px;border-radius:10px;border:none;background:#2563eb;color:#fff;font-size:12px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><rect x="8" y="5" width="6" height="4"/><rect x="7" y="14" width="10" height="6" rx="1"/></svg> Reflexion speichern</button>
     </div>
   </div>
 </div>
 <!-- STIMMUNGS-MODAL -->
 <div id="moodModal" style="display:none;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:20px;padding:28px 24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:16px;">
-    <div style="font-size:14px;font-weight:bold;color:#111;text-align:center;">🔋 Stimmung</div>
+    <div style="font-size:14px;font-weight:bold;color:#111;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="8.5" cy="10" r="1"/><circle cx="15.5" cy="10" r="1"/><path d="M7.5 14.5A5 4 0 0 0 16.5 14.5"/></svg> Stimmung</div>
     <div style="height:16px;border-radius:8px;background:linear-gradient(to right,#3b82f6,#22c55e,#facc15,#f97316,#ef4444);position:relative;">
       <div id="moodThumb" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;background:#fff;border:3px solid #facc15;box-shadow:0 2px 8px rgba(0,0,0,0.3);pointer-events:none;"></div>
     </div>
@@ -2899,7 +2977,7 @@ window.addEventListener('load', function() {
 <!-- GEDANKEN-MODAL -->
 <div id="thoughtModal" style="display:none;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:20px;padding:24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:14px;">
-    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">💭 Gedanke</div>
+    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="11" rx="5.5"/><circle cx="8" cy="18.5" r="1.6"/><circle cx="5.5" cy="21" r="1"/></svg> Gedanke</div>
     <textarea id="thoughtText" placeholder="Was denkst du gerade?" style="width:100%;height:100px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
     <div style="display:flex;gap:8px;">
       <button id="thoughtCancel" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;">Abbrechen</button>
@@ -2910,7 +2988,7 @@ window.addEventListener('load', function() {
 <!-- WAHRNEHMUNG-MODAL -->
 <div id="senseModal" style="display:none;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:20px;padding:24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:14px;">
-    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;">👁 Eindrücke</div>
+    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12A10 6 0 0 1 22 12A10 6 0 0 1 2 12Z"/><circle cx="12" cy="12" r="3"/></svg> Eindrücke</div>
     <textarea id="senseText" placeholder="Was nimmst du wahr?" style="width:100%;height:100px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
     <div style="display:flex;gap:8px;">
       <button id="senseCancel" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;">Abbrechen</button>
@@ -2922,13 +3000,13 @@ window.addEventListener('load', function() {
 <div id="umapModal" style="display:none;position:fixed;inset:0;z-index:6000;background:rgba(0,0,0,0.75);align-items:center;justify-content:center;padding:20px;">
   <div style="background:#fff;border-radius:16px;width:min(94vw,440px);padding:24px;display:flex;flex-direction:column;gap:14px;">
     <div style="display:flex;align-items:center;justify-content:space-between;">
-      <div style="font-size:14px;font-weight:bold;color:#111;">🗺 GeoJSON exportieren</div>
-      <button id="umapClose" style="border:none;background:#f0f0f0;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:14px;">✕</button>
+      <div style="font-size:14px;font-weight:bold;color:#111;display:flex;align-items:center;gap:6px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5L9 3L15 5L20 3V19L15 21L9 19L4 21Z"/><line x1="9" y1="3" x2="9" y2="19"/><line x1="15" y1="5" x2="15" y2="21"/></svg> GeoJSON exportieren</div>
+      <button id="umapClose" style="border:none;background:#f0f0f0;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg></button>
     </div>
     <div style="background:#f0f4ff;border-radius:10px;padding:12px 14px;font-size:12px;color:#1e3a6e;line-height:1.7;">
       Enthält Route + alle Einträge (Stimmung, Gedanken, Wahrnehmung, Fotos) — bereit zum Import in uMap.
     </div>
-    <button id="umapDownloadBtn" style="width:100%;padding:14px;border-radius:10px;border:none;background:#2563eb;color:#fff;font-size:14px;font-weight:bold;cursor:pointer;-webkit-tap-highlight-color:transparent;">📥 GeoJSON herunterladen</button>
+    <button id="umapDownloadBtn" style="width:100%;padding:14px;border-radius:10px;border:none;background:#2563eb;color:#fff;font-size:14px;font-weight:bold;cursor:pointer;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:center;gap:6px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="14"/><polyline points="7,9 12,14 17,9"/><polyline points="4,15 4,19 20,19 20,15"/></svg> GeoJSON herunterladen</button>
   </div>
 </div>
 <!-- ONBOARDING MODAL -->
@@ -2945,7 +3023,7 @@ window.addEventListener('load', function() {
       <!-- Schritt 1 -->
       <div class="ob-step" data-step="0" style="display:flex;flex-direction:column;gap:12px;">
         <div style="text-align:center;padding:8px 0;">
-          <div style="font-size:40px;">📍</div>
+          <div style="color:#dc2626;display:flex;justify-content:center;"><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 13A7 7 0 1 1 17 13L12 21Z"/><circle cx="12" cy="9.3" r="2.3"/></svg></div>
           <div style="font-size:15px;font-weight:bold;color:#111;margin-top:8px;">Willkommen!</div>
           <div style="font-size:12px;color:#6b7280;margin-top:6px;line-height:1.6;">Was passiert alles auf deinem Spaziergang? Halte Eindrücke und deine Wahrnehmung mit dem Begleitinstrument fest. Diese Webbasierte-App begleitet dich auf Spaziergängen und zeichnet auf was du erlebst — Route, Stimmung, Gedanken, Fotos und Audio</div>
         </div>
@@ -2959,20 +3037,27 @@ window.addEventListener('load', function() {
       <!-- Schritt 2 -->
       <div class="ob-step" data-step="1" style="display:none;flex-direction:column;gap:12px;">
         <div style="text-align:center;padding:8px 0;">
-          <div style="font-size:40px;">🚶</div>
+          <div style="color:#111;display:flex;justify-content:center;"><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 14a3 4 0 1 0 6 0a3 4 0 1 0-6 0Z"/><circle cx="8" cy="9" r="1.3" fill="currentColor" stroke="none"/><path d="M13 19a3 4 0 1 0 6 0a3 4 0 1 0-6 0Z"/><circle cx="16" cy="14" r="1.3" fill="currentColor" stroke="none"/></svg></div>
           <div style="font-size:15px;font-weight:bold;color:#111;margin-top:8px;">Spaziergang aufzeichnen</div>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;">
           <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
-            <span style="font-size:22px;">▶️</span>
+            <span style="color:#16a34a;flex-shrink:0;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4L19 12L7 20Z" fill="currentColor" stroke="none"/></svg></span>
             <div><b style="font-size:12px;">START</b><br><span style="font-size:11px;color:#6b7280;">Tippe auf START und warte bis der GPS-Punkt erscheint.</span></div>
           </div>
           <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
-            <span style="font-size:22px;">📸🎙💬👁💭🔋</span>
-            <div><b style="font-size:12px;">Aufzeichnen</b><br><span style="font-size:11px;color:#6b7280;">Die Buttons links: 📸 Foto,🎙 Umgebungssound, 💬 Sprachnachricht, 👁 Wahrnehmung, 💭 Gedanke, 🔋 Stimmung.</span></div>
+            <span style="color:#374151;display:flex;gap:3px;flex-shrink:0;">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 7L9.7 4.6H14.3L15.5 7"/><rect x="2.5" y="7" width="19" height="13" rx="2.5"/><circle cx="12" cy="13.7" r="3.4"/></svg>
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="11" r="8"/><path d="M9 18L6 21L7.5 17.5"/></svg>
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12A10 6 0 0 1 22 12A10 6 0 0 1 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="11" rx="5.5"/><circle cx="8" cy="18.5" r="1.6"/><circle cx="5.5" cy="21" r="1"/></svg>
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="8.5" cy="10" r="1"/><circle cx="15.5" cy="10" r="1"/><path d="M7.5 14.5A5 4 0 0 0 16.5 14.5"/></svg>
+            </span>
+            <div><b style="font-size:12px;">Aufzeichnen</b><br><span style="font-size:11px;color:#6b7280;">Die Buttons links: Foto, Umgebungssound, Sprachnachricht, Wahrnehmung, Gedanke, Stimmung.</span></div>
           </div>
           <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
-            <span style="font-size:22px;">⏹️</span>
+            <span style="color:#dc2626;flex-shrink:0;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor" stroke="none"/></svg></span>
             <div><b style="font-size:12px;">STOP / SAVE</b><br><span style="font-size:11px;color:#6b7280;">Walk beenden, Namen vergeben und der Spaziergang wird im Archiv gespeichert.</span></div>
           </div>
         </div>
@@ -2980,47 +3065,47 @@ window.addEventListener('load', function() {
       <!-- Schritt 3 -->
       <div class="ob-step" data-step="2" style="display:none;flex-direction:column;gap:12px;">
         <div style="text-align:center;padding:8px 0;">
-          <div style="font-size:40px;">📋</div>
+          <div style="color:#2563eb;display:flex;justify-content:center;"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><rect x="9" y="2" width="6" height="3" rx="1"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="13" y2="18"/></svg></div>
           <div style="font-size:15px;font-weight:bold;color:#111;margin-top:8px;">Nach dem Spaziergang</div>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;">
           <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
-            <span style="font-size:22px;">📂</span>
+            <span style="color:#374151;flex-shrink:0;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7H9L11 9H21V19H3Z"/></svg></span>
             <div><b style="font-size:12px;">Archiv öffnen</b><br><span style="font-size:11px;color:#6b7280;">Tippe oben rechts auf "Archiv" um deine Spaziergang auf der Map zu sehen sowie Umzubenennen, zu Exportieren und zu Löschen.</span></div>
           </div>
           <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
-            <span style="font-size:22px;">📋</span>
+            <span style="color:#2563eb;flex-shrink:0;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><rect x="9" y="2" width="6" height="3" rx="1"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="13" y2="18"/></svg></span>
             <div><b style="font-size:12px;">Reflexion</b><br><span style="font-size:11px;color:#6b7280;">Warte etwas, dann beantworte die Reflexionsfragen.</span></div>
           </div>
           <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
-            <span style="font-size:22px;">📦</span>
+            <span style="color:#374151;flex-shrink:0;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3L20 7.5V16.5L12 21L4 16.5V7.5Z"/><line x1="12" y1="3" x2="12" y2="12"/><line x1="12" y1="12" x2="20" y2="7.5"/><line x1="12" y1="12" x2="4" y2="7.5"/></svg></span>
             <div><b style="font-size:12px;">Export</b><br><span style="font-size:11px;color:#6b7280;">Exportiere deinen Walk als ZIP — alle Daten, Fotos und Audio.</span></div>
           </div>
           <div style="background:#f0f4ff;border-radius:10px;padding:10px 12px;font-size:11px;color:#1e3a6e;line-height:1.8;">
             <b>Wo findest du den Export?</b><br>
-            Archiv → Spaziergang im Archiv antippen → Aktionen aufklappen → <b>📦 Export</b><br><br>
-            📱 <b>iPhone:</b> Die ZIP-Datei landet in <b>Dateien → Downloads</b>. Von dort per Whatsapp oder Mail senden.<br>
-            🤖 <b>Android:</b> Die ZIP-Datei landet im <b>Downloads-Ordner</b>. Von dort per Whatsapp oder Mail senden.
+            Archiv → Spaziergang im Archiv antippen → Aktionen aufklappen → <b><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M12 3L20 7.5V16.5L12 21L4 16.5V7.5Z"/><line x1="12" y1="3" x2="12" y2="12"/><line x1="12" y1="12" x2="20" y2="7.5"/><line x1="12" y1="12" x2="4" y2="7.5"/></svg> Export</b><br><br>
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="7" y="2" width="10" height="20" rx="2.2"/><line x1="10" y1="19" x2="14" y2="19"/></svg> <b>iPhone:</b> Die ZIP-Datei landet in <b>Dateien → Downloads</b>. Von dort per Whatsapp oder Mail senden.<br>
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="7" y="2" width="10" height="20" rx="2.2"/><line x1="10" y1="19" x2="14" y2="19"/></svg> <b>Android:</b> Die ZIP-Datei landet im <b>Downloads-Ordner</b>. Von dort per Whatsapp oder Mail senden.
           </div>
         </div>
       </div>
       <!-- Schritt 3b — Ansicht & Ebenen -->
       <div class="ob-step" data-step="3" style="display:none;flex-direction:column;gap:12px;">
         <div style="text-align:center;padding:8px 0;">
-          <div style="font-size:40px;">🗺</div>
+          <div style="color:#374151;display:flex;justify-content:center;"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5L9 3L15 5L20 3V19L15 21L9 19L4 21Z"/><line x1="9" y1="3" x2="9" y2="19"/><line x1="15" y1="5" x2="15" y2="21"/></svg></div>
           <div style="font-size:15px;font-weight:bold;color:#111;margin-top:8px;">Ansicht & Ebenen</div>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;">
           <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
-            <span style="font-size:22px;">🗺</span>
+            <span style="color:#374151;flex-shrink:0;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5L9 3L15 5L20 3V19L15 21L9 19L4 21Z"/><line x1="9" y1="3" x2="9" y2="19"/><line x1="15" y1="5" x2="15" y2="21"/></svg></span>
             <div><b style="font-size:12px;">Ansicht</b><br><span style="font-size:11px;color:#6b7280;">Wechsle zwischen der eigenen Karte, Standard, Satellit, Graustufen oder 3D-Ansicht.</span></div>
           </div>
           <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
-            <span style="font-size:22px;">☰</span>
+            <span style="color:#374151;flex-shrink:0;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3L21 8.5L12 14L3 8.5Z"/><path d="M3.5 13L12 18.5L20.5 13"/></svg></span>
             <div><b style="font-size:12px;">Ebenen</b><br><span style="font-size:11px;color:#6b7280;">Zeigt Schrittzähler und Tempo. Einzelne Ebenen (Fotos, Audio, Stimmung...) ein- und ausblenden.</span></div>
           </div>
           <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
-            <span style="font-size:22px;">🏔</span>
+            <span style="color:#374151;flex-shrink:0;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20L9 8L13 14L17 7L21 20Z"/></svg></span>
             <div><b style="font-size:12px;">3D Ansicht</b><br><span style="font-size:11px;color:#6b7280;">Zeigt in 3D echte Geländemodell und Gebäuden.</span></div>
           </div>
         </div>
@@ -3028,14 +3113,14 @@ window.addEventListener('load', function() {
       <!-- Schritt 4 — Auswertung erklärt -->
       <div class="ob-step" data-step="4" style="display:none;flex-direction:column;gap:12px;">
         <div style="text-align:center;padding:8px 0;">
-          <div style="font-size:40px;">📊</div>
+          <div style="color:#16a34a;display:flex;justify-content:center;"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="13" width="3.4" height="7"/><rect x="10.3" y="8" width="3.4" height="12"/><rect x="15.6" y="4" width="3.4" height="16"/></svg></div>
           <div style="font-size:15px;font-weight:bold;color:#111;margin-top:8px;">Die Auswertung</div>
           <div style="font-size:11px;color:#6b7280;margin-top:6px;line-height:1.6;">Zeigt die Lücke zwischen Erleben und Erinnern</div>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;">
           <div style="background:#f0fdf4;border-radius:10px;padding:10px 12px;border-left:4px solid #1D9E75;">
             <div style="font-size:11px;font-weight:bold;color:#065f46;margin-bottom:4px;">Schicht 1 — Aufgezeichnet</div>
-            <div style="font-size:11px;color:#374151;line-height:1.6;">Deine Stimmungswerte (🔋 1–5) die du <b>während</b> des Walks gesetzt hast.</div>
+            <div style="font-size:11px;color:#374151;line-height:1.6;">Deine Stimmungswerte (<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><circle cx="12" cy="12" r="9"/><circle cx="8.5" cy="10" r="1"/><circle cx="15.5" cy="10" r="1"/><path d="M7.5 14.5A5 4 0 0 0 16.5 14.5"/></svg> 1–5) die du <b>während</b> des Walks gesetzt hast.</div>
           </div>
           <div style="background:#f5f3ff;border-radius:10px;padding:10px 12px;border-left:4px solid #534AB7;">
             <div style="font-size:11px;font-weight:bold;color:#3730a3;margin-bottom:4px;">Schicht 2 — Erinnert</div>
@@ -3047,34 +3132,34 @@ window.addEventListener('load', function() {
           </div>
         </div>
         <div style="background:#f0f4ff;border-radius:10px;padding:10px 12px;font-size:10px;color:#1e3a6e;line-height:1.6;">
-          💡 Tipp: Setze mindestens 3–4 Stimmungsmarker (🔋) während des Walks für aussagekräftige Diagramme.
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="10" r="6.5"/><line x1="9.5" y1="16.3" x2="14.5" y2="16.3"/><line x1="10" y1="19" x2="14" y2="19"/><line x1="10.5" y1="21.5" x2="13.5" y2="21.5"/></svg> Tipp: Setze mindestens 3–4 Stimmungsmarker (<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><circle cx="12" cy="12" r="9"/><circle cx="8.5" cy="10" r="1"/><circle cx="15.5" cy="10" r="1"/><path d="M7.5 14.5A5 4 0 0 0 16.5 14.5"/></svg>) während des Walks für aussagekräftige Diagramme.
         </div>
       </div>
       <!-- Schritt 5 — Vergleich & GeoJSON -->
       <div class="ob-step" data-step="5" style="display:none;flex-direction:column;gap:12px;">
         <div style="text-align:center;padding:8px 0;">
-          <div style="font-size:40px;">⚖️</div>
+          <div style="color:#7c3aed;display:flex;justify-content:center;"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="5" x2="7" y2="19"/><line x1="17" y1="5" x2="17" y2="19"/><line x1="7" y1="5" x2="17" y2="5"/><path d="M4 9A3 3 0 0 0 10 9"/><path d="M14 13A3 3 0 0 0 20 13"/></svg></div>
           <div style="font-size:15px;font-weight:bold;color:#111;margin-top:8px;">Vergleichen & Auswerten</div>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;">
           <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
-            <span style="font-size:22px;">📊</span>
+            <span style="color:#16a34a;flex-shrink:0;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="13" width="3.4" height="7"/><rect x="10.3" y="8" width="3.4" height="12"/><rect x="15.6" y="4" width="3.4" height="16"/></svg></span>
             <div><b style="font-size:12px;">Auswerten</b><br><span style="font-size:11px;color:#6b7280;">Zeigt aufgezeichnete vs. erinnerte Stimmung und die Abweichung.</span></div>
           </div>
           <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
-            <span style="font-size:22px;">⚖️</span>
-            <div><b style="font-size:12px;">Vergleich</b><br><span style="font-size:11px;color:#6b7280;">Tippe bei 2+ Walks auf ⚖️ — dann "Vergleich starten" um sie untereinander zu sehen.</span></div>
+            <span style="color:#7c3aed;flex-shrink:0;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="5" x2="7" y2="19"/><line x1="17" y1="5" x2="17" y2="19"/><line x1="7" y1="5" x2="17" y2="5"/><path d="M4 9A3 3 0 0 0 10 9"/><path d="M14 13A3 3 0 0 0 20 13"/></svg></span>
+            <div><b style="font-size:12px;">Vergleich</b><br><span style="font-size:11px;color:#6b7280;">Tippe bei 2+ Walks auf <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><line x1="7" y1="5" x2="7" y2="19"/><line x1="17" y1="5" x2="17" y2="19"/><line x1="7" y1="5" x2="17" y2="5"/><path d="M4 9A3 3 0 0 0 10 9"/><path d="M14 13A3 3 0 0 0 20 13"/></svg> — dann "Vergleich starten" um sie untereinander zu sehen.</span></div>
           </div>
           <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
-            <span style="font-size:22px;">🗺</span>
-            <div><b style="font-size:12px;">GeoJSON Export</b><br><span style="font-size:11px;color:#6b7280;">Exportiere deinen Walk und schicke mir diesen zu (über Archiv → Spaziergang antippen → 📦 Export).</span></div>
+            <span style="color:#374151;flex-shrink:0;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5L9 3L15 5L20 3V19L15 21L9 19L4 21Z"/><line x1="9" y1="3" x2="9" y2="19"/><line x1="15" y1="5" x2="15" y2="21"/></svg></span>
+            <div><b style="font-size:12px;">GeoJSON Export</b><br><span style="font-size:11px;color:#6b7280;">Exportiere deinen Walk und schicke mir diesen zu (über Archiv → Spaziergang antippen → Export).</span></div>
           </div>
         </div>
       </div>
       <!-- Schritt 6 — Display aktiv halten -->
       <div class="ob-step" data-step="6" style="display:none;flex-direction:column;gap:12px;">
         <div style="text-align:center;padding:8px 0;">
-          <div style="font-size:40px;">⚠️</div>
+          <div style="color:#f97316;display:flex;justify-content:center;"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3L22 20H2Z"/><line x1="12" y1="9" x2="12" y2="14.5"/><circle cx="12" cy="17.3" r="0.9" fill="currentColor" stroke="none"/></svg></div>
           <div style="font-size:15px;font-weight:bold;color:#111;margin-top:8px;">Wichtiger Hinweis</div>
         </div>
         <div style="background:#fff7ed;border-radius:10px;padding:12px 14px;border-left:4px solid #f97316;font-size:11px;color:#92400e;line-height:1.8;">
@@ -3083,12 +3168,12 @@ window.addEventListener('load', function() {
           <span id="ob-display-hint"></span>
         </div>
         <div style="background:#f0fdf4;border-radius:10px;padding:12px 14px;font-size:11px;color:#166534;line-height:1.7;">
-          ✅ Gehe ins Freie — GPS funktioniert drinnen schlecht<br>
-          ✅ Warte nach START bis der blaue Punkt erscheint<br>
-          ✅ Exportiere nach dem Walk um alles zu sichern
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="4,12 9.5,18 20,6"/></svg> Gehe ins Freie — GPS funktioniert drinnen schlecht<br>
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="4,12 9.5,18 20,6"/></svg> Warte nach START bis der blaue Punkt erscheint<br>
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="4,12 9.5,18 20,6"/></svg> Exportiere nach dem Walk um alles zu sichern
         </div>
         <div style="background:#f8f8f8;border-radius:10px;padding:12px 14px;font-size:11px;color:#374151;line-height:1.8;border:1px solid #e5e5e5;">
-          <b>📡 GPS-Statusanzeige:</b><br>
+          <b><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="19" r="1.3" fill="currentColor" stroke="none"/><path d="M9 16a4 4 0 0 1 6 0"/><path d="M6 13a8 8 0 0 1 12 0"/><path d="M3 10a12 12 0 0 1 18 0"/></svg> GPS-Statusanzeige:</b><br>
           Während der Aufzeichnung siehst du neben START/STOP:<br>
           <span style="display:inline-flex;align-items:center;gap:6px;margin-top:4px;">
             <span style="width:10px;height:10px;border-radius:50%;background:#22c55e;display:inline-block;"></span>
@@ -3100,35 +3185,35 @@ window.addEventListener('load', function() {
           </span>
         </div>
         <div style="background:#f0f4ff;border-radius:10px;padding:12px 14px;font-size:11px;color:#1e3a6e;line-height:1.8;">
-          <b>📦 Export nach dem Walk:</b><br>
-          Archiv → Walk antippen → <b>📦 Export</b><br><br>
-          📱 <b>iPhone:</b> ZIP landet in <b>Dateien → Downloads</b><br>
+          <b><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M12 3L20 7.5V16.5L12 21L4 16.5V7.5Z"/><line x1="12" y1="3" x2="12" y2="12"/><line x1="12" y1="12" x2="20" y2="7.5"/><line x1="12" y1="12" x2="4" y2="7.5"/></svg> Export nach dem Walk:</b><br>
+          Archiv → Walk antippen → <b><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M12 3L20 7.5V16.5L12 21L4 16.5V7.5Z"/><line x1="12" y1="3" x2="12" y2="12"/><line x1="12" y1="12" x2="20" y2="7.5"/><line x1="12" y1="12" x2="4" y2="7.5"/></svg> Export</b><br><br>
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="7" y="2" width="10" height="20" rx="2.2"/><line x1="10" y1="19" x2="14" y2="19"/></svg> <b>iPhone:</b> ZIP landet in <b>Dateien → Downloads</b><br>
           Weiterleiten per Whatsapp oder Mail<br><br>
-          🤖 <b>Android:</b> ZIP landet im <b>Downloads-Ordner</b><br>
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="7" y="2" width="10" height="20" rx="2.2"/><line x1="10" y1="19" x2="14" y2="19"/></svg> <b>Android:</b> ZIP landet im <b>Downloads-Ordner</b><br>
           Weiterleiten per WhatsApp oder Mail
         </div>
       </div>
       <!-- Schritt 7 — Auto-Save & Wiederherstellung -->
       <div class="ob-step" data-step="7" style="display:none;flex-direction:column;gap:12px;">
         <div style="text-align:center;padding:8px 0;">
-          <div style="font-size:40px;">💾</div>
+          <div style="color:#16a34a;display:flex;justify-content:center;"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><rect x="8" y="5" width="6" height="4"/><rect x="7" y="14" width="10" height="6" rx="1"/></svg></div>
           <div style="font-size:15px;font-weight:bold;color:#111;margin-top:8px;">Datensicherheit</div>
           <div style="font-size:11px;color:#6b7280;margin-top:6px;line-height:1.6;">Deine Daten sind automatisch geschützt</div>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;">
           <div style="background:#f0fdf4;border-radius:10px;padding:12px 14px;border-left:4px solid #16a34a;font-size:11px;color:#166534;line-height:1.8;">
-            <b>🔄 Auto-Save</b><br>
+            <b><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M4 12a8 8 0 0 1 14.5-5"/><polyline points="14.5,4.5 18.5,7 15,9.5"/><path d="M20 12a8 8 0 0 1-14.5 5"/><polyline points="9.5,19.5 5.5,17 9,14.5"/></svg> Auto-Save</b><br>
             Die App speichert deinen laufenden Walk automatisch — alle 10 Sekunden sowie bei jedem neuen GPS-Punkt und jedem Eintrag (Foto, Audio, Stimmung...).<br><br>
             Auch wenn das GPS abbricht oder die Seite abstürzt, sind deine Daten gesichert.
           </div>
           <div style="background:#fff7ed;border-radius:10px;padding:12px 14px;border-left:4px solid #f97316;font-size:11px;color:#92400e;line-height:1.8;">
-            <b>⚠️ Wenn etwas schiefgeht:</b><br>
+            <b><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M12 3L22 20H2Z"/><line x1="12" y1="9" x2="12" y2="14.5"/><circle cx="12" cy="17.3" r="0.9" fill="currentColor" stroke="none"/></svg> Wenn etwas schiefgeht:</b><br>
             Öffne die App einfach wieder — es erscheint oben ein <b style="color:#dc2626;">roter Banner</b>:<br>
-            <span style="background:#dc2626;color:#fff;border-radius:6px;padding:2px 8px;font-size:10px;display:inline-block;margin-top:4px;">⚠️ Unterbrochener Walk gefunden!</span><br><br>
-            Tippe auf <b>💾 Wiederherstellen</b> — der Walk wird sofort ins Archiv gespeichert.
+            <span style="background:#dc2626;color:#fff;border-radius:6px;padding:2px 8px;font-size:10px;display:inline-block;margin-top:4px;"><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><path d="M12 3L22 20H2Z"/><line x1="12" y1="9" x2="12" y2="14.5"/><circle cx="12" cy="17.3" r="0.9" fill="currentColor" stroke="none"/></svg> Unterbrochener Walk gefunden!</span><br><br>
+            Tippe auf <b><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="4" y="3" width="16" height="18" rx="2"/><rect x="8" y="5" width="6" height="4"/><rect x="7" y="14" width="10" height="6" rx="1"/></svg> Wiederherstellen</b> — der Walk wird sofort ins Archiv gespeichert.
           </div>
           <div style="background:#f0f4ff;border-radius:10px;padding:10px 12px;font-size:11px;color:#1e3a6e;line-height:1.7;">
-            🔒 <b>Datenschutz:</b> Alle Daten bleiben ausschließlich auf deinem Gerät. Es wird nichts automatisch übertragen oder in einer Cloud gespeichert.
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7A4 4 0 0 1 16 7V11"/><circle cx="12" cy="15.5" r="1.3"/><line x1="12" y1="16.8" x2="12" y2="18.3"/></svg> <b>Datenschutz:</b> Alle Daten bleiben ausschließlich auf deinem Gerät. Es wird nichts automatisch übertragen oder in einer Cloud gespeichert.
           </div>
         </div>
       </div>
@@ -3159,8 +3244,8 @@ window.addEventListener('load', function() {
 <!-- VERGLEICH-VOLLBILD -->
 <div id="vglOverlay" style="display:none;position:fixed;inset:0;z-index:5000;background:#f0ede8;flex-direction:column;overflow:hidden;">
   <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#fff;flex-shrink:0;border-bottom:1px solid #e5e5e5;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-    <div style="color:#111;font-size:14px;font-weight:bold;">⚖️ Walk-Vergleich</div>
-    <button id="vglClose" style="padding:8px 18px;border-radius:8px;border:none;background:#f0f0f0;color:#333;font-size:12px;font-weight:bold;cursor:pointer;">✕ Schließen</button>
+    <div style="color:#111;font-size:14px;font-weight:bold;display:flex;align-items:center;gap:6px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="5" x2="7" y2="19"/><line x1="17" y1="5" x2="17" y2="19"/><line x1="7" y1="5" x2="17" y2="5"/><path d="M4 9A3 3 0 0 0 10 9"/><path d="M14 13A3 3 0 0 0 20 13"/></svg> Walk-Vergleich</div>
+    <button id="vglClose" style="padding:8px 18px;border-radius:8px;border:none;background:#f0f0f0;color:#333;font-size:12px;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:5px;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg> Schließen</button>
   </div>
   <div id="vglList" style="flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:12px;display:flex;flex-direction:column;gap:12px;background:#f0ede8;"></div>
   <div id="vglInfo" style="display:none;background:#fff;color:#333;padding:12px 16px;font-size:12px;flex-shrink:0;border-top:1px solid #e5e5e5;max-height:150px;overflow-y:auto;box-shadow:0 -2px 8px rgba(0,0,0,0.06);"></div>
