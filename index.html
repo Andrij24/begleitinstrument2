@@ -27,6 +27,8 @@
     #btnStart.btn-recording{background:#16a34a;animation:startGlowGreen 1.2s ease-in-out infinite;}
     #btnStart.btn-gps-lost{background:#dc2626;animation:startGlowRed 0.9s ease-in-out infinite;}
     #gpsHint{display:none;position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:999;background:#dc2626;color:#fff;font-size:11px;font-weight:bold;padding:8px 14px;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,0.25);text-align:center;max-width:260px;line-height:1.4;}
+    #gpsWarnBanner{display:none;position:fixed;top:calc(112px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:1004;width:min(92vw,340px);background:#b91c1c;color:#fff;font-size:11.5px;font-weight:bold;padding:10px 30px 10px 14px;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.35);text-align:left;line-height:1.45;}
+    #gpsWarnBanner button{position:absolute;top:6px;right:8px;background:none;border:none;color:#fff;font-size:17px;font-weight:bold;cursor:pointer;line-height:1;padding:4px 6px;-webkit-tap-highlight-color:transparent;}
     .w-full{width:100%;}
     #panelToggles{position:fixed;top:calc(12px + env(safe-area-inset-top));right:12px;z-index:1001;display:flex;flex-direction:column;gap:6px;max-height:calc(100vh - 24px);overflow-y:auto;}
     .panel-tab{padding:8px 12px;border-radius:10px;border:none;font-size:10px;font-weight:bold;text-transform:uppercase;cursor:pointer;background:#fff;color:#333;box-shadow:0 2px 8px rgba(0,0,0,0.15);transition:background 0.15s,color 0.15s;white-space:nowrap;}
@@ -259,6 +261,7 @@
   </div>
 </div>
 <div id="gpsHint"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="19" r="1.3" fill="currentColor" stroke="none"/><path d="M9 16a4 4 0 0 1 6 0"/><path d="M6 13a8 8 0 0 1 12 0"/><path d="M3 10a12 12 0 0 1 18 0"/></svg> GPS wird gesucht – bitte kurz warten…</div>
+<div id="gpsWarnBanner"><span id="gpsWarnText"></span><button id="gpsWarnClose" title="Schließen">×</button></div>
 <!-- Wo bin ich Button -->
 <button id="btnLocate" style="display:none;position:fixed;bottom:calc(24px + env(safe-area-inset-bottom));right:16px;z-index:1002;height:44px;padding:0 16px;border-radius:22px;border:none;background:rgba(255,255,255,0.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 4px 16px rgba(0,0,0,0.2);cursor:pointer;font-size:13px;font-weight:bold;color:#333;align-items:center;justify-content:center;gap:6px;-webkit-tap-highlight-color:transparent;white-space:nowrap;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><path d="M7 13A7 7 0 1 1 17 13L12 21Z"/><circle cx="12" cy="9.3" r="2.3"/></svg> Wo bin ich?</button>
 <div id="panelToggles">
@@ -1010,6 +1013,37 @@ window.addEventListener('load', function() {
       iconAnchor:[10,10]
     });
   }
+  // ── GPS-Warnbanner: zeigt klare Diagnose statt stillem Fehlschlag ──
+  function showGpsWarning(msg){
+    const b=document.getElementById('gpsWarnBanner'),t=document.getElementById('gpsWarnText');
+    if(!b||!t)return;
+    t.textContent=msg;
+    b.style.display='block';
+  }
+  function hideGpsWarning(){
+    const b=document.getElementById('gpsWarnBanner');
+    if(b)b.style.display='none';
+  }
+  (function(){const c=document.getElementById('gpsWarnClose');if(c)c.onclick=hideGpsWarning;})();
+  // Sicherer Kontext? Geolocation funktioniert auf vielen Handys NUR über HTTPS (oder localhost).
+  // Wird die Seite z.B. per file:// oder unverschlüsseltem http:// geöffnet, blockieren manche
+  // mobile Browser den Standortzugriff komplett — das erklärt, warum GPS "je nach Handy" mal
+  // funktioniert und mal nicht.
+  if(!window.isSecureContext){
+    showGpsWarning('Diese Seite läuft nicht über eine sichere Verbindung (HTTPS). Auf vielen Handys blockiert das den Standortzugriff komplett, sodass kein GPS aufgezeichnet wird. Bitte die App über eine https://-Adresse (oder localhost) öffnen.');
+  } else if(navigator.permissions && navigator.permissions.query){
+    navigator.permissions.query({name:'geolocation'}).then(status=>{
+      if(status.state==='denied'){
+        showGpsWarning('Standortzugriff ist für diese Seite blockiert. Bitte in den Einstellungen des Browsers bzw. Telefons den Standortzugriff erlauben — sonst kann nichts aufgezeichnet werden.');
+      }
+      status.onchange=()=>{
+        if(status.state==='denied')showGpsWarning('Standortzugriff wurde blockiert. Bitte in den Einstellungen erlauben, sonst kann nichts aufgezeichnet werden.');
+        else hideGpsWarning();
+      };
+    }).catch(()=>{});
+  }
+  // Zeitpunkt des letzten akzeptierten GPS-Fixes — Basis für den adaptiven Genauigkeits-Fallback unten
+  let lastGpsAcceptTime=null;
   navigator.geolocation.watchPosition(pos=>{
     // GPS Signal empfangen — Status auf OK
     if(state.current){
@@ -1018,7 +1052,24 @@ window.addEventListener('load', function() {
       if(_gpsLostTimer) clearTimeout(_gpsLostTimer);
       _gpsLostTimer=setTimeout(()=>{if(state.current)setGpsLost();},15000);
     }
-    if(pos.coords.accuracy>30)return;
+    const acc=pos.coords.accuracy;
+    // Genauigkeits-Filter, aber NIE die ganze Route leer lassen, nur weil das GPS-Signal nie
+    // besser wird (schwache Chips, Wald, Häuserschlucht...): nach 20s ohne akzeptierten Punkt
+    // wird auch eine mittelmäßige Position (≤100m) übernommen, nach 60s notfalls jede —
+    // lieber ungenau aufzeichnen als gar nicht.
+    const sinceAccept=lastGpsAcceptTime?(Date.now()-lastGpsAcceptTime)/1000:999;
+    // usableForSpeed: nur Fixes mit guter Genauigkeit (≤30m) dürfen das Tempo und damit
+    // die Tuschenlinien-Breite beeinflussen. Die Linie lebt genau von dieser Genauigkeit:
+    // langsam/stehen = breite Linie, schnell gehen = dünne Linie. Ein ungenauer Fallback-Fix
+    // (s.u.) würde durch reines GPS-Rauschen eine falsche "Geschwindigkeit" erzeugen und die
+    // Linie verfälschen — er wird daher nur für die Position übernommen (Route bricht nicht
+    // ab), das Tempo bleibt dabei unverändert auf dem letzten verlässlichen Wert.
+    const usableForSpeed=acc<=30;
+    if(acc>30){
+      if(sinceAccept<20) return;
+      if(acc>100 && sinceAccept<60) return;
+    }
+    lastGpsAcceptTime=Date.now();
     const rawLat=pos.coords.latitude,rawLng=pos.coords.longitude;
     if(smoothLat===null){smoothLat=rawLat;smoothLng=rawLng;}
     else{smoothLat+=0.25*(rawLat-smoothLat);smoothLng+=0.25*(rawLng-smoothLng);}
@@ -1042,13 +1093,18 @@ window.addEventListener('load', function() {
         const dt=(now-lastPosTime)/1000;
         // Mindestdistanz: 1m statt 3m — feiner für langsames Gehen/Stehenbleiben
         if(dist<1) return;
-        // Rohe Geschwindigkeit aus Distanz/Zeit
-        const raw=dt>0?dist/dt:0;
-        // Schnellere Reaktion: 0.5/0.5 statt 0.7/0.3
-        // Dadurch reagiert die Tuschebreite schneller auf Tempo-Änderungen
-        smoothedSpeed=smoothedSpeed*0.5+raw*0.5;
-        // Beim Stehenbleiben (dist sehr klein) Geschwindigkeit schnell auf 0 drücken
-        if(dist<1.5 && dt>2) smoothedSpeed=smoothedSpeed*0.3;
+        // Tempo (und damit die Tuschenbreite) nur aus genauen Fixes berechnen — ein
+        // ungenauer Fallback-Fix würde hier durch reines GPS-Rauschen eine falsche
+        // "Geschwindigkeit" erzeugen. In dem Fall bleibt smoothedSpeed unverändert.
+        if(usableForSpeed){
+          // Rohe Geschwindigkeit aus Distanz/Zeit
+          const raw=dt>0?dist/dt:0;
+          // Schnellere Reaktion: 0.5/0.5 statt 0.7/0.3
+          // Dadurch reagiert die Tuschebreite schneller auf Tempo-Änderungen
+          smoothedSpeed=smoothedSpeed*0.5+raw*0.5;
+          // Beim Stehenbleiben (dist sehr klein) Geschwindigkeit schnell auf 0 drücken
+          if(dist<1.5 && dt>2) smoothedSpeed=smoothedSpeed*0.3;
+        }
         const w=speedToWeight(smoothedSpeed),op=speedToOpacity(smoothedSpeed);
         state.current.route.push(ll);
         if(!state.current.segments)state.current.segments=[];
@@ -1060,9 +1116,17 @@ window.addEventListener('load', function() {
       lastPos=ll;lastPosTime=now;
     }
   },err=>{
-    console.warn('GPS:',err.code);
+    console.warn('GPS:',err.code,err.message);
     if(state.current) setGpsLost();
-  },{enableHighAccuracy:true,maximumAge:0,timeout:30000});
+    // Klare, unterscheidbare Diagnose statt stillem Fehlschlag — je nach Fehlercode
+    if(err.code===1){ // PERMISSION_DENIED
+      showGpsWarning('Standortzugriff wurde verweigert. Bitte in den Browser-/Telefon-Einstellungen den Standortzugriff für diese Seite erlauben — sonst kann kein GPS aufgezeichnet werden.');
+    } else if(err.code===2){ // POSITION_UNAVAILABLE
+      showGpsWarning('Standort momentan nicht ermittelbar (kein GPS-Empfang). Die Suche läuft weiter — am besten unter freiem Himmel warten.');
+    } else if(err.code===3 && state.current){ // TIMEOUT — nur relevant während einer Aufzeichnung
+      showGpsWarning('GPS-Signal kommt gerade nicht durch. Die Suche läuft weiter.');
+    }
+  },{enableHighAccuracy:true,maximumAge:3000,timeout:30000});
   // Screen WakeLock: verhindert dass GPS abbricht wenn Bildschirm dunkel wird
   let wakeLock=null;
   async function requestWakeLock(){
@@ -1145,6 +1209,18 @@ window.addEventListener('load', function() {
       list.insertBefore(banner,list.firstChild);
       // Banner nach 30 Sek. automatisch ausblenden
       setTimeout(()=>{if(banner.parentNode)banner.remove();},10000);
+      // Warnung wenn auffällig wenige GPS-Punkte aufgezeichnet wurden — direktes,
+      // sichtbares Feedback statt eines stillen, leeren/spärlichen Walks
+      const ptCount=(savedWalk.route||[]).length;
+      if(ptCount<3){
+        const warnB=document.createElement('div');
+        warnB.style.cssText='background:#b91c1c;color:#fff;border-radius:10px;padding:12px 14px;'
+          +'margin-bottom:10px;font-size:11.5px;font-weight:bold;line-height:1.5;';
+        warnB.innerHTML='Achtung: Bei diesem Walk wurden nur '+ptCount+' GPS-Punkt(e) aufgezeichnet. '
+          +'Vermutlich war der Standortzugriff blockiert oder das GPS-Signal zu schwach. '
+          +'Bitte vor dem nächsten Walk prüfen, ob das GPS-Symbol oben grün leuchtet, bevor losgegangen wird.';
+        list.insertBefore(warnB,list.firstChild);
+      }
     },300);
   };
   // ── SPEICHER-MONITOR ──
