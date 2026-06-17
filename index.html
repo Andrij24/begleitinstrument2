@@ -1357,6 +1357,23 @@ window.addEventListener('load', function() {
   function updateMoodUI(v){const col=moodColor(v);moodValEl.textContent=v;moodValEl.style.color=col;moodThumb.style.borderColor=col;moodThumb.style.left=((v-1)/4*100)+'%';moodSaveBtn.style.background=col;}
   updateMoodUI(3);
   moodSlider.addEventListener('input',()=>updateMoodUI(parseInt(moodSlider.value)));
+  // ── Antippen/Verschieben auf dem Strahl: Wert direkt an Tap-Position setzen ──
+  // (native Range-Inputs springen z.B. auf iOS beim Tap NICHT zur Tap-Position, nur beim Ziehen ab dem Thumb)
+  function setMoodFromClientX(clientX){
+    const rect=moodSlider.getBoundingClientRect();
+    if(!rect.width)return;
+    let frac=(clientX-rect.left)/rect.width;
+    frac=Math.max(0,Math.min(1,frac));
+    const val=Math.round(frac*4)+1;
+    if(parseInt(moodSlider.value)!==val){moodSlider.value=val;updateMoodUI(val);}
+  }
+  moodSlider.addEventListener('pointerdown',e=>{
+    setMoodFromClientX(e.clientX);
+    try{moodSlider.setPointerCapture(e.pointerId);}catch(err){}
+  });
+  moodSlider.addEventListener('pointermove',e=>{
+    if(e.pressure>0||e.buttons===1)setMoodFromClientX(e.clientX);
+  });
   document.getElementById('moodCancel').addEventListener('click',()=>{moodModal.style.display='none';});
   document.getElementById('moodSave').addEventListener('click',()=>{
     if(!requireWalk())return;
@@ -2187,8 +2204,9 @@ window.addEventListener('load', function() {
       // ── Immer sichtbare Schnell-Buttons ──
       const quickRow=document.createElement('div');
       quickRow.style.cssText='display:flex;gap:4px;padding:4px 8px 6px;align-items:center;';
-      [{cls:'wb-verlauf',label:svgIcon('clipboard',11)+' Reflexion',col:'#2563eb'},
-       {cls:'wb-analyse',label:svgIcon('barchart',11)+' Auswerten',col:'#16a34a'}
+      [{cls:'wb-save',label:svgIcon('pencil',11)+' Umbenennen',col:'#2563eb'},
+       {cls:'wb-export',label:svgIcon('package',11)+' Export',col:'#16a34a'},
+       {cls:'wb-delete',label:svgIcon('trash',11)+' Löschen',col:'#dc2626'}
       ].forEach(({cls,label,col})=>{
         const btn=document.createElement('button');
         btn.setAttribute('data-cls',cls);
@@ -2216,16 +2234,11 @@ window.addEventListener('load', function() {
       const actions=document.createElement('div');
       actions.className='walk-actions';
       actions.setAttribute('data-id',w.id);
-      const nameInput=document.createElement('input');
-      nameInput.className='walk-name-input'; nameInput.type='text';
-      nameInput.placeholder='Name ändern...'; nameInput.value=escHtml(w.name);
-      actions.appendChild(nameInput);
       const btnRow=document.createElement('div');
       btnRow.className='walk-btn-row';
       [
-        {cls:'wb-save',  label:svgIcon('pencil',12)+' Umbenennen'},
-        {cls:'wb-export', label:svgIcon('package',12)+' Export'},
-        {cls:'wb-delete', label:svgIcon('trash',12)},
+        {cls:'wb-verlauf', label:svgIcon('clipboard',12)+' Reflexion'},
+        {cls:'wb-analyse', label:svgIcon('barchart',12)+' Auswerten'},
       ].forEach(({cls,label})=>{
         const btn=document.createElement('button');
         btn.className='walk-btn '+cls; btn.innerHTML=label;
@@ -2234,19 +2247,21 @@ window.addEventListener('load', function() {
       actions.appendChild(btnRow);
       item.appendChild(actions);
       // Button-Handler
-      quickRow.querySelector('[data-cls="wb-verlauf"]').onclick=()=>openVerlauf(w);
-      quickRow.querySelector('[data-cls="wb-analyse"]').onclick=()=>openAnalyse(w);
-      actions.querySelector('.wb-save').onclick=()=>{
-        const n=nameInput.value.trim();if(!n)return;
-        w.name=n;header.querySelector('.walk-label').firstChild.textContent=n;saveWalks();
+      quickRow.querySelector('[data-cls="wb-save"]').onclick=()=>{
+        const n=prompt('Neuer Name für den Walk:',w.name);
+        if(n===null)return;
+        const trimmed=n.trim();if(!trimmed)return;
+        w.name=trimmed;header.querySelector('.walk-label').firstChild.textContent=trimmed;saveWalks();
       };
-      actions.querySelector('.wb-export').onclick=()=>exportWalk(w);
-      actions.querySelector('.wb-delete').onclick=()=>{
+      quickRow.querySelector('[data-cls="wb-export"]').onclick=()=>exportWalk(w);
+      quickRow.querySelector('[data-cls="wb-delete"]').onclick=()=>{
         if(!confirm('Walk "'+w.name+'" wirklich löschen?'))return;
         if(state.activeLayers[w.id]){state.map.removeLayer(state.activeLayers[w.id]);delete state.activeLayers[w.id];}
         if(state.archiveInkLayers[w.id]){state.map.removeLayer(state.archiveInkLayers[w.id]);delete state.archiveInkLayers[w.id];}
         state.walks=state.walks.filter(x=>x.id!==w.id);saveWalks();renderArchive();
       };
+      actions.querySelector('.wb-verlauf').onclick=()=>openVerlauf(w);
+      actions.querySelector('.wb-analyse').onclick=()=>openAnalyse(w);
       list.appendChild(item);
     });
     // Aktive Walks wieder als 'shown' markieren
