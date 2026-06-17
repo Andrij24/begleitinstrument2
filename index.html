@@ -43,10 +43,13 @@
     .section-label{font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;border-bottom:1px solid #f0f0f0;padding-bottom:4px;margin-bottom:10px;}
     .layer-opt{display:block;width:100%;text-align:left;padding:8px 10px;border-radius:6px;border:1px solid #ddd;cursor:pointer;font-size:11px;background:#fff;margin-bottom:4px;}
     .layer-opt.active{background:#dbeafe;color:#1d4ed8;font-weight:bold;border-color:#1d4ed8;}
-    .layer-toggle-btn{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;border:1.5px solid #ddd;background:#f9f9f9;cursor:pointer;font-size:11px;font-weight:bold;color:#555;width:100%;margin-bottom:5px;transition:all 0.15s ease;}
+    .layer-toggle-btn{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;border:1.5px solid #ddd;background:#f9f9f9;cursor:pointer;font-size:11px;font-weight:bold;color:#555;width:100%;margin-bottom:5px;transition:all 0.15s ease;text-align:left;}
     .layer-toggle-btn.active{background:#dbeafe;border-color:#2563eb;color:#1d4ed8;}
-    .layer-toggle-btn .dot{width:8px;height:8px;border-radius:50%;background:#ccc;flex-shrink:0;}
+    .layer-toggle-btn .dot{width:8px;height:8px;border-radius:50%;background:#ccc;flex-shrink:0;margin-top:1px;align-self:flex-start;}
     .layer-toggle-btn.active .dot{background:#2563eb;}
+    .layer-toggle-text{display:flex;flex-direction:column;gap:2px;}
+    .layer-toggle-title{font-size:11px;font-weight:bold;}
+    .layer-toggle-desc{font-size:9.5px;font-weight:normal;color:#9ca3af;line-height:1.35;white-space:normal;}
     .walk-item{background:#fff;border-radius:10px;border:1px solid #e5e5e5;margin-bottom:8px;overflow:hidden;}
     .walk-header{display:flex;align-items:center;gap:8px;padding:9px 10px;cursor:pointer;transition:background 0.1s;}
     .walk-header:hover{background:#f0f4ff;}
@@ -296,13 +299,13 @@
         </div>
       </div>
       <div style="font-size:9px;font-weight:bold;color:#9ca3af;text-transform:uppercase;border-bottom:1px solid #f0f0f0;padding-bottom:4px;margin-bottom:10px;">Ebenen</div>
-      <button class="layer-toggle-btn active" data-layer="route"><span class="dot"></span> Route</button>
-      <button class="layer-toggle-btn active" data-layer="photo"><span class="dot"></span> Fotos</button>
-      <button class="layer-toggle-btn active" data-layer="sound"><span class="dot"></span> Umgebungssound</button>
-      <button class="layer-toggle-btn active" data-layer="voice"><span class="dot"></span> Sprachnachricht</button>
-      <button class="layer-toggle-btn active" data-layer="sense"><span class="dot"></span> Eindrücke</button>
-      <button class="layer-toggle-btn active" data-layer="thought"><span class="dot"></span> Gedanken</button>
-      <button class="layer-toggle-btn active" data-layer="mood"><span class="dot"></span> Stimmung</button>
+      <button class="layer-toggle-btn active" data-layer="route"><span class="dot"></span><span class="layer-toggle-text"><span class="layer-toggle-title">Route</span><span class="layer-toggle-desc">Die Tuschenlinie deines Spaziergangs — zeigt deinen Weg und dein Tempo.</span></span></button>
+      <button class="layer-toggle-btn active" data-layer="photo"><span class="dot"></span><span class="layer-toggle-text"><span class="layer-toggle-title">Fotos</span><span class="layer-toggle-desc">Was siehst du? Halte fest, was du wahrnimmst.</span></span></button>
+      <button class="layer-toggle-btn active" data-layer="sound"><span class="dot"></span><span class="layer-toggle-text"><span class="layer-toggle-title">Umgebungssound</span><span class="layer-toggle-desc">Was hörst du, was für Geräusche nimmst du wahr?</span></span></button>
+      <button class="layer-toggle-btn active" data-layer="voice"><span class="dot"></span><span class="layer-toggle-text"><span class="layer-toggle-title">Sprachnachricht</span><span class="layer-toggle-desc">Sprich deine Gedanken und Wahrnehmung ein.</span></span></button>
+      <button class="layer-toggle-btn active" data-layer="sense"><span class="dot"></span><span class="layer-toggle-text"><span class="layer-toggle-title">Eindrücke</span><span class="layer-toggle-desc">Beschreibe deine Eindrücke von deiner Umgebung oder was in dir passiert.</span></span></button>
+      <button class="layer-toggle-btn active" data-layer="thought"><span class="dot"></span><span class="layer-toggle-text"><span class="layer-toggle-title">Gedanken</span><span class="layer-toggle-desc">Erzähle von deinen Gedanken und Erinnerungen — an was denkst du?</span></span></button>
+      <button class="layer-toggle-btn active" data-layer="mood"><span class="dot"></span><span class="layer-toggle-text"><span class="layer-toggle-title">Stimmung</span><span class="layer-toggle-desc">Halte kurz inne: Wie ist deine Stimmung in diesem Augenblick?</span></span></button>
     </div>
     <div class="section" id="sec-archiv" style="display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
@@ -3161,7 +3164,16 @@ window.addEventListener('load', function() {
               <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="11" rx="5.5"/><circle cx="8" cy="18.5" r="1.6"/><circle cx="5.5" cy="21" r="1"/></svg>
               <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="8.5" cy="10" r="1"/><circle cx="15.5" cy="10" r="1"/><path d="M7.5 14.5A5 4 0 0 0 16.5 14.5"/></svg>
             </span>
-            <div><b style="font-size:12px;">Aufzeichnen</b><br><span style="font-size:11px;color:#6b7280;">Die Buttons links: Foto, Umgebungssound, Sprachnachricht, Wahrnehmung, Gedanke, Stimmung.</span></div>
+            <div style="width:100%;"><b style="font-size:12px;">Aufzeichnen</b><br><span style="font-size:11px;color:#6b7280;">Die Buttons links — tippe an, was du gerade festhalten willst:</span>
+              <div style="font-size:11px;color:#6b7280;line-height:1.65;margin-top:6px;">
+                <b style="color:#374151;">Foto:</b> Was siehst du? Halte fest, was du wahrnimmst.<br>
+                <b style="color:#374151;">Umgebungssound:</b> Was hörst du, was für Geräusche nimmst du wahr?<br>
+                <b style="color:#374151;">Sprachnachricht:</b> Sprich deine Gedanken und Wahrnehmung ein.<br>
+                <b style="color:#374151;">Eindrücke:</b> Beschreibe deine Eindrücke von deiner Umgebung oder was in dir passiert.<br>
+                <b style="color:#374151;">Gedanken:</b> Erzähle von deinen Gedanken und Erinnerungen — an was denkst du?<br>
+                <b style="color:#374151;">Stimmung:</b> Halte kurz inne: Wie ist deine Stimmung in diesem Augenblick?
+              </div>
+            </div>
           </div>
           <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
             <span style="color:#dc2626;flex-shrink:0;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor" stroke="none"/></svg></span>
@@ -3209,7 +3221,7 @@ window.addEventListener('load', function() {
           </div>
           <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
             <span style="color:#374151;flex-shrink:0;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3L21 8.5L12 14L3 8.5Z"/><path d="M3.5 13L12 18.5L20.5 13"/></svg></span>
-            <div><b style="font-size:12px;">Ebenen</b><br><span style="font-size:11px;color:#6b7280;">Zeigt Schrittzähler und Tempo. Einzelne Ebenen (Fotos, Audio, Stimmung...) ein- und ausblenden.</span></div>
+            <div><b style="font-size:12px;">Ebenen</b><br><span style="font-size:11px;color:#6b7280;">Zeigt Schrittzähler und Tempo. Einzelne Ebenen (Fotos, Audio, Stimmung...) ein- und ausblenden — mit kurzer Erklärung, wofür jede Ebene gut ist.</span></div>
           </div>
           <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:10px;padding:10px 12px;">
             <span style="color:#374151;flex-shrink:0;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20L9 8L13 14L17 7L21 20Z"/></svg></span>
