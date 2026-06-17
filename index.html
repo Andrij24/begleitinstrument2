@@ -495,7 +495,17 @@ window.addEventListener('load', function() {
   }
   const layerVisibility={route:true,mood:true,thought:true,sense:true,sound:true,voice:true,photo:true};
   const mapLayers={route:[],mood:[],thought:[],sense:[],sound:[],voice:[],photo:[]};
-  let state={walks:JSON.parse(localStorage.getItem('psychogeo_walks')||'[]'),current:null,map:null,liveMarker:null,activeLayers:{},currentTile:null,archiveInkLayers:{}};
+  // Geschütztes Parsen: ein beschädigter localStorage-Eintrag darf nie die ganze App blockieren
+  function safeParseWalks(){
+    try{
+      const v=JSON.parse(localStorage.getItem('psychogeo_walks')||'[]');
+      return Array.isArray(v)?v:[];
+    }catch(e){
+      console.warn('Walk-Archiv beschädigt, starte mit leerem Archiv:',e);
+      return [];
+    }
+  }
+  let state={walks:safeParseWalks(),current:null,map:null,liveMarker:null,activeLayers:{},currentTile:null,archiveInkLayers:{}};
   const audioBlobs={};
   let currentTileUrl='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
   state.map=L.map('map',{zoomControl:false,maxZoom:22}).setView([47.23,9.61],17);
@@ -1291,60 +1301,63 @@ window.addEventListener('load', function() {
     }
   }
   function saveWalks(){
+    // Alle Audio-Blobs (falls vorhanden) zuerst VOLLSTÄNDIG zu base64 einlesen,
+    // bevor irgendetwas gespeichert wird. Vorher wurde pro Audio-Eintrag ein eigener
+    // asynchroner FileReader gestartet, der bei Fertigstellung sofort einen eigenen
+    // localStorage-Save auslöste — bei 2+ neuen Aufnahmen im selben Walk überschrieb
+    // der zuletzt fertige Save den vorherigen und die erste Aufnahme ging dauerhaft
+    // verloren (nur im laufenden Tab via audioBlobs noch hörbar, nach Reload nicht mehr).
+    const pending=[];
     const ts=state.walks.map(w=>({...w,entries:w.entries.map(e=>{
       const c={...e};
       delete c.audioUrl; // ObjectURL ist session-only
-      // Audio als base64 mitspeichern wenn vorhanden
       if(e.entryId&&audioBlobs[e.entryId]&&!c.audioBase64){
-        try{
-          const reader=new FileReader();
-          reader.onload=ev=>{
-            c.audioBase64=ev.target.result;
-            const walks2=state.walks.map(w2=>({...w2,entries:w2.entries.map(e2=>{
-              const d={...e2};delete d.audioUrl;
-              if(e2.entryId===e.entryId&&audioBlobs[e2.entryId])d.audioBase64=ev.target.result;
-              return d;
-            })}));
-            try{localStorage.setItem('psychogeo_walks',JSON.stringify(walks2));}
-            catch(ex){console.warn('Audio-Save fehlgeschlagen (zu gross):',ex);}
-          };
-          reader.readAsDataURL(audioBlobs[e.entryId]);
-        }catch(ex){}
+        pending.push(new Promise(resolve=>{
+          try{
+            const reader=new FileReader();
+            reader.onload=ev=>{c.audioBase64=ev.target.result;resolve();};
+            reader.onerror=()=>resolve();
+            reader.readAsDataURL(audioBlobs[e.entryId]);
+          }catch(ex){resolve();}
+        }));
       }
       return c;
     })}));
-    // Erst versuchen mit Fotos
-    try{
-      localStorage.setItem('psychogeo_walks',JSON.stringify(ts));
-      checkStorageUsage(); // Speicher-Warnung prüfen
-    }catch(ex){
-      // localStorage voll (wahrscheinlich wegen Fotos) — ohne Fotos speichern
-      console.warn('Speicher voll, speichere ohne Fotos:',ex);
+    function commit(payload){
+      // Erst versuchen mit Fotos
       try{
-        const tsNoPhotos=state.walks.map(w=>({...w,entries:w.entries.map(e=>{
-          const c={...e};
-          delete c.audioUrl;
-          // Fotos weglassen wenn zu gross
-          if(e.type==='photo'&&e.dataUrl&&e.dataUrl.length>50000) delete c.dataUrl;
-          return c;
-        })}));
-        localStorage.setItem('psychogeo_walks',JSON.stringify(tsNoPhotos));
-        console.warn('Walk ohne grosse Fotos gespeichert');
-      }catch(ex2){
-        // Letzter Ausweg: nur Route und Texte speichern
-        console.error('Kritisch: Walk kann nicht gespeichert werden:',ex2);
+        localStorage.setItem('psychogeo_walks',JSON.stringify(payload));
+        checkStorageUsage(); // Speicher-Warnung prüfen
+      }catch(ex){
+        // localStorage voll (wahrscheinlich wegen Fotos) — ohne Fotos speichern
+        console.warn('Speicher voll, speichere ohne Fotos:',ex);
         try{
-          const tsMinimal=state.walks.map(w=>({...w,entries:w.entries.map(e=>{
+          const tsNoPhotos=payload.map(w=>({...w,entries:w.entries.map(e=>{
             const c={...e};
-            delete c.audioUrl;delete c.dataUrl;delete c.audioBase64;
+            // Fotos weglassen wenn zu gross
+            if(e.type==='photo'&&e.dataUrl&&e.dataUrl.length>50000){delete c.dataUrl;}
             return c;
           })}));
-          localStorage.setItem('psychogeo_walks',JSON.stringify(tsMinimal));
-        }catch(ex3){
-          alert('Achtung: Speicher voll! Bitte einen alten Walk exportieren und löschen, dann erneut speichern.');
+          localStorage.setItem('psychogeo_walks',JSON.stringify(tsNoPhotos));
+          console.warn('Walk ohne grosse Fotos gespeichert');
+        }catch(ex2){
+          // Letzter Ausweg: nur Route und Texte speichern
+          console.error('Kritisch: Walk kann nicht gespeichert werden:',ex2);
+          try{
+            const tsMinimal=payload.map(w=>({...w,entries:w.entries.map(e=>{
+              const c={...e};
+              delete c.dataUrl;delete c.audioBase64;
+              return c;
+            })}));
+            localStorage.setItem('psychogeo_walks',JSON.stringify(tsMinimal));
+          }catch(ex3){
+            alert('Achtung: Speicher voll! Bitte einen alten Walk exportieren und löschen, dann erneut speichern.');
+          }
         }
       }
     }
+    if(pending.length>0) Promise.all(pending).then(()=>commit(ts));
+    else commit(ts);
   }
   // Track live marker positions for overlap detection
   const _livePosCounts={};
@@ -2975,7 +2988,14 @@ window.addEventListener('load', function() {
     let recovered;
     try{ recovered = JSON.parse(saved); }
     catch(ex){ localStorage.removeItem('psychogeo_current_walk'); return; }
-    if(!recovered || !recovered.route || recovered.route.length < 2){
+    if(!recovered){ localStorage.removeItem('psychogeo_current_walk'); return; }
+    if(!recovered.route) recovered.route=[];
+    if(!recovered.entries) recovered.entries=[];
+    // Nur wirklich komplett leere Walks (0 GPS-Punkte UND 0 Einträge) automatisch verwerfen.
+    // Vorher wurde hier jeder Walk mit weniger als 2 GPS-Punkten still gelöscht — genau das
+    // träfe einen Walk, bei dem GPS nicht aufgezeichnet hat (das ursprüngliche Problem!),
+    // und der Nutzer hätte nie erfahren, dass überhaupt etwas verworfen wurde.
+    if(recovered.route.length===0 && recovered.entries.length===0){
       localStorage.removeItem('psychogeo_current_walk');
       return;
     }
@@ -3080,45 +3100,6 @@ window.addEventListener('load', function() {
         <textarea id="rqUeber" rows="2" placeholder="Diskrepanz, Überraschung..." style="width:100%;font-size:12px;padding:8px;border-radius:8px;border:1px solid #ddd;resize:none;font-family:sans-serif;background:#fff;"></textarea>
       </div>
       <button id="rqSaveBtn" style="width:100%;padding:13px;border-radius:10px;border:none;background:#2563eb;color:#fff;font-size:12px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><rect x="8" y="5" width="6" height="4"/><rect x="7" y="14" width="10" height="6" rx="1"/></svg> Reflexion speichern</button>
-    </div>
-  </div>
-</div>
-<!-- STIMMUNGS-MODAL -->
-<div id="moodModal" style="display:none;align-items:center;justify-content:center;">
-  <div style="background:#fff;border-radius:20px;padding:28px 24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:16px;">
-    <div style="font-size:14px;font-weight:bold;color:#111;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="8.5" cy="10" r="1"/><circle cx="15.5" cy="10" r="1"/><path d="M7.5 14.5A5 4 0 0 0 16.5 14.5"/></svg> Stimmung</div>
-    <div style="height:16px;border-radius:8px;background:linear-gradient(to right,#3b82f6,#22c55e,#facc15,#f97316,#ef4444);position:relative;">
-      <div id="moodThumb" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;background:#fff;border:3px solid #facc15;box-shadow:0 2px 8px rgba(0,0,0,0.3);pointer-events:none;"></div>
-    </div>
-    <input type="range" id="moodSlider" min="1" max="5" value="3" step="1" style="width:100%;margin:-8px 0;opacity:0;height:32px;cursor:pointer;"/>
-    <div style="display:flex;justify-content:space-between;font-size:10px;color:#aaa;margin-top:-8px;"><span>1 — Stimmung bedrückt</span><span>3 — neutral</span><span>5 — sehr gute Stimmung</span></div>
-    <div style="text-align:center;"><span id="moodVal" style="font-size:36px;font-weight:bold;color:#facc15;">3</span><span style="font-size:13px;color:#aaa;">/5</span></div>
-    <textarea id="moodText" placeholder="Beschreibe deine Stimmung (optional)..." style="width:100%;height:56px;border-radius:10px;border:1.5px solid #e5e5e5;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
-    <div style="display:flex;gap:10px;">
-      <button id="moodCancel" style="flex:1;padding:13px;border-radius:12px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:12px;cursor:pointer;">Abbrechen</button>
-      <button id="moodSave" style="flex:2;padding:13px;border-radius:12px;border:none;font-weight:bold;font-size:12px;cursor:pointer;color:#fff;background:#facc15;">Marker setzen</button>
-    </div>
-  </div>
-</div>
-<!-- GEDANKEN-MODAL -->
-<div id="thoughtModal" style="display:none;align-items:center;justify-content:center;">
-  <div style="background:#fff;border-radius:20px;padding:24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:14px;">
-    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="11" rx="5.5"/><circle cx="8" cy="18.5" r="1.6"/><circle cx="5.5" cy="21" r="1"/></svg> Gedanke</div>
-    <textarea id="thoughtText" placeholder="Was denkst du gerade?" style="width:100%;height:100px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
-    <div style="display:flex;gap:8px;">
-      <button id="thoughtCancel" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;">Abbrechen</button>
-      <button id="thoughtSave" style="flex:1;padding:12px;border-radius:10px;border:none;background:#12345f;color:#fff;font-weight:bold;font-size:11px;cursor:pointer;">Marker setzen</button>
-    </div>
-  </div>
-</div>
-<!-- WAHRNEHMUNG-MODAL -->
-<div id="senseModal" style="display:none;align-items:center;justify-content:center;">
-  <div style="background:#fff;border-radius:20px;padding:24px;width:min(92vw,340px);display:flex;flex-direction:column;gap:14px;">
-    <div style="font-size:13px;font-weight:bold;color:#111;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12A10 6 0 0 1 22 12A10 6 0 0 1 2 12Z"/><circle cx="12" cy="12" r="3"/></svg> Eindrücke</div>
-    <textarea id="senseText" placeholder="Was nimmst du wahr?" style="width:100%;height:100px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:13px;resize:none;font-family:sans-serif;"></textarea>
-    <div style="display:flex;gap:8px;">
-      <button id="senseCancel" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;color:#555;font-weight:bold;font-size:11px;cursor:pointer;">Abbrechen</button>
-      <button id="senseSave" style="flex:1;padding:12px;border-radius:10px;border:none;background:#3d633d;color:#fff;font-weight:bold;font-size:11px;cursor:pointer;">Marker setzen</button>
     </div>
   </div>
 </div>
